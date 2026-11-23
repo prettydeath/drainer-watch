@@ -1,0 +1,20 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+*.egg-info/
+.hypothesis/
+
+# generated data lives on the orphan `data` branch, not on main (data/seeds.csv stays tracked)
+/data/*.sqlite
+/data/*.sqlite-*
+/data/contracts.csv
+/data/drains.csv
+/site/
+
+# private investigation material (kit research notes, case incidents) - never publish
+/docs/kits/
+/docs/incidents/
+/tests/backtest/private/

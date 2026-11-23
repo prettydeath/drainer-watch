@@ -1,0 +1,84 @@
+name: watch
+
+on:
+  schedule:
+    - cron: "3-59/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      max_blocks:
+        description: "Blocks per chain for this run (empty = defaults: eth 100, base 400, bsc 800)"
+        default: ""
+      budget_sec:
+        description: "Time budget in seconds"
+        default: "300"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: drainerwatch
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      changed: ${{ steps.publish.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore data from the data branch
+        uses: actions/checkout@v4
+        with:
+          ref: data
+          path: _data
+        continue-on-error: true
+
+      - run: |
+          mkdir -p data
+          if [ -f _data/data/drainerwatch.sqlite ]; then cp _data/data/drainerwatch.sqlite data/; fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests pycryptodome
+
+      - name: Run
+        env:
+          ETHERSCAN_API_KEYS: ${{ secrets.ETHERSCAN_API_KEYS }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+          BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          DASHBOARD_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: |
+          MB="${{ github.event.inputs.max_blocks }}"
+          BS="${{ github.event.inputs.budget_sec }}"
+          python -m drainerwatch run --budget-sec "${BS:-300}" ${MB:+--max-blocks "$MB"}
+
+      - name: Publish to the data branch (single orphan commit)
+        id: publish
+        run: |
+          if [ -d _data ] && cmp -s _data/data/drainerwatch.sqlite data/drainerwatch.sqlite && diff -q _data/site/data.json site/data.json >/dev/null 2>&1; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"; echo "no changes"; exit 0
+          fi
+          rm -rf _pub && mkdir _pub && cp -r data site _pub/
+          cd _pub
+          git init -q -b data
+          git config user.name "drainerwatch-bot"
+          git config user.email "drainerwatch-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "data: update"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" data
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+  pages:
+    needs: run
+    if: needs.run.outputs.changed == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml

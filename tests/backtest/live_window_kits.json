@@ -1,0 +1,105 @@
+{
+ "range": [
+  26476930,
+  26477049
+ ],
+ "source": "receipts (ETH default)",
+ "seeded": {
+  "blocks": 120,
+  "sec": 161,
+  "tiers": {
+   "T3": 38,
+   "T2": 1
+  },
+  "per_label": {
+   "eoa_spender_pull": 21,
+   "split_xtx": 8,
+   "eip7702_sweeper": 2,
+   "spoof_split": 6,
+   "multi_victim_pull": 1,
+   "split_pull": 1
+  },
+  "t12": [
+   {
+    "address": "0x818f0804fbb93f4279529fd7474db6d7a65167db",
+    "tier": "T2",
+    "labels": [
+     "split_pull"
+    ],
+    "victims": 1,
+    "cluster": null,
+    "scamsniffer": false,
+    "wa": "",
+    "ev": [
+     {
+      "type": "split_pull",
+      "tx": "0x0ec865737b586615e74e727ddcff6091ea59b1b606793028d74bc11f9b7bcbe5"
+     }
+    ]
+   }
+  ],
+  "clusters": 1,
+  "stats": {
+   "rpc_calls": 180,
+   "code_lookups": 1643,
+   "nonce_lookups": 514,
+   "tx_lookups": 0,
+   "d7_bait": 0,
+   "d8_confirmed": 26,
+   "d9_confirmed": 0,
+   "d10_confirmed": 0,
+   "xsplit_groups": 46,
+   "xsplit_confirmed": 16,
+   "source": "receipts"
+  }
+ },
+ "blind": {
+  "blocks": 120,
+  "sec": 155,
+  "tiers": {
+   "T3": 38,
+   "T2": 1
+  },
+  "per_label": {
+   "eoa_spender_pull": 21,
+   "split_xtx": 8,
+   "eip7702_sweeper": 2,
+   "spoof_split": 6,
+   "multi_victim_pull": 1,
+   "split_pull": 1
+  },
+  "t12": [
+   {
+    "address": "0x818f0804fbb93f4279529fd7474db6d7a65167db",
+    "tier": "T2",
+    "labels": [
+     "split_pull"
+    ],
+    "victims": 1,
+    "cluster": null,
+    "scamsniffer": false,
+    "wa": "",
+    "ev": [
+     {
+      "type": "split_pull",
+      "tx": "0x0ec865737b586615e74e727ddcff6091ea59b1b606793028d74bc11f9b7bcbe5"
+     }
+    ]
+   }
+  ],
+  "clusters": 1,
+  "stats": {
+   "rpc_calls": 179,
+   "code_lookups": 1643,
+   "nonce_lookups": 514,
+   "tx_lookups": 0,
+   "d7_bait": 0,
+   "d8_confirmed": 26,
+   "d9_confirmed": 0,
+   "d10_confirmed": 0,
+   "xsplit_groups": 46,
+   "xsplit_confirmed": 16,
+   "source": "receipts"
+  }
+ }
+}

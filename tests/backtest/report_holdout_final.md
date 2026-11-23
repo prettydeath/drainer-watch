@@ -1,0 +1,164 @@
+# Backtest report: holdout (final)
+
+Generated 2026-11-23T11:18:01Z. Mode: BLIND (seeds disabled for detection; family library = dev targets only, own component excluded); source: eth_getBlockReceipts + full blocks; window +/-1 blocks around each incident.
+
+## Summary
+
+| metric | value | baseline |
+|---|---|---|
+| incidents | 88 | 88 |
+| distinct seeds | 29 | 29 |
+| recall T1/T2 (incidents) | 22.7% | 0.0% |
+| recall any tier (incidents) | 79.5% | 0.0% |
+| seeds with >=1 T1/T2 detection | 5 | 0 |
+| TP flagged addresses (T1/T2) | 5 | 0 |
+| other T1/T2 flagged addresses (FP candidates) | 6 | 6 |
+|   of which ScamSniffer/wa-scam/incident addr (likely TP) | 0 | 0 |
+| precision strict (TP / all T1-T2 flagged) | 45.5% | 0.0% |
+| precision adjusted (likely-TP FPs counted as TP) | 45.5% | 0.0% |
+| payout-role incidents | 0 | 0 |
+|   seed recovered as payout wallet | 0 | 0 |
+| detected incidents with payout wallets | 0 | 0 |
+
+## Recall per detector (incidents whose flagged target carries the label)
+
+| detector | any tier | T1/T2 | baseline any / T1-T2 |
+|---|---|---|---|
+| eoa_spender_pull | 70 | 20 | 0 / 0 |
+| eoa_spender_multi | 20 | 20 | 0 / 0 |
+
+## Recall by drain pattern / seed role (detected T1-T2 / total)
+
+| group | value | detected / total |
+|---|---|---|
+| pattern | eoa_transferFrom | 20 / 73 |
+| pattern | pull_via_contract | 0 / 13 |
+| pattern | via_allowlisted | 0 / 2 |
+| seed role | drainer_contract | 0 / 9 |
+| seed role | operator | 20 / 79 |
+
+## Incidents
+
+| block | ts | tx | seed | role | pattern | tx.to | flagged | tier | labels | payouts |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 21555065 | 2025-01-05T01:41:59Z | 0x8d83ccac67efcb04b1c98b25263a5a5e3899ff64c50e829222a28a8ba3a19bbb | 0x1661f1b207629e4f385da89cff535c8e5eb23ee3 | operator | eoa_transferFrom | 0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2 |  | - |  |  |
+| 21555784 | 2025-01-05T04:06:23Z | 0x08480f278b76a0bd5e1d805d2c4fa668a2e12cd374d2381ebc61a3a132e8755f | 0x1661f1b207629e4f385da89cff535c8e5eb23ee3 | operator | eoa_transferFrom | 0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce |  | - |  |  |
+| 21579846 | 2025-01-08T12:46:11Z | 0x442caeb38ae3c9dd968c553de8ec0106580504353647908d2485ca915d762028 | 0x1661f1b207629e4f385da89cff535c8e5eb23ee3 | operator | eoa_transferFrom | 0xddf7fd345d54ff4b40079579d4c4670415dbfd0a |  | - |  |  |
+| 21703727 | 2025-01-25T19:50:59Z | 0xac02fef656c9deeca9737e6765d1ea17c2af48ac4749d70a851b32f8b049c5a7 | 0x1661f1b207629e4f385da89cff535c8e5eb23ee3 | operator | eoa_transferFrom | 0x2b591e99afe9f32eaa6214f7b7629768c40eeb39 |  | - |  |  |
+| 21659374 | 2025-01-19T15:17:11Z | 0xecf5d4f469f74645977edf496bc65189842f7cfff578074be1b59a6e8b01226f | 0x1d5071048370df50839c8879cdf5144ace4b3b3b | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x1d5071048370df50839c8879cdf5144ace4b3b3b | T3 | eoa_spender_pull |  |
+| 22313311 | 2025-04-20T22:51:35Z | 0x6ef615979b069959de08753edde42771d0dbebc13bc0c2d3e55ccadb51606765 | 0x1d5071048370df50839c8879cdf5144ace4b3b3b | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x1d5071048370df50839c8879cdf5144ace4b3b3b | T3 | eoa_spender_pull |  |
+| 25565769 | 2026-07-19T09:10:23Z | 0xab40a57203c9afc6eecd910387eefe792788201a7ad5fdab9878fd643a9f4d23 | 0x1d5071048370df50839c8879cdf5144ace4b3b3b | operator | eoa_transferFrom | 0x0cba60ca5ef4d42f92a5070a8fedd13be93e2861 | 0x1d5071048370df50839c8879cdf5144ace4b3b3b | T3 | eoa_spender_pull |  |
+| 26241244 | 2026-10-21T13:22:23Z | 0x775bfff65186a9f81bd612b5a9dbccafc0738390030eb70819f235ed9800d85e | 0x1d5071048370df50839c8879cdf5144ace4b3b3b | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 | 0x1d5071048370df50839c8879cdf5144ace4b3b3b | T3 | eoa_spender_pull |  |
+| 22127657 | 2025-03-26T01:01:23Z | 0x3715e36cb043f5db40104ecf56d0747305cd2d0f68fa79ca73489d9bb7e445e9 | 0x213f2c908a20dd718ec92cd4c050b23315eae4c1 | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 | 0x213f2c908a20dd718ec92cd4c050b23315eae4c1 | T3 | eoa_spender_pull |  |
+| 22141181 | 2025-03-27T22:17:47Z | 0x6040f63ca593bbd11652a07e29170a56989da7207ee5de8f053dc60671ca0932 | 0x213f2c908a20dd718ec92cd4c050b23315eae4c1 | operator | eoa_transferFrom | 0x9c354503c38481a7a7a51629142963f98ecc12d0 | 0x213f2c908a20dd718ec92cd4c050b23315eae4c1 | T3 | eoa_spender_pull |  |
+| 23462874 | 2025-09-28T17:06:11Z | 0xbfde64d7c8e8e51c4ef39432a3b74cfd8c5dc68a2856ffef96896196a3916d40 | 0x213f2c908a20dd718ec92cd4c050b23315eae4c1 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x213f2c908a20dd718ec92cd4c050b23315eae4c1 | T3 | eoa_spender_pull |  |
+| 25091301 | 2026-05-14T05:32:47Z | 0x3ff71f111239580550864d8878735521e94ebb741547848dcda9a499955da4ea | 0x213f2c908a20dd718ec92cd4c050b23315eae4c1 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x213f2c908a20dd718ec92cd4c050b23315eae4c1 | T3 | eoa_spender_pull |  |
+| 23155049 | 2025-08-16T17:18:59Z | 0xa07e8d5ee1345bd9be19dcd28e3cfc31cea1f87729281ad37a8acc28e32e7c28 | 0x337f2b17e1eff2c15745b4aaee93cbf9a9563264 | drainer_contract | pull_via_contract | 0x337f2b17e1eff2c15745b4aaee93cbf9a9563264 | 0x337f2b17e1eff2c15745b4aaee93cbf9a9563264 | T3 | eoa_spender_pull |  |
+| 21903775 | 2025-02-22T18:51:35Z | 0x7b11caba3ae91ea883a7e2a5ef648df6930d71fa1b592b50af39ed7201c9ec9b | 0x363908df2b0890e7e5c1e403935133094287d7d1 | operator | pull_via_contract | 0xf3de3c0d654fda23dad170f0f320a92172509127 |  | - |  |  |
+| 23756264 | 2025-11-08T18:14:47Z | 0x5fec4fd8304d284a7e438f3adc9cb95cee4e43c2c440028441fc784b963ea154 | 0x62f1b75660071c341918c770844a29af7d97a9aa | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x62f1b75660071c341918c770844a29af7d97a9aa | T3 | eoa_spender_pull, wa_scam |  |
+| 23756266 | 2025-11-08T18:15:11Z | 0x7ca9e69ccfe945f3c2381a720294413e181325167ee269be0a66dfe54cbb349b | 0x62f1b75660071c341918c770844a29af7d97a9aa | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x62f1b75660071c341918c770844a29af7d97a9aa | T3 | eoa_spender_pull, wa_scam |  |
+| 22153216 | 2025-03-29T14:40:11Z | 0xec58247283264a71f713dff9084936de4ba0be642192b1163cf7993d247c7ac8 | 0x69420e2b4ef22d935a4e2c194bbf3a2f02f27be1 | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 |  | - |  |  |
+| 22153219 | 2025-03-29T14:40:47Z | 0xd13e269c4840ce229c767ee90d546f24a9b44c33d42b4efbe93947a97be3110b | 0x69420e2b4ef22d935a4e2c194bbf3a2f02f27be1 | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 |  | - |  |  |
+| 22153251 | 2025-03-29T14:47:23Z | 0x70148b72fe080278075e6f5206346ecad9c48487ea33aa6f7803c98c15c4c0d2 | 0x69420e2b4ef22d935a4e2c194bbf3a2f02f27be1 | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 |  | - |  |  |
+| 22153268 | 2025-03-29T14:50:47Z | 0x1e2aa7668b5637144a2f17315ece88d1c60d5bd8d4e2c8276d3b80a4834de261 | 0x69420e2b4ef22d935a4e2c194bbf3a2f02f27be1 | operator | eoa_transferFrom | 0xa8b919680258d369114910511cc87595aec0be6d |  | - |  |  |
+| 23155025 | 2025-08-16T17:14:11Z | 0x5eab3ef18fbd1cbfa4637b0afe706b4fbccf9a70bb8e78a386b007b83b4695ad | 0x6ab591105f2b3312a92e0c92791e45b70734cdac | drainer_contract | pull_via_contract | 0x6ab591105f2b3312a92e0c92791e45b70734cdac | 0x6ab591105f2b3312a92e0c92791e45b70734cdac | T3 | eoa_spender_pull, wa_scam |  |
+| 25367830 | 2026-06-21T18:42:23Z | 0x897830ec207384988d44c4e6321945356ae0354e8aa76cf9521b2249fcbf315d | 0x6ab591105f2b3312a92e0c92791e45b70734cdac | drainer_contract | pull_via_contract | 0x6ab591105f2b3312a92e0c92791e45b70734cdac | 0x6ab591105f2b3312a92e0c92791e45b70734cdac | T3 | eoa_spender_pull, wa_scam |  |
+| 21844647 | 2025-02-14T12:17:11Z | 0xf52a8b7e2ec2518371f97e4aa2881564385d37c66de45802e6b181b1a6f3f606 | 0x7497dba68bbf14c5a8b6b2cae20e92687db9b34e | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 |  | - |  |  |
+| 23667245 | 2025-10-27T07:18:23Z | 0xf1b35b9277fc21ce18a8c863a3ef27e455d277c04f06768b4e3759057c7683aa | 0x773f31f5e83fd92079256d696a0278241b1cb56e | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x773f31f5e83fd92079256d696a0278241b1cb56e | T3 | eoa_spender_pull, wa_scam |  |
+| 23198948 | 2025-08-22T20:16:35Z | 0x13382b73eddce691013801ff0b6d7293bd1bc5eeffbab3a47b168fd2d493657e | 0x7a921f7650bdf9343c005c0c76dbf4daaa878568 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x7a921f7650bdf9343c005c0c76dbf4daaa878568 | T3 | eoa_spender_pull, wa_scam |  |
+| 23198966 | 2025-08-22T20:20:11Z | 0xe68f03f97b4f11fd463d2f815dcc41733836ef75b9cbd373213939b8358226fd | 0x7a921f7650bdf9343c005c0c76dbf4daaa878568 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x7a921f7650bdf9343c005c0c76dbf4daaa878568 | T3 | eoa_spender_pull, wa_scam |  |
+| 23198974 | 2025-08-22T20:21:47Z | 0x5d0dcb2b06dfeef179f1b344a02686e50419cd396de3ac992814e7f796b89f40 | 0x7a921f7650bdf9343c005c0c76dbf4daaa878568 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x7a921f7650bdf9343c005c0c76dbf4daaa878568 | T3 | eoa_spender_pull, wa_scam |  |
+| 23238670 | 2025-08-28T09:18:11Z | 0xefc8762cd3e9f6b2a00074261891ca60e3c4b4ae65b08a5071a6d5edb26f220f | 0x7a921f7650bdf9343c005c0c76dbf4daaa878568 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x7a921f7650bdf9343c005c0c76dbf4daaa878568 | T3 | eoa_spender_pull, wa_scam |  |
+| 22994962 | 2025-07-25T08:26:23Z | 0x0d277924fef5a07801dc4b2497c2e73f89101e2a9a1b38cf1c4cc67d924604b3 | 0x7b7a7f26db00692ed0bf7cc5aa842f1a9706e296 | drainer_contract | pull_via_contract | 0x7b7a7f26db00692ed0bf7cc5aa842f1a9706e296 |  | - |  |  |
+| 22994972 | 2025-07-25T08:28:23Z | 0x53f4fe036eb1faf7927cee804c017cb5a3613285ee11bd8a5cabfc4f5754cfdd | 0x7b7a7f26db00692ed0bf7cc5aa842f1a9706e296 | drainer_contract | pull_via_contract | 0x7b7a7f26db00692ed0bf7cc5aa842f1a9706e296 |  | - |  |  |
+| 22994975 | 2025-07-25T08:28:59Z | 0x2fcfa1ec354e181fa37f2cb49fbaaaeb56edf9d7678735165dd8a8bc472fad1b | 0x7b7a7f26db00692ed0bf7cc5aa842f1a9706e296 | drainer_contract | pull_via_contract | 0x7b7a7f26db00692ed0bf7cc5aa842f1a9706e296 |  | - |  |  |
+| 23202130 | 2025-08-23T06:55:11Z | 0x81d4f90693cd86586bbc86ee2018bdc126615d62237759b4d7cd382da351fc2b | 0x7da78e7a8e0d70f2c0e26ec8cb5314fad58db1d2 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x7da78e7a8e0d70f2c0e26ec8cb5314fad58db1d2 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23202133 | 2025-08-23T06:55:47Z | 0x23d0f471088e9ddb191597d24af2d1a95cac7c579c2d890030fc6508256129e0 | 0x7da78e7a8e0d70f2c0e26ec8cb5314fad58db1d2 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x7da78e7a8e0d70f2c0e26ec8cb5314fad58db1d2 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23202135 | 2025-08-23T06:56:11Z | 0x2f28d21111331825f125a7577de9e29b54ee1b9ee23e4d457c6fcd0bf613acc5 | 0x7da78e7a8e0d70f2c0e26ec8cb5314fad58db1d2 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x7da78e7a8e0d70f2c0e26ec8cb5314fad58db1d2 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23202137 | 2025-08-23T06:56:35Z | 0x5134e2844e9a9a9f6e4fc09c1d0df1557069af60e4f0c0c2fdfe4d242b39bdb5 | 0x7da78e7a8e0d70f2c0e26ec8cb5314fad58db1d2 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x7da78e7a8e0d70f2c0e26ec8cb5314fad58db1d2 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23239009 | 2025-08-28T10:25:59Z | 0xf2edaf8a160ce965f35779ab866bcf6fa7302f506ed9c008d3e302eea2d31aed | 0x890bfe5aae1e8afc54bbcbf3c96903ee1c3f4156 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x890bfe5aae1e8afc54bbcbf3c96903ee1c3f4156 | T2 | eoa_spender_multi, eoa_spender_pull |  |
+| 23756768 | 2025-11-08T19:56:23Z | 0xb36149d03b364e18959677f537b83c6626f1c94c7bba54839b87bfbce774c506 | 0x890bfe5aae1e8afc54bbcbf3c96903ee1c3f4156 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x890bfe5aae1e8afc54bbcbf3c96903ee1c3f4156 | T2 | eoa_spender_multi, eoa_spender_pull |  |
+| 23756771 | 2025-11-08T19:56:59Z | 0x99c5bf7a3db3c70318d42566382340b3477e7e845f823356ca42b2a1a56f3758 | 0x890bfe5aae1e8afc54bbcbf3c96903ee1c3f4156 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x890bfe5aae1e8afc54bbcbf3c96903ee1c3f4156 | T2 | eoa_spender_multi, eoa_spender_pull |  |
+| 23756784 | 2025-11-08T19:59:35Z | 0x6a3d7cd42a74c2f35df7a6aa43401fe25cc6c0a8048512bb064509f4e8ca14a5 | 0x890bfe5aae1e8afc54bbcbf3c96903ee1c3f4156 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x890bfe5aae1e8afc54bbcbf3c96903ee1c3f4156 | T2 | eoa_spender_multi, eoa_spender_pull |  |
+| 22197665 | 2025-04-04T19:31:35Z | 0xe0ce4c14c5df21b1f24b0c234de7c604a70a6f7f8bbfb426b7b5591cb3aba6af | 0x8bae6912fda09b1c2ebf0a58dc581d3b0a9504e9 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x8bae6912fda09b1c2ebf0a58dc581d3b0a9504e9 | T3 | eoa_spender_pull, wa_scam |  |
+| 22197681 | 2025-04-04T19:34:47Z | 0xac5da532e0aac951ea52e2200646aa827657a6841b56c2cadf94de006c1d4809 | 0x8bae6912fda09b1c2ebf0a58dc581d3b0a9504e9 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x8bae6912fda09b1c2ebf0a58dc581d3b0a9504e9 | T3 | eoa_spender_pull, wa_scam |  |
+| 23674469 | 2025-10-28T07:35:11Z | 0x0a73aa7ce04f3091e133e7445c404b8dc427a2a3303ef601163ac2ce6672dd8e | 0x8bae6912fda09b1c2ebf0a58dc581d3b0a9504e9 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x8bae6912fda09b1c2ebf0a58dc581d3b0a9504e9 | T3 | eoa_spender_pull, wa_scam |  |
+| 23674484 | 2025-10-28T07:38:11Z | 0x4d48f70061c37b8423a7efc863f52430bba2cd24564739c858cd94b7182a7294 | 0x8bae6912fda09b1c2ebf0a58dc581d3b0a9504e9 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x8bae6912fda09b1c2ebf0a58dc581d3b0a9504e9 | T3 | eoa_spender_pull, wa_scam |  |
+| 23239065 | 2025-08-28T10:37:11Z | 0x0bb2358feb54d3d7eaf19569ac1c7e9ff254a7d543ce904b054279c26ddaf7ef | 0x9875ae4cd2d5b2c5b8116e5565dba3c7c8953929 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x9875ae4cd2d5b2c5b8116e5565dba3c7c8953929 | T3 | eoa_spender_pull, wa_scam |  |
+| 23239067 | 2025-08-28T10:37:35Z | 0xf8f2377cbf2706772762527d3c77b64845ac812a38d0f3d47da1cac456b35f62 | 0x9875ae4cd2d5b2c5b8116e5565dba3c7c8953929 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x9875ae4cd2d5b2c5b8116e5565dba3c7c8953929 | T3 | eoa_spender_pull, wa_scam |  |
+| 23239073 | 2025-08-28T10:38:47Z | 0xb2a9d0f63493492d46de38549921a26ecb5d183e3f2894b655fbf235d6359eae | 0x9875ae4cd2d5b2c5b8116e5565dba3c7c8953929 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0x9875ae4cd2d5b2c5b8116e5565dba3c7c8953929 | T3 | eoa_spender_pull, wa_scam |  |
+| 25365050 | 2026-06-21T09:24:11Z | 0xe1b9be203aa73d044bafc9234625f9fb0a984b57de2ee22f67b595e9d8fe76e1 | 0x99d01153a8c5d35bad737c28780da835da0a9ce0 | drainer_contract | pull_via_contract | 0x99d01153a8c5d35bad737c28780da835da0a9ce0 | 0x99d01153a8c5d35bad737c28780da835da0a9ce0 | T3 | eoa_spender_pull |  |
+| 23155088 | 2025-08-16T17:26:47Z | 0xc54df03a2e1d2b174839b20f3dc11310d3cd54187981f3c7090b3467e5592337 | 0x9a0525016ff2f6e0c63214a52bc4adce3be0a990 | drainer_contract | pull_via_contract | 0x9a0525016ff2f6e0c63214a52bc4adce3be0a990 | 0x9a0525016ff2f6e0c63214a52bc4adce3be0a990 | T3 | eoa_spender_pull |  |
+| 25365052 | 2026-06-21T09:24:35Z | 0x363362fe8b478314cea325479e4698becacf498ade2b25b927b374c60255483e | 0x9a0525016ff2f6e0c63214a52bc4adce3be0a990 | drainer_contract | pull_via_contract | 0x9a0525016ff2f6e0c63214a52bc4adce3be0a990 | 0x9a0525016ff2f6e0c63214a52bc4adce3be0a990 | T3 | eoa_spender_pull |  |
+| 22698333 | 2025-06-13T21:30:59Z | 0x31b116adb256e89eb6ebb621afff8c8e5465fd911df0ef4eb16bc1acd892bb06 | 0xa69f8d3f55e2010012d59feb359ebbb258b00b0a | operator | via_allowlisted:Seaport 1.6 | 0x0000000000000068f116a894984e2db1123eb395 |  | - |  |  |
+| 22698346 | 2025-06-13T21:33:35Z | 0x106527c93bb0023ef85c1030b7dfedb101dba1497ab22fcec430d18a28c2d752 | 0xa69f8d3f55e2010012d59feb359ebbb258b00b0a | operator | via_allowlisted:Seaport 1.6 | 0x0000000000000068f116a894984e2db1123eb395 |  | - |  |  |
+| 23197235 | 2025-08-22T14:32:11Z | 0xb0ef41682b7b8d73a37dce171662446ea5ced35ab65c63e0b746f5599225aed4 | 0xaa1e3c33fa220d3908cf5fe0dc9776a67a97bb09 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xaa1e3c33fa220d3908cf5fe0dc9776a67a97bb09 | T3 | eoa_spender_pull, wa_scam |  |
+| 23867119 | 2025-11-24T07:04:47Z | 0x208a36e66bac901e696fd10162dcaf2b92ec877a536e74831891d4ccfb0b2efc | 0xaa1e3c33fa220d3908cf5fe0dc9776a67a97bb09 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xaa1e3c33fa220d3908cf5fe0dc9776a67a97bb09 | T3 | eoa_spender_pull, wa_scam |  |
+| 23867124 | 2025-11-24T07:05:47Z | 0xf78c21e8403ebb9a04e93cb932b243f8c31cb55f17474b5ed6ab645fc8bf5aee | 0xaa1e3c33fa220d3908cf5fe0dc9776a67a97bb09 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xaa1e3c33fa220d3908cf5fe0dc9776a67a97bb09 | T3 | eoa_spender_pull, wa_scam |  |
+| 23881197 | 2025-11-26T06:40:47Z | 0x4ffe46e716bb10a8645bd11366585b32b98b804a14d5c8f075fc64092dd25261 | 0xaa1e3c33fa220d3908cf5fe0dc9776a67a97bb09 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xaa1e3c33fa220d3908cf5fe0dc9776a67a97bb09 | T3 | eoa_spender_pull, wa_scam |  |
+| 22635570 | 2025-06-05T02:54:23Z | 0xcc82f8fe03c175dc820951a7e27929e3da06341f512cc21321f4b7c67b55c108 | 0xc189e353ae001a727b1cefecc9c43c68825a6c0f | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 | 0xc189e353ae001a727b1cefecc9c43c68825a6c0f | T3 | eoa_spender_pull |  |
+| 24728333 | 2026-03-24T15:36:47Z | 0x636e9d36aca9a870a4df66a0d562b2b9037ea69b81bd04cec84f237cedaebe53 | 0xc189e353ae001a727b1cefecc9c43c68825a6c0f | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xc189e353ae001a727b1cefecc9c43c68825a6c0f | T3 | eoa_spender_pull |  |
+| 24728446 | 2026-03-24T15:59:35Z | 0x8e30b36139b1bbfae1bc1ced9e057ce37122130d789b17295cb3bd2542d309b2 | 0xc189e353ae001a727b1cefecc9c43c68825a6c0f | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xc189e353ae001a727b1cefecc9c43c68825a6c0f | T3 | eoa_spender_pull |  |
+| 25734539 | 2026-08-11T21:47:35Z | 0x07af20647d3ef4108f16d0510678c1aaa0c6a6ea08089317545a16bc60121c15 | 0xc189e353ae001a727b1cefecc9c43c68825a6c0f | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xc189e353ae001a727b1cefecc9c43c68825a6c0f | T3 | eoa_spender_pull |  |
+| 24658212 | 2026-03-14T20:48:47Z | 0x3aff286fe36b6a12094b79966543cd8b25756774d31cb4f8f40910c33725cae3 | 0xc370f33f595913de942457f5c39870a34c4bc3b4 | operator | pull_via_contract | 0xb2ecfe4e4d61f8790bbb9de2d1259b9e2410cea5 |  | - |  |  |
+| 24658236 | 2026-03-14T20:53:35Z | 0xac14860fb78612f20b80fa333827d38dc5549c782ff1ba51c07fde60f425adae | 0xc370f33f595913de942457f5c39870a34c4bc3b4 | operator | pull_via_contract | 0xb2ecfe4e4d61f8790bbb9de2d1259b9e2410cea5 |  | - |  |  |
+| 24658266 | 2026-03-14T20:59:35Z | 0x13a57e7678f8ac6893fdd2bd70eb9dce5fd78134e1e9d1e8cea52ea9d735843c | 0xc370f33f595913de942457f5c39870a34c4bc3b4 | operator | pull_via_contract | 0xb2ecfe4e4d61f8790bbb9de2d1259b9e2410cea5 |  | - |  |  |
+| 23531355 | 2025-10-08T06:49:47Z | 0x6509e39111200fd8437dec91db286c817d17186236de9f84ced89e6cdcd2fa7a | 0xc3db9a8ccce0462e516e8840c756972e139adc39 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xc3db9a8ccce0462e516e8840c756972e139adc39 | T3 | eoa_spender_pull, wa_scam |  |
+| 23531358 | 2025-10-08T06:50:23Z | 0x084b190ef12242eb7caca28179919d157caf137896f65c0933afd7c199fdc6f3 | 0xc3db9a8ccce0462e516e8840c756972e139adc39 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xc3db9a8ccce0462e516e8840c756972e139adc39 | T3 | eoa_spender_pull, wa_scam |  |
+| 23531364 | 2025-10-08T06:51:35Z | 0x13baeaaa68092deb3be659f58cc0ea375ee76e57fff86bc8705a79a15393dcea | 0xc3db9a8ccce0462e516e8840c756972e139adc39 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xc3db9a8ccce0462e516e8840c756972e139adc39 | T3 | eoa_spender_pull, wa_scam |  |
+| 23531366 | 2025-10-08T06:51:59Z | 0xb9bc1a76d40dce6b40fe0274173bdabe8e35895967d6d2e7109ca144bda3d3df | 0xc3db9a8ccce0462e516e8840c756972e139adc39 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xc3db9a8ccce0462e516e8840c756972e139adc39 | T3 | eoa_spender_pull, wa_scam |  |
+| 25106768 | 2026-05-16T09:15:23Z | 0x869406cf3270133fc134d6e8e5f5eb8dac1dad97952aa4b584402e828ac99a4e | 0xcafa11ab425425d7986be974d7b9a38ec058320a | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 | 0xcafa11ab425425d7986be974d7b9a38ec058320a | T3 | eoa_spender_pull |  |
+| 25107363 | 2026-05-16T11:14:35Z | 0xb355b882d6365fa3911149ed256689636b1d5e780a09cfb659a1fe65ab8a3135 | 0xcafa11ab425425d7986be974d7b9a38ec058320a | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 | 0xcafa11ab425425d7986be974d7b9a38ec058320a | T3 | eoa_spender_pull |  |
+| 26110787 | 2026-10-03T09:02:47Z | 0xad58054a6c495dd86298024cab65bd89efa7763d7a07283e2d2a4d86cbcc9f70 | 0xcafa11ab425425d7986be974d7b9a38ec058320a | operator | eoa_transferFrom | 0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9 | 0xcafa11ab425425d7986be974d7b9a38ec058320a | T3 | eoa_spender_pull |  |
+| 23197378 | 2025-08-22T15:00:47Z | 0x57eacd2434d5b94dd0e9f33f20a62d2f70eafb9e1ff72efb9c8bbbc9c67087bc | 0xd18b2b8af867bbaa7a9d211a922397ec49d560ec | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xd18b2b8af867bbaa7a9d211a922397ec49d560ec | T3 | eoa_spender_pull |  |
+| 23197385 | 2025-08-22T15:02:11Z | 0x7c8a2597200456a3c0df25f7d5813bca52cd32b63b092fd93822a8c8bd08bac6 | 0xd18b2b8af867bbaa7a9d211a922397ec49d560ec | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xd18b2b8af867bbaa7a9d211a922397ec49d560ec | T3 | eoa_spender_pull |  |
+| 23867138 | 2025-11-24T07:08:35Z | 0x24bac5967f13bd2c80cf1a7e6a0d47f3c50508c051daaed3017bf18f7b9ed844 | 0xd18b2b8af867bbaa7a9d211a922397ec49d560ec | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xd18b2b8af867bbaa7a9d211a922397ec49d560ec | T3 | eoa_spender_pull |  |
+| 23867141 | 2025-11-24T07:09:11Z | 0x1177427609b37aac61e42a3abcec8219364dabf57681a096b4165bf2c0ad2465 | 0xd18b2b8af867bbaa7a9d211a922397ec49d560ec | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xd18b2b8af867bbaa7a9d211a922397ec49d560ec | T3 | eoa_spender_pull |  |
+| 23238485 | 2025-08-28T08:41:11Z | 0xbc86bfe48f6ba27d97b9c5d1fe27de25050bcbeab0b9014610c484c3d1febf7b | 0xe59cd19592fb7dba29ffe8f29556be244dbca3b5 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xe59cd19592fb7dba29ffe8f29556be244dbca3b5 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23238488 | 2025-08-28T08:41:47Z | 0x00e150241434749912c65ddd8758b6ee6ab2fbcd95324f9253f238bda7835882 | 0xe59cd19592fb7dba29ffe8f29556be244dbca3b5 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xe59cd19592fb7dba29ffe8f29556be244dbca3b5 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23238493 | 2025-08-28T08:42:47Z | 0xce131c326ac90ab6dd6779afb95d30c2bc9214fc8705566ef08ab872319cb7e1 | 0xe59cd19592fb7dba29ffe8f29556be244dbca3b5 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xe59cd19592fb7dba29ffe8f29556be244dbca3b5 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23873884 | 2025-11-25T05:57:11Z | 0x671e7b293ae90b69f40a3d08d186825b22c2066e11dcd9816b73da6ee28a2a4f | 0xe59cd19592fb7dba29ffe8f29556be244dbca3b5 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xe59cd19592fb7dba29ffe8f29556be244dbca3b5 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23674131 | 2025-10-28T06:26:47Z | 0x5bcabcfd5182e23bc7d00b30563db342fe68862b3a58f0405899f1310c9a590a | 0xf164e8342181b825a382c277ba463d0b7c511ced | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xf164e8342181b825a382c277ba463d0b7c511ced | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23674136 | 2025-10-28T06:27:47Z | 0x2c04ee10e21296582f739f3b5d13cd7d891d03ff4afaaf05f495ff94ea3cb55a | 0xf164e8342181b825a382c277ba463d0b7c511ced | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xf164e8342181b825a382c277ba463d0b7c511ced | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23674142 | 2025-10-28T06:28:59Z | 0x9cc95275ba42d79f4f633f7126dcc4bdbfeda6de459d637b80e22505a9d1bab4 | 0xf164e8342181b825a382c277ba463d0b7c511ced | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xf164e8342181b825a382c277ba463d0b7c511ced | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23674146 | 2025-10-28T06:29:47Z | 0xa51c4edc4e3a3997afbf83c8ecfefd3d89a8e6cd56e77d4701a7d3008cfa660e | 0xf164e8342181b825a382c277ba463d0b7c511ced | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xf164e8342181b825a382c277ba463d0b7c511ced | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 21730189 | 2025-01-29T12:28:47Z | 0x08d5931048814981657f511b0e9966912ce0abe85009082380151080e6e4c288 | 0xf35f8853522ac21e6134c7691cc5f3c9ab6b6b62 | operator | eoa_transferFrom | 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 | 0xf35f8853522ac21e6134c7691cc5f3c9ab6b6b62 | T3 | eoa_spender_pull |  |
+| 23130614 | 2025-08-13T07:24:11Z | 0xe9df7aea27aac4497a739c3731a47adfacf1446f784f86eb504ad32bcb6e6c9e | 0xf35f8853522ac21e6134c7691cc5f3c9ab6b6b62 | operator | eoa_transferFrom | 0x4cc19356f2d37338b9802aa8e8fc58b0373296e7 | 0xf35f8853522ac21e6134c7691cc5f3c9ab6b6b62 | T3 | eoa_spender_pull |  |
+| 23875615 | 2025-11-25T11:48:35Z | 0x81dfaed849681e5b5aa79323e895ebf93d9798bd0bb075506819a9c033502ef0 | 0xf35f8853522ac21e6134c7691cc5f3c9ab6b6b62 | operator | eoa_transferFrom | 0x96b00208911d72ea9f10c3303ff319427a7884c9 | 0xf35f8853522ac21e6134c7691cc5f3c9ab6b6b62 | T3 | eoa_spender_pull |  |
+| 23673964 | 2025-10-28T05:53:11Z | 0x1bc866b934595b65bfad77675555e88a50ce664ec1d2fe78b25da9d020648cc4 | 0xf43cf0b9c8a65702547b5e6f191e943023b4d6b1 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xf43cf0b9c8a65702547b5e6f191e943023b4d6b1 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23673986 | 2025-10-28T05:57:47Z | 0xbd2215f4229c09e2d64ed5f8ef04960ca0ebb3a4ffdeb0fac1dbce3cd730fed5 | 0xf43cf0b9c8a65702547b5e6f191e943023b4d6b1 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xf43cf0b9c8a65702547b5e6f191e943023b4d6b1 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23674007 | 2025-10-28T06:01:59Z | 0x6ba17e684bdf35f2685df8f0f6be9836dbb096831697944b3de1a35c73e56eef | 0xf43cf0b9c8a65702547b5e6f191e943023b4d6b1 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xf43cf0b9c8a65702547b5e6f191e943023b4d6b1 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+| 23674023 | 2025-10-28T06:05:11Z | 0x95637b9f584ef8ce6c39d70a7de5673eb093f75c9d9771ebe213da6c8d293688 | 0xf43cf0b9c8a65702547b5e6f191e943023b4d6b1 | operator | eoa_transferFrom | 0xdac17f958d2ee523a2206206994597c13d831ec7 | 0xf43cf0b9c8a65702547b5e6f191e943023b4d6b1 | T2 | eoa_spender_multi, eoa_spender_pull, wa_scam |  |
+
+## False-positive candidates (T1/T2, not an incident target of the component)
+
+| address | tier | labels | class | wa label | contract name | evidence |
+|---|---|---|---|---|---|---|
+| 0x00004c90b6bdecc5a150699f4092a57ca1a80000 | T2 | redflag_payable, split_pull | unverified / unknown |  |  | split_pull 0xad725dbfea87521fb528a827aa96ad69ebdd22a256f06a558fd2ad1a735b916f; redflag_payable 0x8529ea15fd146d928cf4863a7dafd57bf623fc59389cd7e86059848f92ffb82c |
+| 0x0000f1b7856b85491c6982b701a1308833f80000 | T2 | split_pull | unverified / unknown |  |  | split_pull 0x8d1d8d2ea4df057835ea00b6845fc589ed1b57df31377b3ee50d0c6de778fe1d |
+| 0x183acc23011c8ae747768744c07d1dc36782f641 | T2 | split_pull | unverified / unknown |  |  | split_pull 0xcd20dcf262f3372e5d52e3c65cf3be82602fd9938450062b0429ed8f925775a5 |
+| 0x9b743560baf6d31ed20fdff17ba2e8e5b1bacf43 | T2 | split_pull | unverified / unknown |  |  | split_pull 0xcb5166a7f0ab746486849079a8a46ddb75dc7842effd51b70841198b4413a59c |
+| 0xb4eb0af486472de660e06a3936521aa9b9e03ab7 | T2 | split_pull | unverified / unknown |  |  | split_pull 0x5520f75f3aaafdd6f6b4b47c02060dfaf55066463bed16b091e1d2dfee2d3cc5 |
+| 0x797334e67c79a0421874753096d29cbfab08bbe7 | T2 | split_pull | verified contract |  | RCHAutomatorBase | split_pull 0x459a492195ed883c4dc1e8707d9cca6856fa6c6d30f03f6649c5dd7112231cd8 |
+
+## Run stats
+
+```
+{
+ "blocks": 259,
+ "d2_candidates": 542,
+ "d2_confirmed": 6,
+ "d3_candidates": 237,
+ "d3_confirmed": 0,
+ "d8_candidates": 484,
+ "d8_confirmed": 74,
+ "d8_truncated": 0,
+ "tx_lookups": 0,
+ "code_lookups": 1816,
+ "nonce_lookups": 658,
+ "rpc_calls": 745,
+ "rpc_errors": 0,
+ "etherscan_calls": 0,
+ "elapsed_sec": 163
+}
+```

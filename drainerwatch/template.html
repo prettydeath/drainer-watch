@@ -1,0 +1,1260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Drainer Watch</title>
+<meta name="description" content="Near-real-time monitor of suspected crypto drainer contracts on Ethereum, BNB Chain and Base, with evidence, tiers and the exchanges where the money surfaced.">
+<script>
+(function(){ try{ var t = localStorage.getItem('dw-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){} })();
+</script>
+<style>
+:root{
+  --fog:#EDF0F3; --sheet:#F8FAFB; --ink:#18222E; --graphite:#5A6672; --uv:#2457B8;
+  --t1:#B0123F; --t2:#A86A12; --t3:#66609E;
+  --on-tier:#F8FAFB;
+  --rule:rgba(24,34,46,.16); --rule-soft:rgba(24,34,46,.08); --hover:rgba(36,87,184,.06);
+  --bar:#7A8591; --bar-soft:rgba(24,34,46,.12); --scrim:rgba(19,28,39,.42);
+  --shadow:0 18px 50px rgba(19,28,39,.18);
+  --f-display:Bahnschrift,"DIN Alternate","Roboto Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --fog:#131C27; --sheet:#1A2532; --ink:#E3E8EE; --graphite:#93A0AD; --uv:#7FA6EE;
+    --t1:#F0567E; --t2:#E0A445; --t3:#A39DDB; --on-tier:#131C27;
+    --rule:rgba(227,232,238,.16); --rule-soft:rgba(227,232,238,.08); --hover:rgba(127,166,238,.08);
+    --bar:#8693A0; --bar-soft:rgba(227,232,238,.12); --scrim:rgba(5,9,14,.6); --shadow:0 18px 50px rgba(0,0,0,.5);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --fog:#131C27; --sheet:#1A2532; --ink:#E3E8EE; --graphite:#93A0AD; --uv:#7FA6EE;
+  --t1:#F0567E; --t2:#E0A445; --t3:#A39DDB; --on-tier:#131C27;
+  --rule:rgba(227,232,238,.16); --rule-soft:rgba(227,232,238,.08); --hover:rgba(127,166,238,.08);
+  --bar:#8693A0; --bar-soft:rgba(227,232,238,.12); --scrim:rgba(5,9,14,.6); --shadow:0 18px 50px rgba(0,0,0,.5);
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--fog);color:var(--ink);font:15px/22px var(--f-body);overflow-x:hidden}
+a{color:var(--uv);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:2px}
+:focus-visible{outline:2px solid var(--uv);outline-offset:2px}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:1320px;margin:0 auto;padding:0 32px}
+.num,.tnum{font-variant-numeric:tabular-nums}
+.m{font-family:var(--f-mono);font-size:13px;letter-spacing:-.01em}
+.mut{color:var(--graphite)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+h2{font:600 24px/30px var(--f-display);margin:0 0 4px;letter-spacing:.005em}
+h3{font:600 19px/24px var(--f-display);margin:0 0 8px}
+.lede{color:var(--graphite);margin:0 0 20px;max-width:68ch}
+section.block{padding:40px 0;border-top:1px solid var(--rule)}
+
+/* top bar */
+.top{display:flex;align-items:center;gap:24px;padding:18px 0;flex-wrap:wrap}
+.brand{font:700 24px/30px var(--f-display);letter-spacing:.01em;margin:0;white-space:nowrap}
+.heads{display:flex;gap:20px;flex-wrap:wrap;margin-left:auto;align-items:baseline}
+.head{display:flex;gap:6px;align-items:baseline;font-family:var(--f-display);font-size:15px}
+.head b{font-weight:600}
+.head .blk{font-variant-numeric:tabular-nums;color:var(--graphite)}
+.head .lag{font:13px/18px var(--f-body);color:var(--graphite)}
+.head .lag.bad{color:var(--ink);text-decoration:underline dotted;text-underline-offset:3px}
+.updated{color:var(--graphite);font-size:13px;white-space:nowrap}
+.iconbtn{width:34px;height:34px;display:inline-grid;place-items:center;border:1px solid var(--rule);background:transparent;border-radius:2px}
+.iconbtn:hover{background:var(--hover)}
+.iconbtn svg{width:18px;height:18px}
+
+/* hero */
+.hero{padding:12px 0 40px}
+.seis{position:relative;background:var(--sheet);border:1px solid var(--rule-soft);padding:14px 0 8px}
+.seis-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch}
+.seis svg{display:block}
+.seis .lane{cursor:crosshair}
+.seis .lane:focus{outline:none}
+.seis .lane:focus-visible .lanebg{stroke:var(--uv);stroke-width:2}
+.seis .lanebg{fill:transparent}
+.seis .base{stroke:var(--rule);stroke-width:1}
+.seis .grid{stroke:var(--rule-soft);stroke-width:1}
+.seis .lab{font:600 15px var(--f-display);fill:var(--ink)}
+.seis .sub{font:12px var(--f-body);fill:var(--graphite)}
+.seis .axis{font:12px var(--f-body);fill:var(--graphite)}
+.tick{transform-box:fill-box;transform-origin:50% 100%}
+.tick.T1{fill:var(--t1)} .tick.T2{fill:var(--t2)} .tick.T3{fill:var(--t3)} .tick.none{fill:var(--bar)}
+.tick.unpriced{opacity:.55}
+.tick.hot{outline:none;stroke:var(--ink);stroke-width:1}
+.seis.pre .tick{transform:scaleY(0)}
+.seis.go .tick{transition:transform .7s cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion: reduce){ .seis.pre .tick{transform:none} .seis.go .tick{transition:none} }
+.tip{position:absolute;z-index:5;pointer-events:none;background:var(--ink);color:var(--fog);padding:8px 10px;border-radius:2px;font-size:13px;line-height:18px;max-width:300px;box-shadow:var(--shadow)}
+.tip .m{font-size:12px;color:inherit;opacity:.85}
+.tip b{font-family:var(--f-display);font-size:15px;font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 16px 2px;font-size:13px;color:var(--graphite)}
+.sw{display:inline-block;width:3px;height:12px;margin-right:6px;vertical-align:-1px}
+.sw.T1{background:var(--t1)} .sw.T2{background:var(--t2)} .sw.T3{background:var(--t3)} .sw.none{background:var(--bar)}
+.legend .note{margin-left:auto}
+.sentence{font:500 30px/38px var(--f-display);margin:28px 0 6px;max-width:34em;letter-spacing:.003em}
+.sentence .n{font-variant-numeric:tabular-nums;font-weight:700}
+.subsentence{color:var(--graphite);margin:0;max-width:72ch}
+
+/* main grid */
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:56px;align-items:start}
+.grid2b{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:start}
+
+/* filter sentence */
+.filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px 8px;margin:4px 0 6px;font-size:15px}
+.filters .w{color:var(--graphite)}
+.filters select{appearance:none;-webkit-appearance:none;background:var(--sheet) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235A6672'/%3E%3C/svg%3E") no-repeat right 8px center;border:1px solid var(--rule);border-radius:2px;padding:4px 26px 4px 8px;max-width:min(100%,240px);font-weight:600}
+.filters select.on{border-color:var(--uv);color:var(--uv)}
+.search{position:relative;flex:1 1 240px;min-width:0}
+.search input{width:100%;background:var(--sheet);border:1px solid var(--rule);border-radius:2px;padding:5px 34px 5px 10px;font-family:var(--f-mono);font-size:13px}
+.search input::placeholder{font-family:var(--f-body);color:var(--graphite)}
+.search kbd{position:absolute;right:8px;top:50%;transform:translateY(-50%);font:12px var(--f-mono);color:var(--graphite);border:1px solid var(--rule);border-radius:2px;padding:0 5px}
+.count{display:flex;gap:14px;align-items:baseline;color:var(--graphite);font-size:13px;margin:6px 0 10px}
+.linkbtn{background:none;border:0;padding:0;color:var(--uv);font-size:13px}
+.linkbtn:hover{text-decoration:underline}
+
+/* tables */
+table{width:100%;border-collapse:collapse}
+th{font:600 13px/18px var(--f-body);color:var(--graphite);text-align:left;padding:8px 10px;border-bottom:1px solid var(--ink);white-space:nowrap;vertical-align:bottom}
+th.num,td.num{text-align:right}
+th button{background:none;border:0;padding:0;font:inherit;color:inherit}
+th button[aria-sort]{color:var(--ink)}
+td{padding:9px 10px;border-bottom:1px solid var(--rule-soft);vertical-align:top}
+.ledger{background:var(--sheet)}
+.ledger tbody tr{cursor:pointer}
+.ledger tbody tr:hover{background:var(--hover)}
+.ledger td:first-child{box-shadow:inset 3px 0 0 var(--tc,transparent);padding-left:14px}
+.ledger tr.T1{--tc:var(--t1)} .ledger tr.T2{--tc:var(--t2)} .ledger tr.T3{--tc:var(--t3)}
+.ledger .addrbtn{background:none;border:0;padding:0;color:var(--ink);font-family:var(--f-mono);font-size:13px;text-align:left}
+.ledger tr:hover .addrbtn{color:var(--uv)}
+.ledger .why{display:block;color:var(--graphite);font-size:13px;line-height:18px;margin-top:2px}
+.ledger td .m,.ledger td.ago{white-space:nowrap}
+.ledger .chain{font-family:var(--f-display);font-size:13px;color:var(--graphite)}
+.ledger .tierc{font:700 15px var(--f-display);color:var(--tc)}
+.more{margin-top:14px}
+.btn{background:transparent;border:1px solid var(--rule);border-radius:2px;padding:5px 12px;font-size:13px}
+.btn:hover{background:var(--hover)}
+.empty{color:var(--graphite);padding:18px 0;margin:0}
+.minisplit{display:flex;width:92px;height:8px;background:var(--bar-soft);margin-top:6px}
+.minisplit i{display:block;height:100%;background:var(--bar)}
+.minisplit i + i{border-left:2px solid var(--sheet)}
+.minisplit i:nth-child(2n){background:var(--graphite)}
+.splitlbl{font-size:13px;font-variant-numeric:tabular-nums}
+
+/* tier badge */
+.tb{display:inline-block;font:700 12px/18px var(--f-display);padding:0 6px;border-radius:2px;background:var(--bar);color:var(--on-tier);letter-spacing:.02em}
+.tb.T1{background:var(--t1)} .tb.T2{background:var(--t2)} .tb.T3{background:var(--t3)}
+.chip{display:inline-block;font-size:12px;line-height:18px;padding:0 6px;border:1px solid var(--rule);border-radius:2px;color:var(--ink);margin:2px 4px 2px 0;white-space:nowrap}
+.chip.role{font-weight:600}
+
+/* side panels */
+.side h2{margin-bottom:2px}
+.side section + section{margin-top:40px;padding-top:28px;border-top:1px solid var(--rule)}
+.vasp{list-style:none;margin:12px 0 0;padding:0}
+.vasp li{padding:10px 0;border-bottom:1px solid var(--rule-soft)}
+.vasp .row1{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.vasp .ent{background:none;border:0;padding:0;font:600 15px var(--f-display);color:var(--ink);text-align:left}
+.vasp .ent:hover{color:var(--uv)}
+.vasp .usd{font:600 15px var(--f-display);font-variant-numeric:tabular-nums}
+.vasp .bar{height:6px;background:var(--bar-soft);margin:6px 0 4px}
+.vasp .bar i{display:block;height:100%;background:var(--ink)}
+.vasp .meta{font-size:13px;color:var(--graphite)}
+.clist{list-style:none;margin:12px 0 0;padding:0}
+.clist li{padding:10px 0;border-bottom:1px solid var(--rule-soft)}
+.clist button{background:none;border:0;padding:0;color:var(--ink);text-align:left;width:100%}
+.clist button:hover .cid{color:var(--uv)}
+.clist .cid{font-family:var(--f-mono);font-size:13px}
+.clist .meta{display:block;font-size:13px;color:var(--graphite);margin-top:2px}
+
+/* feed */
+.feed{list-style:none;margin:8px 0 0;padding:0}
+.feed li{display:grid;grid-template-columns:62px minmax(0,1fr) auto;gap:2px 12px;padding:9px 0;border-bottom:1px solid var(--rule-soft)}
+.feed .when{color:var(--graphite);font-size:13px;font-variant-numeric:tabular-nums}
+.feed .amt{font:600 15px var(--f-display);font-variant-numeric:tabular-nums}
+.feed .usd{font:600 15px var(--f-display);text-align:right;font-variant-numeric:tabular-nums}
+.feed .who{grid-column:2 / 4;font-size:13px;color:var(--graphite);overflow-wrap:anywhere}
+.feed .who button{background:none;border:0;padding:0;color:var(--uv);font-family:var(--f-mono);font-size:13px}
+.tmark{display:inline-block;width:3px;height:12px;margin-right:6px;vertical-align:-1px;background:var(--bar)}
+.tmark.T1{background:var(--t1)} .tmark.T2{background:var(--t2)} .tmark.T3{background:var(--t3)}
+.chart{width:100%;height:auto;display:block;margin-top:8px}
+.chart .b{fill:var(--bar)} .chart .b:hover{fill:var(--ink)}
+.chart .nc{fill:var(--ink)}
+.chart text{font:12px var(--f-body);fill:var(--graphite)}
+.chart .gl{stroke:var(--rule-soft)}
+.chartkey{display:flex;gap:18px;font-size:13px;color:var(--graphite);margin-top:6px;flex-wrap:wrap}
+.chartkey i{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:-1px;background:var(--bar)}
+.chartkey i.nc{background:var(--ink);width:6px;height:6px;border-radius:50%;vertical-align:1px}
+
+/* tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);margin:8px 0 0;overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;margin-bottom:-1px;color:var(--graphite);font:600 15px var(--f-display);white-space:nowrap}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--uv)}
+.tabpanel{padding-top:6px}
+.scrollx{overflow-x:auto}
+
+/* method */
+.method p{max-width:76ch}
+.method table{background:var(--sheet);margin:8px 0 28px}
+.method td:first-child{white-space:nowrap}
+.method ul{max-width:80ch;padding-left:20px}
+.method li{margin:6px 0}
+footer{padding:28px 0 48px;border-top:1px solid var(--rule);color:var(--graphite);font-size:13px}
+footer p{margin:4px 0}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:20;opacity:0;transition:opacity .2s}
+.scrim.open{opacity:1}
+.drawer{position:fixed;top:12px;right:12px;bottom:12px;width:560px;max-width:calc(100vw - 24px);background:var(--sheet);border-radius:10px;box-shadow:var(--shadow);z-index:21;display:flex;flex-direction:column;transform:translateX(calc(100% + 24px));transition:transform .26s cubic-bezier(.2,.8,.2,1);visibility:hidden}
+.drawer.open{transform:none;visibility:visible}
+@media (prefers-reduced-motion: reduce){ .drawer,.scrim{transition:none} }
+.dhead{display:flex;align-items:flex-start;gap:12px;padding:18px 20px 14px;border-bottom:1px solid var(--rule)}
+.dhead .t{flex:1;min-width:0}
+.dhead .kicker{font-size:13px;color:var(--graphite)}
+.dhead h2{font-size:24px;line-height:30px;margin:2px 0 0}
+.dbody{overflow-y:auto;padding:4px 20px 28px;flex:1}
+.dsec{padding:18px 0;border-bottom:1px solid var(--rule-soft)}
+.dsec:last-child{border-bottom:0}
+.dsec h3{margin-bottom:10px}
+.verdict{display:flex;gap:14px;align-items:flex-start}
+.bigtier{font:700 30px/38px var(--f-display);color:var(--on-tier);background:var(--bar);padding:0 10px;border-radius:2px}
+.bigtier.T1{background:var(--t1)} .bigtier.T2{background:var(--t2)} .bigtier.T3{background:var(--t3)}
+.verdict .why{font:500 19px/26px var(--f-display);margin:0}
+.full{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:12px 0 0}
+.full .m{overflow-wrap:anywhere}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.facts div{min-width:0}
+.facts .k{font-size:13px;color:var(--graphite)}
+.facts .v{font:600 19px/24px var(--f-display);font-variant-numeric:tabular-nums}
+.copy{background:none;border:1px solid var(--rule);border-radius:2px;font-size:12px;line-height:18px;padding:0 6px;color:var(--graphite)}
+.copy:hover{color:var(--uv);border-color:var(--uv)}
+.evl{list-style:none;margin:0;padding:0}
+.evl li{padding:10px 0;border-bottom:1px solid var(--rule-soft)}
+.evl li:last-child{border-bottom:0}
+.evl .h{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.evl .name{font-weight:600}
+.evl .exp{color:var(--graphite);font-size:13px;line-height:18px;margin:2px 0 4px}
+.evl .det{font-size:13px;line-height:19px;overflow-wrap:anywhere}
+.evl .when{font-size:13px;color:var(--graphite)}
+.dsec h4.sub{font:600 13px/18px var(--f-body);color:var(--graphite);margin:4px 0 4px}
+.labels{list-style:none;margin:0 0 14px;padding:0}
+.labels li{padding:4px 0;font-size:13px;line-height:18px}
+.labels b{font-weight:600}
+.split{display:flex;height:22px;margin:4px 0 6px;background:var(--bar-soft)}
+.split i{display:flex;align-items:center;justify-content:center;font:600 12px var(--f-display);color:var(--sheet);background:var(--ink);overflow:hidden;white-space:nowrap}
+.split i:nth-child(2){background:var(--graphite)}
+.split i:nth-child(n+3){background:var(--bar)}
+.split i + i{border-left:2px solid var(--sheet)}
+.kv{width:100%}
+.kv td{padding:7px 0;border-bottom:1px solid var(--rule-soft);font-size:13px;line-height:19px;vertical-align:top}
+.kv td:first-child{color:var(--graphite);width:38%;padding-right:12px}
+.kv td .m{overflow-wrap:anywhere}
+.mini td,.mini th{padding:7px 8px;font-size:13px;line-height:19px}
+.mini th{border-bottom:1px solid var(--rule)}
+.mini td{overflow-wrap:anywhere}
+.mini td .m{white-space:nowrap}
+.members{list-style:none;padding:0;margin:8px 0 0}
+.members li{padding:6px 0;border-bottom:1px solid var(--rule-soft);display:flex;gap:10px;align-items:center}
+.members button{background:none;border:0;padding:0;color:var(--uv);font-family:var(--f-mono);font-size:13px;text-align:left;overflow-wrap:anywhere}
+.members .here{font-size:13px;color:var(--graphite)}
+.note{font-size:13px;color:var(--graphite);margin:6px 0 0}
+.notice{background:var(--sheet);border:1px solid var(--rule);padding:16px 18px;margin:0 0 24px;max-width:80ch}
+.notice h2{font-size:19px;line-height:24px}
+.notice p{margin:4px 0 0}
+
+@media (max-width: 1080px){
+  .grid2,.grid2b{grid-template-columns:minmax(0,1fr);gap:40px}
+}
+@media (max-width: 720px){
+  .wrap{padding:0 16px}
+  .top{gap:10px 16px;padding:14px 0}
+  .heads{margin-left:0;gap:12px;width:100%;order:3}
+  .head .lag{display:none}
+  .updated{margin-left:auto}
+  .sentence{font-size:24px;line-height:30px;margin-top:20px}
+  section.block{padding:32px 0}
+  .hide-sm{display:none}
+  .ledger td,.ledger th{padding:8px 6px}
+  .ledger td:first-child,.ledger th:first-child{padding-left:10px}
+  .facts{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .drawer{top:0;right:0;bottom:0;left:0;width:auto;max-width:none;border-radius:0}
+  .dhead{padding:14px 16px 12px}
+  .dbody{padding:4px 16px 24px}
+  .legend .note{margin-left:0;width:100%}
+  .feed li{grid-template-columns:52px minmax(0,1fr) auto}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 class="brand">Drainer Watch</h1>
+    <div class="heads" id="heads" aria-label="Scanner position per chain"></div>
+    <span class="updated" id="updated"></span>
+    <button class="iconbtn" id="theme" type="button" aria-label="Switch colour theme" title="Switch colour theme">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 2.5a7.5 7.5 0 0 1 0 15z" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <div id="notice"></div>
+
+  <section class="hero" aria-labelledby="hero-h">
+    <h2 class="sr" id="hero-h">Drains in the last 24 hours</h2>
+    <div class="seis pre" id="seis">
+      <div class="seis-scroll" id="seisScroll"></div>
+      <div class="legend" id="legend"></div>
+      <div class="tip" id="tip" role="status" hidden></div>
+    </div>
+    <p class="sentence" id="sentence"></p>
+    <p class="subsentence" id="subsentence"></p>
+  </section>
+
+  <section class="block" aria-labelledby="ledger-h">
+    <div class="grid2">
+      <div>
+        <h2 id="ledger-h">Contracts</h2>
+        <p class="lede">Every address we flag, with the evidence behind it. Open a row for its case file.</p>
+        <div class="filters" role="search">
+          <span class="w">Show</span>
+          <label class="sr" for="fTier">Tiers</label>
+          <select id="fTier">
+            <option value="">all tiers</option>
+            <option value="T1">T1 confirmed</option>
+            <option value="T1T2">T1 and T2</option>
+            <option value="T2">T2 strong</option>
+            <option value="T3">T3 suspect</option>
+          </select>
+          <span class="w">on</span>
+          <label class="sr" for="fChain">Chain</label>
+          <select id="fChain"><option value="">all chains</option></select>
+          <span class="w">with</span>
+          <label class="sr" for="fLabel">Evidence label</label>
+          <select id="fLabel"><option value="">any evidence</option></select>
+          <span class="w">in</span>
+          <label class="sr" for="fCluster">Operator cluster</label>
+          <select id="fCluster"><option value="">any cluster</option><option value="__none">no cluster</option></select>
+          <div class="search">
+            <label class="sr" for="q">Search address</label>
+            <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Search address, wallet, deployer, cluster…">
+            <kbd aria-hidden="true">/</kbd>
+          </div>
+        </div>
+        <div class="count"><span id="count" aria-live="polite"></span><button class="linkbtn" id="reset" type="button" hidden>Clear filters</button></div>
+        <div class="scrollx">
+          <table class="ledger" id="ledger">
+            <thead><tr id="ledgerHead"></tr></thead>
+            <tbody id="ledgerBody"></tbody>
+          </table>
+        </div>
+        <p class="empty" id="ledgerEmpty" hidden></p>
+        <div class="more"><button class="btn" id="more" type="button" hidden></button></div>
+      </div>
+
+      <aside class="side">
+        <section aria-labelledby="vasp-h">
+          <h2 id="vasp-h">Where the money surfaced</h2>
+          <p class="lede">Exchanges and services that received funds from flagged contracts, their payout wallets or deployers. This is where a freeze or data request goes.</p>
+          <ul class="vasp" id="vasps"></ul>
+        </section>
+        <section aria-labelledby="cl-h">
+          <h2 id="cl-h">Operator clusters</h2>
+          <p class="lede">Flagged addresses that pay the same wallets are probably run by one operator.</p>
+          <ul class="clist" id="clusters"></ul>
+        </section>
+      </aside>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="grid2b">
+      <div aria-labelledby="feed-h">
+        <h2 id="feed-h">Live drains</h2>
+        <p class="lede">Latest first. Native-coin drains are shown in ETH or BNB.</p>
+        <ul class="feed" id="feed"></ul>
+        <div class="more"><button class="btn" id="feedMore" type="button" hidden></button></div>
+      </div>
+      <div aria-labelledby="daily-h">
+        <h2 id="daily-h">Daily</h2>
+        <p class="lede">USD drained per day and new contracts first seen, last 30 days.</p>
+        <div id="daily"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" aria-labelledby="who-h">
+    <h2 id="who-h">Families, deployers and operators</h2>
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" id="tab-fam" aria-controls="p-fam" aria-selected="true" type="button">Families</button>
+      <button role="tab" id="tab-dep" aria-controls="p-dep" aria-selected="false" tabindex="-1" type="button">Deployers</button>
+      <button role="tab" id="tab-op" aria-controls="p-op" aria-selected="false" tabindex="-1" type="button">Operators</button>
+    </div>
+    <div class="tabpanel scrollx" role="tabpanel" id="p-fam" aria-labelledby="tab-fam"></div>
+    <div class="tabpanel scrollx" role="tabpanel" id="p-dep" aria-labelledby="tab-dep" hidden></div>
+    <div class="tabpanel scrollx" role="tabpanel" id="p-op" aria-labelledby="tab-op" hidden></div>
+  </section>
+
+  <section class="block method" aria-labelledby="method-h">
+    <h2 id="method-h">Method and limitations</h2>
+    <p class="lede">Tiers are leads for investigation, not findings of fact. Every flag carries the transactions that triggered it.</p>
+    <h3>Tiers</h3>
+    <div class="scrollx"><table><thead><tr><th>Tier</th><th>Meaning</th><th>Typical evidence</th></tr></thead><tbody id="tierTable"></tbody></table></div>
+    <h3>Evidence and labels</h3>
+    <div class="scrollx"><table><thead><tr><th>Name</th><th>What it means</th></tr></thead><tbody id="labelTable"></tbody></table></div>
+    <h3>Payout roles</h3>
+    <div class="scrollx"><table><thead><tr><th>Role</th><th>What it means</th></tr></thead><tbody id="roleTable"></tbody></table></div>
+    <h3>What we cannot see</h3>
+    <ul>
+      <li>No traces. Everything comes from logs and top-level transactions, so internal (factory) creations and native-coin internal splits are invisible and native drains are under-counted.</li>
+      <li>Only ERC-20 transfers are analysed; NFT transfers are ignored.</li>
+      <li>USD is known for stablecoins, wrapped and native coins only. Other tokens show the amount without a price, and appear as short pale ticks in the seismograph.</li>
+      <li>Operator and affiliate roles are inferred from share sizes; deposit-address links are a 72-hour forward heuristic with medium confidence.</li>
+      <li>Deployers are never guessed: when the creation is not visible and Etherscan has no answer the deployer is shown as unknown.</li>
+      <li>The scanner can fall behind the chain head; the block number and lag are shown at the top for each chain.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p id="foot"></p>
+    <p>Data: <a href="data.json">data.json</a>. Source code and full method in the project README.</p>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" aria-hidden="true">
+  <div class="dhead">
+    <div class="t"><div class="kicker" id="dKicker"></div><h2 id="dTitle">Case file</h2></div>
+    <button class="iconbtn" id="dClose" type="button" aria-label="Close case file" title="Close (Esc)">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+    </button>
+  </div>
+  <div class="dbody" id="dBody"></div>
+</aside>
+
+<script>
+const DATA = /*__DATA__*/null;
+(function(){
+'use strict';
+
+/* ---------- safe DOM ---------- */
+const $ = id => document.getElementById(id);
+const arr = x => Array.isArray(x) ? x : [];
+const obj = x => (x && typeof x === 'object' && !Array.isArray(x)) ? x : {};
+const num = x => (typeof x === 'number' && isFinite(x)) ? x : 0;
+const str = x => x == null ? '' : String(x);
+function el(tag, attrs){
+  const e = document.createElement(tag);
+  if(attrs) for(const k in attrs){
+    const v = attrs[k];
+    if(v == null || v === false) continue;
+    if(k === 'text') e.textContent = String(v);
+    else if(k === 'class') e.className = String(v);
+    else if(k.slice(0, 2) === 'on' && typeof v === 'function') e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? '' : String(v));
+  }
+  for(let i = 2; i < arguments.length; i++) add(e, arguments[i]);
+  return e;
+}
+function add(e, c){
+  if(c == null || c === false) return;
+  if(Array.isArray(c)){ c.forEach(x => add(e, x)); return; }
+  e.appendChild(typeof c === 'object' ? c : document.createTextNode(String(c)));
+}
+const SVGNS = 'http://www.w3.org/2000/svg';
+function sv(tag, attrs){
+  const e = document.createElementNS(SVGNS, tag);
+  if(attrs) for(const k in attrs){ const v = attrs[k]; if(v == null) continue; if(k === 'text') e.textContent = String(v); else e.setAttribute(k, String(v)); }
+  for(let i = 2; i < arguments.length; i++) if(arguments[i]) e.appendChild(arguments[i]);
+  return e;
+}
+function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
+
+/* ---------- vocabularies ---------- */
+const TIERS = {
+  T1:['Confirmed','Seed with activity, a split pull hitting 3+ victims, a kit approval amount, a bait contract with 3+ paying victims, or another kit-confirmed drain.'],
+  T2:['Strong','A split pull with 1-2 victims, payments to a known operator, a kit fingerprint with activity, or a twin of a T1 on another chain.'],
+  T3:['Suspect','Code or behaviour that fits a drainer without a confirmed drain: red-flag selectors, multi-victim pulls alone, 7702 sweepers, single EOA pulls.']
+};
+// labels (contracts[].labels) and evidence types (evidence[].type): human name + one-line explanation
+const LABELS = {
+  seed:['Known drainer (seed)','Listed by ScamSniffer or the operator seed file, and seen active here.'],
+  seed_activity:['Seed activity','A victim approved or sent tokens to a known drainer address.'],
+  split_pull:['Split pull','One transaction pulled a victim\'s token and split it between two or more wallets, the drainer-as-a-service fee pattern.'],
+  spoof_split:['Split-shaped spoof','Looks like a split pull but behaves like address poisoning, not a real drain.'],
+  multi_victim_pull:['Multi-victim pull','Pulled tokens from three or more approving wallets within 24 hours.'],
+  eoa_spender_pull:['Wallet-to-wallet pull','A plain wallet pulled another wallet\'s tokens straight to a third wallet.'],
+  eoa_spender_multi:['Wallet pull, 3+ victims','The same pulling wallet hit three or more victims within 24 hours.'],
+  pays_known_operator:['Pays a known operator','Sent tokens to a known drainer payout wallet in two or more transactions.'],
+  pays_inferred_operator:['Pays an inferred operator','Sent tokens to payout wallets we only inferred; capped at suspect.'],
+  redflag_selectors:['Red-flag functions','The code exposes kit function names such as Claim() or SecurityUpdate().'],
+  family_match:['Code family match','The code skeleton or function set matches a known drainer contract.'],
+  bytecode:['Code analysis','Opcode skeleton, function selectors and family comparison of the contract code.'],
+  eip7702_sweeper:['7702 sweeper','An EIP-7702 delegate that forwards whatever value arrives; delegating wallets are potential victims.'],
+  redflag_payable:['Paid red-flag function','A victim sent coins to a red-flag function such as Claim().'],
+  approval_fingerprint:['Kit approval amount','A victim approved exactly the amount hard-coded in a drainer kit.'],
+  bait_payable:['Paid bait function','A victim paid a bait function; its argument is the kit customer\'s payout wallet.'],
+  bait_withdraw:['Bait withdrawal','A kit customer withdrew from the bait contract.'],
+  kit_signature:['Kit fingerprint','The contract\'s function set matches a known drainer kit.'],
+  owner_gated_puller:['Owner-gated puller','A small contract that only its owner can use to pull approved tokens to any address.'],
+  split_xtx:['Split across transactions','Same caller, victim and token split over two or more transactions within 60 seconds.'],
+  foreign_recipient_swap:['Swap paying a stranger','A victim-signed swap with zero minimum output that paid this wallet instead of the signer.'],
+  foreign_swap_multi:['Stranger swaps, 3+ victims','Such swaps for three or more victims within 24 hours.'],
+  foreign_swap_kit:['Kit swap deadline','The swap deadline is block time plus about 99 990 seconds, the MS Drainer kit value.'],
+  owner_collect:['Owner collect','An owner-collector contract pulled a victim\'s tokens to its caller.'],
+  ms_deadline:['Millisecond deadline','A permit whose deadline is in milliseconds, a drainer-kit tell.'],
+  ms_deadline_pull:['Deadline permit, then a pull','Tokens left the owner right after the millisecond-deadline permit.'],
+  batch_approval_drain:['Batch approval drain','A batch of kit-amount or unlimited approvals drained to this wallet in one transaction.'],
+  kit_router_swap:['Kit router swap','A kit-amount approval to a real router, followed by the same drain.'],
+  kit_deposit:['Kit deposit','A fresh wallet sent nearly its whole balance to the kit Deposit function.'],
+  gen_back_transfer:['Generator leftover','The deployer sent its leftover coins to a kit wallet after deploying a generated bait.'],
+  kit_exact:['Exact kit code','The code is byte-for-byte one of the known MS Contract Generator baits.'],
+  oneshot_spender:['One-shot worker','A fresh wallet pulled a third party\'s tokens for this hub.'],
+  oneshot_hub:['One-shot hub','Its one-shot workers sent their leftover gas back here.'],
+  oneshot_multi:['One-shot hub, 3+ workers','Three or more one-shot workers returned their leftover here.'],
+  prefund_hub:['Prefunding hub','Funded fresh wallets shortly before they pulled victims\' tokens.'],
+  prefund_multi:['Prefunding hub, 3+ workers','Prefunded three or more such workers.'],
+  eip7702_operator:['7702 operator','The hub or collector is an EIP-7702-delegated wallet; raises the score only.'],
+  cross_chain:['Same code on another chain','The same address with the same code is flagged on another chain.'],
+  cross_chain_t1:['Twin of a confirmed drainer','The same address and code is confirmed (T1) on another chain.'],
+  cluster_inherited:['Tier from its cluster','Tier raised because it shares payout wallets with a better-evidenced cluster member.'],
+  wa_scam:['Labelled scam','The wallet-attribution dataset labels this address scam or hack.']
+};
+const FAMILIES = {
+  ms_drainer:['MS Drainer','Bait function taking the customer wallet, plus the kit\'s companion functions.'],
+  verify_account:['VerifyAccount','Puller with Verify20, Verify10 and withdrawAllTrxTo functions.'],
+  ms_new:['MS_NEW','Public MS_NEW contract: five-argument bait functions plus salary and receiver controls.'],
+  ms_generated:['MS generated bait','Bait produced by the MS Contract Generator.'],
+  owner_collector:['Owner collector','Five or more owner-collect functions such as collectToOwner and rescueToken.']
+};
+const ROLES = {
+  affiliate:['Affiliate','The larger share of a split pull, usually the customer who ran the phishing site. Inferred from share size.'],
+  operator:['Operator','The smaller share of a split pull, usually the kit operator\'s fee. Inferred from share size.'],
+  customer:['Customer','Kit customer payout wallet: the bait function argument or the withdraw caller. No share observed.'],
+  collector:['Collector','Received tokens pulled by a wallet-to-wallet pull or an owner-collector. No share observed.'],
+  worker:['Worker','One-shot wallet or MS_NEW keeper doing pulls for this hub.'],
+  kit_fee:['Kit fee','Fee receiver configured in a generated bait.'],
+  kit_wallet:['Kit wallet','Received the generator deployer\'s leftover coins.'],
+  submitter:['Submitter','Submitted a millisecond-deadline permit.']
+};
+const VIA = {toplevel:'Creation transaction seen by the scanner', etherscan:'Etherscan contract-creation lookup', unknown:'Unknown: not visible and never guessed'};
+const KIND = {direct:'Direct transfer', deposit_sweep:'Probable deposit address', funding:'Funded the deployer'};
+const SUBJ = {drainer:'the contract', payout:'a payout wallet', deployer:'the deployer'};
+const CHAIN_NAME = {eth:'ETH', bsc:'BSC', base:'Base'};
+const NATIVE = {eth:'ETH', bsc:'BNB', base:'ETH'};
+const TIER_RANK = {T1:1, T2:2, T3:3};
+
+const labelInfo = l => LABELS[l] || [str(l).replace(/_/g, ' '), 'Detector label.'];
+const famInfo = f => FAMILIES[f] || (/^f_[0-9a-f]+$/i.test(str(f)) ? ['Code family ' + f, 'Contracts sharing one opcode skeleton or function set.'] : [str(f), 'Family.']);
+const roleInfo = r => ROLES[r] || [str(r || 'unknown'), 'Payout role.'];
+const isSplit = r => r === 'operator' || r === 'affiliate';
+const chainName = c => CHAIN_NAME[c] || str(c).toUpperCase();
+
+/* ---------- data ---------- */
+let D = null;
+function norm(d){
+  d = obj(d);
+  const t = obj(d.totals);
+  const o = {
+    generated_at: str(d.generated_at), chains: obj(d.chains),
+    totals: {tiers: obj(t.tiers), victims_24h: num(t.victims_24h), usd_24h: num(t.usd_24h), usd_7d: num(t.usd_7d), drains_24h: num(t.drains_24h)},
+    contracts: arr(d.contracts).filter(c => c && c.address), drains: arr(d.drains).filter(Boolean), operators: arr(d.operators),
+    families: arr(d.families), deployers: arr(d.deployers), vasps: arr(d.vasps), daily: arr(d.daily), clusters: arr(d.clusters)
+  };
+  o.byKey = new Map(); o.cl = new Map();
+  for(const c of o.contracts){
+    c.labels = arr(c.labels); c.payouts = arr(c.payouts); c.evidence = arr(c.evidence); c.vasp_links = arr(c.vasp_links);
+    c.cross_chain = arr(c.cross_chain); c.deployer = obj(c.deployer);
+    const dp = c.deployer;
+    const parts = [c.address, c.cluster, dp.address, dp.factory, dp.funder, dp.funder_entity];
+    c.payouts.forEach(p => parts.push(p.wallet));
+    c.vasp_links.forEach(l => parts.push(l.counterparty, l.subject, l.entity));
+    c._hay = parts.filter(Boolean).map(x => String(x).toLowerCase()).join(' ');
+    o.byKey.set(c.chain + ':' + str(c.address).toLowerCase(), c);
+  }
+  for(const k of o.clusters){ k.members = arr(k.members); k.shared_wallets = arr(k.shared_wallets); k.tiers = obj(k.tiers); o.cl.set(k.cluster, k); }
+  return o;
+}
+const findC = (chain, a) => D.byKey.get(chain + ':' + str(a).toLowerCase());
+
+/* ---------- formatting ---------- */
+const fmtN = x => num(x).toLocaleString('en-US');
+const fmtBlock = x => num(x).toLocaleString('en-US').replace(/,/g, ' ');
+function usd(x){
+  if(x == null || !isFinite(x)) return 'no price';
+  const v = Number(x);
+  if(v > 0 && v < 1) return '<$1';
+  return '$' + Math.round(v).toLocaleString('en-US');
+}
+function amt(a){
+  const v = Number(a);
+  if(!isFinite(v)) return str(a);
+  if(v === 0) return '0';
+  if(Math.abs(v) >= 1e6) return v.toLocaleString('en-US', {maximumFractionDigits:0});
+  if(Math.abs(v) >= 1) return v.toLocaleString('en-US', {maximumFractionDigits:2});
+  return v.toLocaleString('en-US', {maximumSignificantDigits:4});
+}
+const parseT = s => { const t = Date.parse(s); return isNaN(t) ? null : t; };
+function ago(s, ref){
+  const t = parseT(s); if(t == null) return 'never';
+  const d = Math.max(0, ((ref || Date.now()) - t) / 1000);
+  if(d < 90) return 'just now';
+  if(d < 3600) return Math.round(d / 60) + ' min ago';
+  if(d < 86400 * 2) return Math.round(d / 3600) + ' h ago';
+  return Math.round(d / 86400) + ' days ago';
+}
+const dt = s => s ? str(s).replace('T', ' ').replace('Z', ' UTC') : 'unknown';
+const mid = a => { a = str(a); return a.length > 18 ? a.slice(0, 8) + '…' + a.slice(-6) : a; };
+const plural = (n, one, many) => fmtN(n) + ' ' + (n === 1 ? one : (many || one + 's'));
+const pct = x => Math.round(num(x) * 100) + '%';
+const isNative = d => /^0x0{40}$/i.test(str(d.token));
+const sym = d => isNative(d) ? (d.symbol && d.symbol !== '?' ? d.symbol : (NATIVE[d.chain] || 'native')) : (d.symbol || 'token');
+
+function explorer(chain){
+  const ch = obj(D.chains[chain]);
+  const b = typeof ch.explorer === 'string' ? ch.explorer.trim() : '';
+  return /^https?:\/\/[^\s"'<>]+$/i.test(b) ? b.replace(/\/+$/, '') : '';
+}
+function copyBtn(v){
+  const b = el('button', {class:'copy', type:'button', text:'Copy', 'aria-label':'Copy ' + v});
+  b.addEventListener('click', ev => {
+    ev.stopPropagation();
+    const ok = () => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1200); };
+    try{
+      if(navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(v).then(ok, () => fallback());
+      else fallback();
+    }catch(e){ fallback(); }
+    function fallback(){ try{ const t = el('textarea'); t.value = v; t.style.position = 'fixed'; t.style.opacity = '0'; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); ok(); }catch(e){} }
+  });
+  return b;
+}
+// explorer link (address or tx); only hex identifiers are linked
+function link(chain, v, kind, full){
+  v = str(v);
+  if(!v) return el('span', {class:'mut', text:'unknown'});
+  const b = explorer(chain);
+  const txt = full ? v : mid(v);
+  if(b && /^0x[0-9a-f]+$/i.test(v)) return el('a', {class:'m', href: b + '/' + (kind === 'tx' ? 'tx' : 'address') + '/' + encodeURIComponent(v), target:'_blank', rel:'noopener noreferrer', title:v, text:txt});
+  return el('span', {class:'m', title:v, text:txt});
+}
+const addrL = (c, v, f) => link(c, v, 'address', f);
+const txL = (c, v, f) => link(c, v, 'tx', f);
+const tierBadge = t => el('span', {class:'tb ' + (TIER_RANK[t] ? t : ''), text: t || '?', title: TIERS[t] ? TIERS[t][0] : 'Untracked'});
+function fullAddr(chain, v){ return el('span', {class:'full'}, addrL(chain, v, true), copyBtn(str(v))); }
+
+/* ---------- theme ---------- */
+function setupTheme(){
+  $('theme').addEventListener('click', () => {
+    const root = document.documentElement;
+    const cur = root.getAttribute('data-theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('dw-theme', next); }catch(e){}
+  });
+}
+
+/* ---------- header ---------- */
+function renderHeader(){
+  const h = $('heads'); clear(h);
+  const names = Object.keys(D.chains);
+  names.forEach(c => {
+    const ch = obj(D.chains[c]); const lag = ch.lag_blocks;
+    const bad = typeof lag === 'number' && lag > 500;
+    h.appendChild(el('span', {class:'head', title: chainName(c) + ': scanned up to block ' + fmtN(ch.cursor_block) + ' of ' + fmtN(ch.head_block) + (ch.last_scan_at ? ', last scan ' + dt(ch.last_scan_at) : '')},
+      el('b', {text: chainName(c)}), el('span', {class:'blk', text: ch.cursor_block != null ? fmtBlock(ch.cursor_block) : 'not scanned'}),
+      typeof lag === 'number' ? el('span', {class:'lag' + (bad ? ' bad' : ''), text: lag === 0 ? 'at head' : plural(lag, 'block') + ' behind'}) : null));
+  });
+  const u = $('updated');
+  u.textContent = D.generated_at ? 'updated ' + ago(D.generated_at) : 'no snapshot yet';
+  if(D.generated_at) u.title = dt(D.generated_at);
+}
+
+/* ---------- seismograph ---------- */
+const SEIS = {W:1240, laneH:80, left:76, right:16, top:6, axisH:22};
+let seisTicks = [];
+function tierOfDrain(d){ const c = findC(d.chain, d.drainer); return c && TIER_RANK[c.tier] ? c.tier : 'none'; }
+function renderSeis(){
+  const box = $('seisScroll'); clear(box);
+  const ref = parseT(D.generated_at) || Date.now();
+  const t0 = ref - 86400000;
+  const chains = Object.keys(D.chains);
+  arr(D.drains).forEach(d => { if(d.chain && !chains.includes(d.chain)) chains.push(d.chain); });
+  if(!chains.length) chains.push('eth', 'bsc', 'base');
+  SEIS.W = Math.max(760, Math.floor(box.clientWidth || 1240));
+  const W = SEIS.W, L = SEIS.left, R = SEIS.right, plotW = W - L - R, lh = SEIS.laneH;
+  const H = SEIS.top + chains.length * lh + SEIS.axisH;
+  const svg = sv('svg', {viewBox:'0 0 ' + W + ' ' + H, width:W, height:H, role:'img', 'aria-label':'Drain seismograph: one tick per drain in the 24 hours before the snapshot, per chain. Height is the USD value on a log scale, colour is the tier of the drainer.'});
+  
+  // hour grid
+  for(let h = 0; h <= 24; h += 3){
+    const x = L + plotW * h / 24;
+    svg.appendChild(sv('line', {class:'grid', x1:x, x2:x, y1:SEIS.top, y2:SEIS.top + chains.length * lh}));
+    const label = h === 24 ? (D.generated_at ? 'snapshot ' + new Date(ref).toISOString().slice(11, 16) + ' UTC' : 'now') : '−' + (24 - h) + ' h';
+    svg.appendChild(sv('text', {class:'axis', x: h === 24 ? x : h === 0 ? x : x, y:H - 6, 'text-anchor': h === 24 ? 'end' : h === 0 ? 'start' : 'middle', text:label}));
+  }
+  seisTicks = [];
+  const yOf = v => { // log10 USD, $1..$100k mapped onto 6..(lh-12) px; unpriced = floor
+    if(v == null || !isFinite(v) || v <= 0) return 5;
+    const lg = Math.max(0, Math.min(5, Math.log10(Math.max(1, v))));
+    return 8 + (lh - 22) * lg / 5;
+  };
+  chains.forEach((c, i) => {
+    const yb = SEIS.top + (i + 1) * lh - 6;
+    const lane = sv('g', {class:'lane', tabindex:0, role:'group', 'aria-label': chainName(c) + ' lane. Use left and right arrow keys to step through drains, Enter to open the drainer.'});
+    lane.appendChild(sv('rect', {class:'lanebg', x:1, y:SEIS.top + i * lh + 1, width:W - 2, height:lh - 2}));
+    lane.appendChild(sv('line', {class:'base', x1:L, x2:W - R, y1:yb + .5, y2:yb + .5}));
+    const ds = arr(D.drains).filter(d => d.chain === c).map(d => ({d, t: parseT(d.ts)})).filter(o => o.t != null && o.t >= t0 && o.t <= ref + 60000).sort((a, b) => a.t - b.t);
+    const lusd = ds.reduce((s, o) => s + num(o.d.usd), 0);
+    lane.appendChild(sv('text', {class:'lab', x:16, y:yb - 22, text:chainName(c)}));
+    lane.appendChild(sv('text', {class:'sub', x:16, y:yb - 4, text: ds.length ? plural(ds.length, 'drain') : 'quiet'}));
+    const items = [];
+    ds.forEach(o => {
+      const x = L + plotW * Math.min(1, (o.t - t0) / 86400000);
+      const h = yOf(o.d.usd);
+      const unpriced = o.d.usd == null || !isFinite(o.d.usd);
+      const tier = tierOfDrain(o.d);
+      const r = sv('rect', {class:'tick ' + tier + (unpriced ? ' unpriced' : ''), x: (x - 1.5).toFixed(1), y:(yb - h).toFixed(1), width:3, height:h.toFixed(1)});
+      r.style.transitionDelay = Math.round((x - L) / plotW * 900) + 'ms';
+      lane.appendChild(r);
+      items.push({d:o.d, x, y: yb - h, node:r, tier});
+    });
+    items.forEach(it => { it.lane = c; seisTicks.push(it); });
+    lane._items = items; lane._idx = -1;
+    lane.addEventListener('keydown', ev => {
+      if(!items.length) return;
+      if(ev.key === 'ArrowRight' || ev.key === 'ArrowLeft'){
+        ev.preventDefault();
+        lane._idx = Math.max(0, Math.min(items.length - 1, lane._idx + (ev.key === 'ArrowRight' ? 1 : -1)));
+        if(lane._idx < 0) lane._idx = 0;
+        showTip(items[lane._idx]);
+      } else if(ev.key === 'Enter' && lane._idx >= 0){
+        const d = items[lane._idx].d; if(findC(d.chain, d.drainer)) openCase(d.chain, d.drainer);
+      }
+    });
+    lane.addEventListener('focus', () => { if(items.length){ if(lane._idx < 0) lane._idx = items.length - 1; showTip(items[lane._idx]); } });
+    lane.addEventListener('blur', hideTip);
+    svg.appendChild(lane);
+  });
+  // pointer: nearest tick within 10 px
+  const pick = ev => {
+    const rc = svg.getBoundingClientRect(); const sx = W / rc.width;
+    const x = (ev.clientX - rc.left) * sx, y = (ev.clientY - rc.top) * (H / rc.height);
+    const li = Math.floor((y - SEIS.top) / lh); const c = chains[li]; if(c == null) return null;
+    let best = null, bd = 10 * sx;
+    seisTicks.forEach(it => { if(it.lane !== c) return; const dd = Math.abs(it.x - x); if(dd < bd){ bd = dd; best = it; } });
+    return best;
+  };
+  svg.addEventListener('mousemove', ev => { const it = pick(ev); if(it) showTip(it); else hideTip(); });
+  svg.addEventListener('mouseleave', hideTip);
+  svg.addEventListener('click', ev => { const it = pick(ev); if(it && findC(it.d.chain, it.d.drainer)) openCase(it.d.chain, it.d.drainer); });
+  box.appendChild(svg);
+  box.scrollLeft = box.scrollWidth;
+  // legend
+  const lg = $('legend'); clear(lg);
+  [['T1','Confirmed'],['T2','Strong'],['T3','Suspect'],['none','Not a tracked contract']].forEach(([k, n]) => lg.appendChild(el('span', null, el('i', {class:'sw ' + k}), n)));
+  lg.appendChild(el('span', {class:'note', text:'Height is USD on a log scale; short pale ticks have no price.'}));
+  // one-time draw-in
+  const s = $('seis');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ s.classList.remove('pre'); }
+  else requestAnimationFrame(() => requestAnimationFrame(() => { s.classList.add('go'); s.classList.remove('pre'); }));
+}
+let hotTick = null;
+function showTip(it){
+  const tip = $('tip'); clear(tip);
+  const d = it.d; const c = findC(d.chain, d.drainer);
+  add(tip, [
+    el('div', null, el('b', {text: amt(d.amount) + ' ' + sym(d)}), ' ', el('span', {text: d.usd != null ? usd(d.usd) : 'no price'})),
+    el('div', {text: dt(d.ts) + ' on ' + chainName(d.chain)}),
+    el('div', null, 'Victim ', el('span', {class:'m', text: mid(d.victim)})),
+    el('div', null, 'Drainer ', el('span', {class:'m', text: mid(d.drainer)}), c ? ' (' + c.tier + ')' : ' (not tracked)'),
+    el('div', null, 'Tx ', el('span', {class:'m', text: mid(d.tx)})),
+    c ? el('div', {class:'mut', style:'color:inherit;opacity:.75', text:'Click or press Enter to open the case file'}) : null
+  ]);
+  tip.hidden = false;
+  if(hotTick) hotTick.classList.remove('hot');
+  hotTick = it.node; hotTick.classList.add('hot');
+  const s = $('seis'), sc = $('seisScroll'); const svg = sc.querySelector('svg');
+  const rc = svg.getBoundingClientRect(), sr = s.getBoundingClientRect();
+  const k = rc.width / SEIS.W;
+  let x = rc.left - sr.left + it.x * k + 12, y = rc.top - sr.top + it.y * k - 10;
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  if(x + tw > sr.width - 8) x = Math.max(8, rc.left - sr.left + it.x * k - tw - 12);
+  y = Math.max(4, Math.min(y, sr.height - th - 4));
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function hideTip(){ $('tip').hidden = true; if(hotTick){ hotTick.classList.remove('hot'); hotTick = null; } }
+
+/* ---------- hero sentence ---------- */
+function renderSentence(){
+  const T = D.totals, s = $('sentence'); clear(s);
+  const ref = parseT(D.generated_at) || Date.now();
+  const active = {T1:0, T2:0, T3:0};
+  D.contracts.forEach(c => { const t = parseT(c.last_seen); if(t != null && t >= ref - 86400000 && active[c.tier] != null) active[c.tier]++; });
+  const n = x => el('span', {class:'n', text:x});
+  if(T.drains_24h > 0 || T.victims_24h > 0){
+    add(s, [n(T.usd_24h > 0 ? usd(T.usd_24h) : 'Unpriced tokens'), ' left ', n(fmtN(T.victims_24h)), T.victims_24h === 1 ? ' wallet' : ' wallets', ' in the last 24 hours. ']);
+  } else {
+    add(s, 'No drains were seen in the 24 hours before this snapshot. ');
+  }
+  const act = active.T1 + active.T2 + active.T3;
+  if(act && !(active.T1 + active.T2)){
+    add(s, [n(fmtN(active.T3)), active.T3 === 1 ? ' suspect drainer is' : ' suspect drainers are', ' active; none is confirmed or strong.']);
+  } else if(act){
+    add(s, [n(fmtN(active.T1)), ' confirmed and ', n(fmtN(active.T2)), ' strong ', (active.T1 + active.T2 === 1 ? 'drainer is' : 'drainers are'), ' active.']);
+  } else if(D.contracts.length){
+    add(s, 'None of the flagged drainers was active.');
+  }
+  const tt = obj(T.tiers), tot = num(tt.T1) + num(tt.T2) + num(tt.T3);
+  const sub = $('subsentence');
+  sub.textContent = tot
+    ? 'We track ' + plural(tot, 'address', 'addresses') + ': ' + fmtN(num(tt.T1)) + ' confirmed, ' + fmtN(num(tt.T2)) + ' strong and ' + fmtN(num(tt.T3)) + ' suspect. ' + usd(T.usd_7d) + ' was drained over the last 7 days in ' + plural(T.drains_24h, 'drain') + ' today.'
+    : 'Nothing is flagged yet.';
+  if(tot){
+    sub.textContent = 'We track ' + plural(tot, 'address', 'addresses') + ': ' + fmtN(num(tt.T1)) + ' confirmed, ' + fmtN(num(tt.T2)) + ' strong and ' + fmtN(num(tt.T3)) + ' suspect. ' +
+      (T.usd_7d > 0 ? usd(T.usd_7d) + ' was drained over the last 7 days; ' : '') + plural(T.drains_24h, 'drain') + ' in the last 24 hours.';
+  }
+}
+
+/* ---------- filters + ledger ---------- */
+const S = {tier:'', chain:'', label:'', cluster:'', q:'', key:'tier', dir:1, limit:100, feedLimit:15};
+function setupFilters(){
+  const fc = $('fChain');
+  Object.keys(D.chains).concat(D.contracts.map(c => c.chain)).filter((v, i, a) => v && a.indexOf(v) === i).forEach(c => fc.appendChild(el('option', {value:c, text:chainName(c)})));
+  const lc = {}; D.contracts.forEach(c => c.labels.forEach(l => { lc[l] = (lc[l] || 0) + 1; }));
+  const fl = $('fLabel');
+  Object.keys(lc).sort((a, b) => labelInfo(a)[0].localeCompare(labelInfo(b)[0])).forEach(l => fl.appendChild(el('option', {value:l, text: labelInfo(l)[0].toLowerCase() + ' (' + lc[l] + ')'})));
+  const fcl = $('fCluster');
+  D.clusters.forEach(k => fcl.insertBefore(el('option', {value:k.cluster, text: k.cluster + ' (' + k.members.length + ')'}), fcl.lastChild));
+  const on = () => { ['fTier','fChain','fLabel','fCluster'].forEach(id => $(id).classList.toggle('on', !!$(id).value)); };
+  const upd = () => { S.tier = $('fTier').value; S.chain = $('fChain').value; S.label = $('fLabel').value; S.cluster = $('fCluster').value; S.q = $('q').value; S.limit = 100; on(); renderLedger(); renderFeed(); };
+  ['fTier','fChain','fLabel','fCluster'].forEach(id => $(id).addEventListener('change', upd));
+  $('q').addEventListener('input', upd);
+  $('reset').addEventListener('click', () => { ['fTier','fChain','fLabel','fCluster','q'].forEach(id => { $(id).value = ''; }); upd(); });
+  $('more').addEventListener('click', () => { S.limit += 200; renderLedger(); });
+  S._upd = upd;
+}
+function setFilter(id, v){ $(id).value = v; S._upd(); $('ledger-h').scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block:'start'}); }
+function filtered(){
+  const q = S.q.trim().toLowerCase();
+  const out = D.contracts.filter(c => {
+    if(S.tier === 'T1T2' ? !(c.tier === 'T1' || c.tier === 'T2') : (S.tier && c.tier !== S.tier)) return false;
+    if(S.chain && c.chain !== S.chain) return false;
+    if(S.label && !c.labels.includes(S.label)) return false;
+    if(S.cluster === '__none' ? !!c.cluster : (S.cluster && c.cluster !== S.cluster)) return false;
+    if(q && !c._hay.includes(q)) return false;
+    return true;
+  });
+  const k = S.key, d = S.dir;
+  out.sort((a, b) => {
+    let r;
+    if(k === 'tier') r = (TIER_RANK[a.tier] || 9) - (TIER_RANK[b.tier] || 9) || num(b.score) - num(a.score) || (parseT(b.last_seen) || 0) - (parseT(a.last_seen) || 0);
+    else if(k === 'last_seen') r = (parseT(a.last_seen) || 0) - (parseT(b.last_seen) || 0);
+    else r = num(a[k]) - num(b[k]);
+    return r * d;
+  });
+  return out;
+}
+const COLS = [
+  {k:'tier', t:'Tier', sort:true},
+  {k:'address', t:'Contract'},
+  {k:'split', t:'Money split', cls:'hide-sm'},
+  {k:'deployer', t:'Deployer', cls:'hide-sm'},
+  {k:'victims', t:'Victims', num:true, sort:true},
+  {k:'usd', t:'USD', num:true, sort:true},
+  {k:'last_seen', t:'Last seen', sort:true, cls:'hide-sm'}
+];
+function renderLedgerHead(){
+  const tr = $('ledgerHead'); clear(tr);
+  COLS.forEach(c => {
+    const th = el('th', {class:[c.num ? 'num' : '', c.cls || ''].join(' ').trim() || null, scope:'col'});
+    if(c.sort){
+      const on = S.key === c.k;
+      const b = el('button', {type:'button', text: c.t + (on ? (S.dir === 1 ? (c.num || c.k === 'last_seen' ? ' ↑' : ' ↓') : (c.num || c.k === 'last_seen' ? ' ↓' : ' ↑')) : ''), 'aria-sort': on ? (S.dir === 1 ? 'ascending' : 'descending') : null});
+      b.addEventListener('click', () => { if(S.key === c.k) S.dir = -S.dir; else { S.key = c.k; S.dir = c.k === 'tier' ? 1 : -1; } renderLedgerHead(); renderLedger(); });
+      th.appendChild(b);
+    } else th.textContent = c.t;
+    tr.appendChild(th);
+  });
+}
+function whyShort(c){
+  const ls = c.labels.filter(l => !['cross_chain','cluster_inherited','eip7702_operator','wa_scam'].includes(l));
+  const sup = {oneshot_hub:'oneshot_multi', prefund_hub:'prefund_multi', eoa_spender_pull:'eoa_spender_multi', foreign_recipient_swap:'foreign_swap_multi', ms_deadline:'ms_deadline_pull'};
+  const pool = (ls.length ? ls : c.labels).filter(l => !(sup[l] && c.labels.includes(sup[l]))).filter(l => !(c.family && (l === 'family_match' || l === 'kit_signature')));
+  const all = [...new Set(pool.map(l => labelInfo(l)[0].toLowerCase()))];
+  const names = all.filter(n => !all.some(m => m !== n && m.startsWith(n))).slice(0, 2);
+  let s = names.join(', ');
+  if(c.family) s = famInfo(c.family)[0] + (s ? '; ' + s : '');
+  if(pool.length > 2) s += ' and ' + (pool.length - 2) + ' more';
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+function splitOf(c){ return c.payouts.filter(p => isSplit(p.role) && p.share != null).sort((a, b) => num(b.share) - num(a.share)); }
+function renderLedger(){
+  const rows = filtered(); const tb = $('ledgerBody'); clear(tb);
+  const total = D.contracts.length;
+  $('count').textContent = total ? (rows.length === total ? plural(total, 'contract') : fmtN(rows.length) + ' of ' + plural(total, 'contract')) : '';
+  $('reset').hidden = !(S.tier || S.chain || S.label || S.cluster || S.q);
+  rows.slice(0, S.limit).forEach(c => {
+    const tr = el('tr', {class: TIER_RANK[c.tier] ? c.tier : ''});
+    const open = () => openCase(c.chain, c.address);
+    tr.addEventListener('click', ev => { if(ev.target.closest('a')) return; open(); });
+    tr.appendChild(el('td', null, el('span', {class:'tierc', text:c.tier || '?'}), el('span', {class:'why', text: (TIERS[c.tier] || ['Untiered'])[0]})));
+    const ab = el('button', {class:'addrbtn', type:'button', title:c.address, 'aria-label':'Open case file for ' + c.address + ' on ' + chainName(c.chain), text: mid(c.address)});
+    ab.addEventListener('click', ev => { ev.stopPropagation(); open(); });
+    tr.appendChild(el('td', null, el('span', {class:'chain', text: chainName(c.chain) + ' '}), ab, el('span', {class:'why', text: whyShort(c)})));
+    const sp = splitOf(c), kitRoles = c.payouts.filter(p => !isSplit(p.role));
+    const spc = el('td', {class:'hide-sm'});
+    if(sp.length >= 2){
+      spc.appendChild(el('span', {class:'splitlbl', text: sp.map(p => Math.round(num(p.share) * 100)).join(' / ')}));
+      const bar = el('span', {class:'minisplit', 'aria-hidden':'true'});
+      sp.forEach(p => { const i = el('i'); i.style.width = Math.max(2, num(p.share) * 100) + '%'; bar.appendChild(i); });
+      spc.appendChild(bar);
+    } else if(kitRoles.length){
+      const cnt = {}; kitRoles.forEach(p => { cnt[p.role] = (cnt[p.role] || 0) + 1; });
+      spc.appendChild(el('span', {class:'splitlbl mut', text: Object.keys(cnt).map(r => (cnt[r] > 1 ? cnt[r] + ' ' : '') + roleInfo(r)[0].toLowerCase() + (cnt[r] > 1 ? 's' : '')).join(', ')}));
+    } else spc.appendChild(el('span', {class:'mut', text:'none seen'}));
+    tr.appendChild(spc);
+    const dp = c.deployer;
+    tr.appendChild(el('td', {class:'hide-sm'}, dp.address ? el('span', {class:'m', title:dp.address, text:mid(dp.address)}) : el('span', {class:'mut', text: dp.factory ? 'via factory' : 'unknown'}),
+      dp.funder_entity ? el('span', {class:'why', text:'funded from ' + dp.funder_entity}) : (num(dp.other_contracts) ? el('span', {class:'why', text: plural(num(dp.other_contracts), 'other contract')}) : null)));
+    tr.appendChild(el('td', {class:'num', text: fmtN(c.victims)}));
+    tr.appendChild(el('td', {class:'num', text: num(c.usd) ? usd(c.usd) : '–'}));
+    tr.appendChild(el('td', {class:'hide-sm mut ago', title: dt(c.last_seen), text: ago(c.last_seen, parseT(D.generated_at) || Date.now())}));
+    tb.appendChild(tr);
+  });
+  const em = $('ledgerEmpty');
+  em.hidden = rows.length > 0;
+  em.textContent = total ? 'No contract matches these filters.' : 'No contracts are flagged yet. When the scanner flags one it appears here with its evidence.';
+  $('ledger').hidden = rows.length === 0;
+  const m = $('more');
+  m.hidden = rows.length <= S.limit;
+  m.textContent = 'Show ' + fmtN(Math.min(200, rows.length - S.limit)) + ' more';
+}
+
+/* ---------- side panels ---------- */
+function renderVasps(){
+  const ul = $('vasps'); clear(ul);
+  if(!D.vasps.length){ ul.appendChild(el('li', {class:'empty', text:'No transfers to a labelled exchange or service have been seen yet.'})); return; }
+  const max = Math.max(1, ...D.vasps.map(v => num(v.usd)));
+  const maxL = Math.max(1, ...D.vasps.map(v => num(v.links)));
+  D.vasps.slice(0, 12).forEach(v => {
+    const b = el('button', {class:'ent', type:'button', text: v.entity || 'unknown', title:'Show contracts linked to ' + (v.entity || 'unknown')});
+    b.addEventListener('click', () => setFilter('q', str(v.entity)));
+    const bar = el('div', {class:'bar', 'aria-hidden':'true'}, el('i'));
+    bar.firstChild.style.width = (num(v.usd) ? num(v.usd) / max : num(v.links) / maxL * .25) * 100 + '%';
+    const deps = arr(v.deposit_addresses);
+    const meta = [str(v.category).replace(/-/g, ' '), plural(num(v.links), 'transfer'), deps.length ? plural(deps.length, 'deposit address', 'deposit addresses') : null, arr(v.chains).map(chainName).join(', ')].filter(Boolean).join(', ');
+    ul.appendChild(el('li', null, el('div', {class:'row1'}, b, el('span', {class:'usd', text: num(v.usd) ? usd(v.usd) : 'no price'})), bar, el('div', {class:'meta', text: meta.charAt(0).toUpperCase() + meta.slice(1)})));
+  });
+}
+function renderClusters(){
+  const ul = $('clusters'); clear(ul);
+  if(!D.clusters.length){ ul.appendChild(el('li', {class:'empty', text:'No two flagged addresses share a payout wallet yet.'})); return; }
+  D.clusters.slice(0, 12).forEach(k => {
+    const b = el('button', {type:'button', title:'Show the members of ' + k.cluster},
+      el('span', null, tierBadge(k.max_tier), ' ', el('span', {class:'cid', text:k.cluster})),
+      el('span', {class:'meta', text: chainName(k.chain) + ': ' + plural(k.members.length, 'contract') + ' sharing ' + plural(k.shared_wallets.length, 'wallet')}));
+    b.addEventListener('click', () => setFilter('fCluster', k.cluster));
+    ul.appendChild(el('li', null, b));
+  });
+}
+
+/* ---------- feed + daily ---------- */
+function renderFeed(){
+  const ul = $('feed'); clear(ul);
+  const ds = D.drains.filter(d => !S.chain || d.chain === S.chain);
+  const ref = parseT(D.generated_at) || Date.now();
+  if(!ds.length){ ul.appendChild(el('li', {class:'empty', style:'display:block', text: D.drains.length ? 'No drains on this chain.' : 'No drains recorded yet.'})); $('feedMore').hidden = true; return; }
+  ds.slice(0, S.feedLimit).forEach(d => {
+    const c = findC(d.chain, d.drainer);
+    const who = el('div', {class:'who'}, el('span', {class:'tmark ' + (c && TIER_RANK[c.tier] ? c.tier : ''), 'aria-hidden':'true'}),
+      chainName(d.chain) + ': ', addrL(d.chain, d.victim), ' drained by ',
+      c ? el('button', {type:'button', title:'Open case file for ' + d.drainer, text: mid(d.drainer), onclick: () => openCase(d.chain, d.drainer)}) : addrL(d.chain, d.drainer),
+      c ? ' (' + c.tier + ')' : ' (not tracked)', ', tx ', txL(d.chain, d.tx));
+    ul.appendChild(el('li', null, el('span', {class:'when', title: dt(d.ts), text: ago(d.ts, ref).replace(' ago', '')}),
+      el('span', {class:'amt', text: amt(d.amount) + ' ' + sym(d) + (isNative(d) ? ' (native)' : '')}),
+      el('span', {class:'usd', text: d.usd != null ? usd(d.usd) : 'no price'}), who));
+  });
+  const fm = $('feedMore');
+  fm.hidden = ds.length <= S.feedLimit; fm.textContent = 'Show more drains';
+  fm.onclick = () => { S.feedLimit += 30; renderFeed(); };
+}
+function renderDaily(){
+  const host = $('daily'); clear(host);
+  const days = D.daily.filter(d => d && d.date);
+  if(!days.length){ host.appendChild(el('p', {class:'empty', text:'No daily history yet.'})); return; }
+  const W = 600, H = 220, L = 52, R = 12, T = 12, B = 28;
+  const pw = W - L - R, ph = H - T - B;
+  const maxU = Math.max(1, ...days.map(d => num(d.usd)));
+  const maxN = Math.max(1, ...days.map(d => num(d.new_contracts)));
+  const nice = v => { const p = Math.pow(10, Math.floor(Math.log10(v))); const m = v / p; return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p; };
+  const top = nice(maxU);
+  const svg = sv('svg', {class:'chart', viewBox:'0 0 ' + W + ' ' + H, role:'img', 'aria-label':'Daily USD drained and new contracts, ' + days[0].date + ' to ' + days[days.length - 1].date});
+  for(let i = 0; i <= 4; i++){
+    const y = T + ph - ph * i / 4;
+    svg.appendChild(sv('line', {class:'gl', x1:L, x2:W - R, y1:y, y2:y}));
+    const v = top * i / 4;
+    svg.appendChild(sv('text', {x:L - 8, y:y + 4, 'text-anchor':'end', text: v >= 1000 ? '$' + (v / 1000).toLocaleString('en-US', {maximumFractionDigits:1}) + 'k' : '$' + Math.round(v)}));
+  }
+  const bw = pw / days.length;
+  days.forEach((d, i) => {
+    const h = ph * num(d.usd) / top, x = L + i * bw;
+    const g = sv('g', null);
+    g.appendChild(sv('title', {text: d.date + ': ' + usd(num(d.usd)) + ', ' + plural(num(d.victims), 'victim') + ', ' + plural(num(d.new_contracts), 'new contract')}));
+    g.appendChild(sv('rect', {class:'b', x:(x + bw * .15).toFixed(1), y:(T + ph - h).toFixed(1), width:Math.max(1, bw * .7).toFixed(1), height:Math.max(num(d.usd) ? 1 : 0, h).toFixed(1)}));
+    if(num(d.new_contracts)) for(let j = 0; j < Math.min(6, num(d.new_contracts)); j++) g.appendChild(sv('circle', {class:'nc', cx:(x + bw / 2).toFixed(1), cy:(T + ph - h - 6 - j * 6).toFixed(1), r:2.4}));
+    svg.appendChild(g);
+    if(i === 0 || i === days.length - 1 || (i % 7 === 0 && days.length - 1 - i >= 4)) svg.appendChild(sv('text', {x:(x + bw / 2).toFixed(1), y:H - 8, 'text-anchor': i === 0 ? 'start' : i === days.length - 1 ? 'end' : 'middle', text: str(d.date).slice(5)}));
+  });
+  host.appendChild(svg);
+  const tu = days.reduce((s, d) => s + num(d.usd), 0), tn = days.reduce((s, d) => s + num(d.new_contracts), 0);
+  host.appendChild(el('div', {class:'chartkey'}, el('span', null, el('i'), 'USD drained (' + usd(tu) + ' in total)'), el('span', null, el('i', {class:'nc'}), 'One dot per new contract (' + fmtN(tn) + ')')));
+}
+
+/* ---------- tabs ---------- */
+function mini(head, rows, empty){
+  if(!rows.length) return el('p', {class:'empty', text:empty});
+  const t = el('table', {class:'mini'});
+  t.appendChild(el('thead', null, el('tr', null, head.map(h => el('th', {class: h.num ? 'num' : (h.cls || null), text: h.t || h})))));
+  t.appendChild(el('tbody', null, rows));
+  return t;
+}
+function renderTabs(){
+  $('p-fam').appendChild(mini(['Family', 'What it is', {t:'Members', num:true}, {t:'From seeds', num:true}, 'Chains'],
+    D.families.map(f => { const fi = famInfo(f.family); return el('tr', null, el('td', null, el('b', {text:fi[0]}), f.family !== fi[0] ? el('div', {class:'m mut', text:f.family}) : null), el('td', {class:'mut', text:fi[1]}),
+      el('td', {class:'num', text:fmtN(f.members)}), el('td', {class:'num', text:fmtN(f.seed_members)}), el('td', {text: arr(f.chains).map(chainName).join(', ')})); }),
+    'No code families yet. A family appears when two flagged contracts share code or match a known kit.'));
+  $('p-dep').appendChild(mini(['Deployer', 'Chain', {t:'Contracts', num:true}, 'Funded from'],
+    D.deployers.map(d => el('tr', null, el('td', null, addrL(d.chain, d.address)), el('td', {text:chainName(d.chain)}), el('td', {class:'num', text:fmtN(d.contracts)}), el('td', {class: d.funder_entity ? null : 'mut', text: d.funder_entity || 'unlabelled or unknown'}))),
+    'No deployer has been resolved yet.'));
+  $('p-op').appendChild(mini(['Payout wallet', 'Chain', {t:'Drainers paying it', num:true}, {t:'As affiliate', num:true}, {t:'USD received', num:true}],
+    D.operators.map(o => el('tr', null, el('td', null, addrL(o.chain, o.wallet)), el('td', {text:chainName(o.chain)}), el('td', {class:'num', text:fmtN(o.drainers)}), el('td', {class:'num', text:fmtN(o.affiliates)}), el('td', {class:'num', text: num(o.usd) ? usd(o.usd) : '–'}))),
+    'No payout wallets yet.'));
+  const tabs = Array.from(document.querySelectorAll('#tabs [role=tab]'));
+  const sel = t => tabs.forEach(x => { const on = x === t; x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; $(x.getAttribute('aria-controls')).hidden = !on; });
+  tabs.forEach((t, i) => {
+    t.addEventListener('click', () => sel(t));
+    t.addEventListener('keydown', ev => {
+      if(ev.key === 'ArrowRight' || ev.key === 'ArrowLeft'){ const n = tabs[(i + (ev.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]; sel(n); n.focus(); ev.preventDefault(); }
+    });
+  });
+}
+function renderMethod(){
+  const tt = $('tierTable');
+  ['T1','T2','T3'].forEach(t => tt.appendChild(el('tr', null, el('td', null, tierBadge(t)), el('td', null, el('b', {text:TIERS[t][0]})), el('td', {text:TIERS[t][1]}))));
+  const lt = $('labelTable');
+  Object.keys(LABELS).forEach(k => lt.appendChild(el('tr', null, el('td', null, el('b', {text:LABELS[k][0]}), el('div', {class:'m mut', text:k})), el('td', {text:LABELS[k][1]}))));
+  Object.keys(FAMILIES).forEach(k => lt.appendChild(el('tr', null, el('td', null, el('b', {text:'Family: ' + FAMILIES[k][0]}), el('div', {class:'m mut', text:k})), el('td', {text:FAMILIES[k][1]}))));
+  const rt = $('roleTable');
+  Object.keys(ROLES).forEach(k => rt.appendChild(el('tr', null, el('td', null, el('b', {text:ROLES[k][0]}), el('div', {class:'m mut', text:k})), el('td', {text:ROLES[k][1] + (isSplit(k) ? ' Shown in the money split bar.' : ' Shown as a role, not in the split bar.')}))));
+}
+
+/* ---------- drawer (case file) ---------- */
+let lastFocus = null, current = null;
+function sec(title, ...kids){ return el('section', {class:'dsec'}, el('h3', {text:title}), kids); }
+function kv(rows){ return el('table', {class:'kv'}, el('tbody', null, rows.filter(Boolean).map(([k, v]) => el('tr', null, el('td', {text:k}), el('td', null, v))))); }
+function noneP(t){ return el('p', {class:'note', text:t}); }
+function verdictSentence(c){
+  const strong = c.labels.filter(l => !['cross_chain','cluster_inherited','eip7702_operator','wa_scam','spoof_split'].includes(l));
+  const base = (strong.length ? strong : c.labels).slice(0, 2).map(l => labelInfo(l)[0].toLowerCase());
+  const t = (TIERS[c.tier] || ['Untiered'])[0];
+  let s = t + ' because of ' + (base.length ? base.join(' and ') : 'its recorded evidence');
+  if(num(c.victims)) s += ', with ' + plural(num(c.victims), 'victim');
+  if(c.labels.includes('cluster_inherited')) s += '; tier raised by its operator cluster';
+  if(c.labels.includes('cross_chain_t1')) s += '; confirmed on another chain';
+  return s + '.';
+}
+function openCase(chain, address, fromHash){
+  const c = findC(chain, address); if(!c) return;
+  current = c;
+  if(!$('drawer').classList.contains('open')) lastFocus = document.activeElement;
+  $('dKicker').textContent = chainName(c.chain) + ' case file';
+  $('dTitle').textContent = mid(c.address);
+  $('dTitle').title = c.address;
+  const b = $('dBody'); clear(b); b.scrollTop = 0;
+
+  // 1. Verdict
+  b.appendChild(sec('Verdict',
+    el('div', {class:'verdict'}, el('span', {class:'bigtier ' + (TIER_RANK[c.tier] ? c.tier : ''), text:c.tier || '?'}), el('p', {class:'why', text: verdictSentence(c)})),
+    fullAddr(c.chain, c.address),
+    el('div', {class:'facts'},
+      el('div', null, el('div', {class:'k', text:'Score'}), el('div', {class:'v', text: num(c.score) + ' / 100'})),
+      el('div', null, el('div', {class:'k', text:'Victims'}), el('div', {class:'v', text: fmtN(c.victims)})),
+      el('div', null, el('div', {class:'k', text:'Drains'}), el('div', {class:'v', text: fmtN(c.drains)})),
+      el('div', null, el('div', {class:'k', text:'USD'}), el('div', {class:'v', text: num(c.usd) ? usd(c.usd) : '–'}))),
+    el('p', {class:'note', text:'First seen ' + dt(c.first_seen) + ', last seen ' + dt(c.last_seen) + '.' + (c.family ? ' Family: ' + famInfo(c.family)[0] + ' (' + famInfo(c.family)[1].replace(/\.$/, '') + ').' : '')})));
+
+  // 2. Evidence
+  const labelsUl = el('ul', {class:'labels'}, c.labels.map(l => el('li', null, el('b', {text: labelInfo(l)[0]}), ': ', el('span', {class:'mut', text: labelInfo(l)[1]}))));
+  const evl = el('ul', {class:'evl'}, c.evidence.map(e => el('li', null,
+    el('div', {class:'h'}, el('span', {class:'name', text: labelInfo(e.type)[0]}), el('span', {class:'when', title: dt(e.ts), text: dt(e.ts)})),
+    el('div', {class:'exp', text: labelInfo(e.type)[1]}),
+    el('div', {class:'det', text: str(e.detail)}),
+    el('div', {class:'note'}, 'Proof: ', txL(c.chain, e.tx)))));
+  b.appendChild(sec('Evidence', c.labels.length ? [el('h4', {class:'sub', text:'Why it was flagged'}), labelsUl] : null, c.evidence.length ? el('h4', {class:'sub', text:'Transactions'}) : null, c.evidence.length ? evl : noneP('No evidence rows were exported for this address.'),
+    c.evidence.length >= 20 ? noneP('Showing the latest 20 evidence rows.') : null));
+
+  // 3. Money split
+  const sp = splitOf(c), kit = c.payouts.filter(p => !isSplit(p.role));
+  const ms = [];
+  if(sp.length){
+    const bar = el('div', {class:'split', role:'img', 'aria-label':'Split: ' + sp.map(p => roleInfo(p.role)[0] + ' ' + pct(p.share)).join(', ')});
+    sp.forEach(p => { const i = el('i', {title: roleInfo(p.role)[0] + ' ' + p.wallet, text: num(p.share) >= .08 ? pct(p.share) : ''}); i.style.width = Math.max(1.5, num(p.share) * 100) + '%'; bar.appendChild(i); });
+    ms.push(bar, el('p', {class:'note', text:'Inferred from transfer shares: the larger share is labelled affiliate, the rest operator.'}));
+    ms.push(mini(['Role', 'Wallet', {t:'Share', num:true}, {t:'Txs', num:true}], sp.map(p => el('tr', null,
+      el('td', null, el('span', {class:'chip role', title: roleInfo(p.role)[1], text: roleInfo(p.role)[0]})), el('td', null, addrL(c.chain, p.wallet), ' ', copyBtn(p.wallet)),
+      el('td', {class:'num', text: pct(p.share)}), el('td', {class:'num', text: fmtN(p.txs)}))), ''));
+  }
+  if(kit.length){
+    const workers = kit.filter(p => p.role === 'worker'), others = kit.filter(p => p.role !== 'worker');
+    if(others.length){
+      ms.push(el('h3', {style:'font-size:15px;margin:16px 0 4px', text:'Kit roles (no share observed)'}));
+      ms.push(mini(['Role', 'Wallet', {t:'Txs', num:true}], others.map(p => el('tr', null,
+        el('td', null, el('span', {class:'chip role', title: roleInfo(p.role)[1], text: roleInfo(p.role)[0]})), el('td', null, addrL(c.chain, p.wallet), ' ', copyBtn(p.wallet)), el('td', {class:'num', text: fmtN(p.txs)}))), ''));
+    }
+    if(workers.length){
+      ms.push(el('h3', {style:'font-size:15px;margin:16px 0 4px', text: 'This hub used ' + plural(workers.length, 'worker')}));
+      ms.push(el('p', {class:'note', style:'margin:0 0 6px', text: ROLES.worker[1]}));
+      ms.push(el('ul', {class:'members'}, workers.map(p => el('li', null, addrL(c.chain, p.wallet), copyBtn(p.wallet), el('span', {class:'here', text: plural(num(p.txs), 'tx', 'txs')})))));
+    }
+  }
+  b.appendChild(sec('Money split', ms.length ? ms : noneP('No payout wallet has been observed for this address.')));
+
+  // 4. Deployer
+  const dp = c.deployer;
+  const sameDep = dp.address ? D.contracts.filter(o => o !== c && o.chain === c.chain && o.deployer && o.deployer.address === dp.address) : [];
+  b.appendChild(sec('Deployer', kv([
+    ['Deployer', dp.address ? fullAddr(c.chain, dp.address) : el('span', {class:'mut', text:'Unknown'})],
+    ['How we know', el('span', {text: VIA[dp.via] || str(dp.via || 'unknown')})],
+    dp.tx ? ['Creation tx', txL(c.chain, dp.tx)] : null,
+    dp.block ? ['Block', el('span', {class:'tnum', text: fmtN(dp.block)})] : null,
+    dp.factory ? ['Created by factory', fullAddr(c.chain, dp.factory)] : null,
+    ['Funded by', dp.funder ? el('span', null, addrL(c.chain, dp.funder), dp.funder_entity ? el('b', {text:' ' + dp.funder_entity}) : el('span', {class:'mut', text:' unlabelled'})) : el('span', {class:'mut', text: dp.address ? 'Not resolved' : 'Unknown'})],
+    dp.funder_tx ? ['Funding tx', txL(c.chain, dp.funder_tx)] : null,
+    ['Other contracts', el('span', {text: dp.address ? plural(num(dp.other_contracts), 'other contract') + ' by this deployer' : 'Not applicable'})]
+  ]), sameDep.length ? el('ul', {class:'members'}, sameDep.map(o => el('li', null, tierBadge(o.tier), el('button', {type:'button', text: mid(o.address), title:o.address, onclick: () => openCase(o.chain, o.address)})))) : null));
+
+  // 5. Where funds surfaced
+  b.appendChild(sec('Where funds surfaced', c.vasp_links.length ? mini(['Entity', 'How', 'Counterparty', {t:'Amount', num:true}, 'Proof'],
+    c.vasp_links.map(l => el('tr', null,
+      el('td', null, el('b', {text: l.entity || 'unknown'}), el('div', {class:'mut', text: str(l.category).replace(/-/g, ' ')})),
+      el('td', null, KIND[l.kind] || str(l.kind), el('div', {class:'mut', text:'from ' + (SUBJ[l.role] || str(l.role)) + ', ' + (l.confidence || 'unknown') + ' confidence'})),
+      el('td', null, addrL(c.chain, l.counterparty)),
+      el('td', {class:'num'}, amt(l.amount) + ' ' + str(l.symbol), el('div', {class:'mut', text: l.usd != null ? usd(l.usd) : 'no price'})),
+      el('td', null, txL(c.chain, l.tx), l.tx_in ? el('div', null, el('span', {class:'mut', text:'in '}), txL(c.chain, l.tx_in)) : null, el('div', {class:'mut', text: dt(l.ts).slice(0, 10)})))), '')
+    : noneP('No transfer to a labelled exchange or service has been seen from this contract, its payout wallets or its deployer.')));
+
+  // 6. Cluster
+  const k = c.cluster ? D.cl.get(c.cluster) : null;
+  if(c.cluster){
+    const members = k ? k.members : [c.address];
+    b.appendChild(sec('Cluster',
+      el('p', {style:'margin:0 0 6px'}, el('span', {class:'m', text:c.cluster}), k ? ' links ' + plural(members.length, 'address', 'addresses') + ' on ' + chainName(k.chain) + ' that share ' + plural(k.shared_wallets.length, 'payout wallet') + '.' : ''),
+      el('ul', {class:'members'}, members.map(a => {
+        const o = findC(k ? k.chain : c.chain, a);
+        const here = str(a).toLowerCase() === str(c.address).toLowerCase();
+        return el('li', null, o ? tierBadge(o.tier) : tierBadge(''),
+          here ? el('span', {class:'m', text: mid(a)}) : el('button', {type:'button', title:'Open case file for ' + a, text: mid(a), onclick: () => openCase(k ? k.chain : c.chain, a)}),
+          here ? el('span', {class:'here', text:'this contract'}) : (o ? el('span', {class:'here', text: whyShort(o)}) : null));
+      })),
+      k && k.shared_wallets.length ? el('div', null, el('p', {class:'note', text:'Shared payout wallets:'}), el('ul', {class:'members'}, k.shared_wallets.map(w => el('li', null, addrL(k.chain, w), copyBtn(w))))) : null));
+  } else b.appendChild(sec('Cluster', noneP('Shares no payout wallet with another flagged address.')));
+
+  // 7. Same contract on other chains
+  b.appendChild(sec('Same contract on other chains', c.cross_chain.length ? el('ul', {class:'members'}, c.cross_chain.map(x => {
+    const o = findC(x.chain, c.address);
+    return el('li', null, tierBadge(x.tier), el('span', {text: chainName(x.chain)}),
+      o ? el('button', {type:'button', text:'Open the ' + chainName(x.chain) + ' case file', style:'font-family:inherit', onclick: () => openCase(x.chain, c.address)}) : el('span', {class:'here', text:'not in this export'}));
+  })) : noneP('Not flagged with the same code on another chain.')));
+
+  // 8. Raw facts
+  const raw = {chain:c.chain, address:c.address, tier:c.tier, score:c.score, source:c.source, family:c.family, labels:c.labels, first_seen:c.first_seen, last_seen:c.last_seen,
+    victims:c.victims, drains:c.drains, usd:c.usd, code_size:c.code_size, verified:c.verified, cluster:c.cluster};
+  b.appendChild(sec('Raw facts', kv(Object.keys(raw).map(key => {
+    const v = raw[key];
+    const txt = v == null ? 'null' : Array.isArray(v) ? (v.join(', ') || '[]') : String(v);
+    return [key, el('span', {class: ['address','cluster','labels','family'].includes(key) ? 'm' : 'tnum', text: txt})];
+  })), el('p', {class:'note'}, copyBtn(JSON.stringify(c, (key, val) => key === '_hay' ? undefined : val, 1)), ' the full record as JSON. Source: ', str(c.source || 'detector'), '. Verified source code: ', c.verified == null ? 'unknown' : c.verified ? 'yes' : 'no', '.')));
+
+  const dr = $('drawer'), sc = $('scrim');
+  sc.hidden = false; dr.setAttribute('aria-hidden', 'false');
+  requestAnimationFrame(() => { sc.classList.add('open'); dr.classList.add('open'); });
+  document.body.style.overflow = 'hidden';
+  const h = '#' + c.chain + ':' + c.address;
+  if(!fromHash && location.hash !== h){ try{ history.replaceState(null, '', h); }catch(e){ location.hash = h; } }
+  setTimeout(() => $('dClose').focus({preventScroll:true}), 30);
+}
+function closeCase(){
+  const dr = $('drawer'), sc = $('scrim');
+  if(!dr.classList.contains('open')) return;
+  dr.classList.remove('open'); sc.classList.remove('open'); dr.setAttribute('aria-hidden', 'true');
+  setTimeout(() => { if(!dr.classList.contains('open')) sc.hidden = true; }, 260);
+  document.body.style.overflow = '';
+  current = null;
+  try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+  if(lastFocus && document.contains(lastFocus)) lastFocus.focus({preventScroll:true});
+}
+function fromHash(){
+  const m = /^#([a-z0-9_-]+):(0x[0-9a-fA-F]{40})$/.exec(location.hash || '');
+  if(m && findC(m[1], m[2])) openCase(m[1], m[2], true);
+}
+function setupKeys(){
+  $('dClose').addEventListener('click', closeCase);
+  $('scrim').addEventListener('click', closeCase);
+  document.addEventListener('keydown', ev => {
+    if(ev.key === 'Escape' && $('drawer').classList.contains('open')){ ev.preventDefault(); closeCase(); return; }
+    if(ev.key === '/' && !ev.ctrlKey && !ev.metaKey && !ev.altKey){
+      const t = ev.target, tag = t && t.tagName;
+      if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+      if($('drawer').classList.contains('open')) return;
+      ev.preventDefault(); $('q').focus();
+    }
+    if(ev.key === 'Tab' && $('drawer').classList.contains('open')){ // keep focus inside the dialog
+      const f = Array.from($('drawer').querySelectorAll('a[href],button,[tabindex]:not([tabindex="-1"])')).filter(x => x.offsetParent !== null);
+      if(!f.length) return;
+      if(ev.shiftKey && document.activeElement === f[0]){ ev.preventDefault(); f[f.length - 1].focus(); }
+      else if(!ev.shiftKey && document.activeElement === f[f.length - 1]){ ev.preventDefault(); f[0].focus(); }
+    }
+  });
+  window.addEventListener('hashchange', () => { if(location.hash.length > 2) fromHash(); else closeCase(); });
+}
+
+/* ---------- boot ---------- */
+let seisW = 0;
+window.addEventListener('resize', () => { clearTimeout(window._dwR); window._dwR = setTimeout(() => { const w = $('seisScroll').clientWidth; if(D && Math.abs(w - seisW) > 4){ seisW = w; renderSeis(); } }, 150); });
+function renderAll(){
+  renderHeader(); seisW = $('seisScroll').clientWidth; renderSeis(); renderSentence(); setupFilters(); renderLedgerHead(); renderLedger();
+  renderVasps(); renderClusters(); renderFeed(); renderDaily(); renderTabs(); renderMethod();
+  const ch = Object.keys(D.chains);
+  $('foot').textContent = 'Snapshot ' + (D.generated_at ? dt(D.generated_at) : 'not generated yet') + '. ' + (ch.length ? 'Chains: ' + ch.map(chainName).join(', ') + '.' : '');
+  fromHash();
+}
+function showNotice(title, text){
+  const n = $('notice'); clear(n);
+  n.appendChild(el('div', {class:'notice', role:'status'}, el('h2', {text:title}), el('p', {text:text})));
+}
+function boot(data, note){
+  D = norm(data);
+  if(note) showNotice(note[0], note[1]);
+  else if(!D.contracts.length && !D.drains.length && !Object.keys(D.chains).length)
+    showNotice('No data yet', 'The scanner has not produced a snapshot. Once it runs, this page shows each flagged drainer with its evidence, the drains of the last 24 hours and where the money went.');
+  renderAll();
+}
+setupTheme(); setupKeys();
+if(DATA && typeof DATA === 'object') boot(DATA);
+else {
+  let done = false;
+  const fail = () => { if(done) return; done = true; boot({}, ['No data yet', 'This page could not find its data. It expects the snapshot to be embedded by the renderer or a data.json file next to it. Run "python -m drainerwatch render" to build both.']); };
+  if(location.protocol === 'file:') fail();
+  else try{
+    fetch('data.json', {cache:'no-store'}).then(r => r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)))
+      .then(j => { if(done) return; done = true; boot(j && typeof j === 'object' ? j : {}); }, fail);
+  }catch(e){ fail(); }
+}
+})();
+</script>
+</body>
+</html>

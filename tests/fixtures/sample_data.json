@@ -1,0 +1,5068 @@
+{
+ "generated_at": "2026-11-23T10:00:00Z",
+ "chains": {
+  "eth": {
+   "cursor_block": 21800000,
+   "head_block": 21800040,
+   "lag_blocks": 40,
+   "last_scan_at": "2026-11-23T09:56:00Z",
+   "explorer": "https://etherscan.io"
+  },
+  "bsc": {
+   "cursor_block": 44100000,
+   "head_block": 44100900,
+   "lag_blocks": 900,
+   "last_scan_at": "2026-11-23T09:54:00Z",
+   "explorer": "https://bscscan.com"
+  },
+  "base": {
+   "cursor_block": 25600000,
+   "head_block": 25600120,
+   "lag_blocks": 120,
+   "last_scan_at": "2026-11-23T09:55:00Z",
+   "explorer": "https://basescan.org"
+  }
+ },
+ "totals": {
+  "tiers": {
+   "T1": 10,
+   "T2": 9,
+   "T3": 7
+  },
+  "victims_24h": 108,
+  "usd_24h": 65258.0,
+  "usd_7d": 73267.81,
+  "drains_24h": 108
+ },
+ "contracts": [
+  {
+   "chain": "bsc",
+   "address": "0xd1a1001300130013001300130013001300130013",
+   "tier": "T1",
+   "score": 89,
+   "source": "detector",
+   "family": "verify_account",
+   "labels": [
+    "kit_signature",
+    "split_pull",
+    "split_xtx"
+   ],
+   "first_seen": "2026-11-12T21:00:00Z",
+   "last_seen": "2026-11-23T09:09:48Z",
+   "victims": 33,
+   "drains": 34,
+   "usd": 6032.07,
+   "code_size": 2650,
+   "verified": true,
+   "payouts": [
+    {
+     "wallet": "0xa0e0001f001f001f001f001f001f001f001f001f",
+     "role": "affiliate",
+     "share": 0.98,
+     "txs": 9
+    },
+    {
+     "wallet": "0xa0e0002000200020002000200020002000200020",
+     "role": "operator",
+     "share": 0.02,
+     "txs": 9
+    }
+   ],
+   "deployer": {
+    "address": "0xde91001300130013001300130013001300130013",
+    "tx": "0xde01011701170117011701170117011701170117011701170117011701170117",
+    "via": "etherscan",
+    "factory": null,
+    "block": 21700019,
+    "funder": "0xf0dd000400040004000400040004000400040004",
+    "funder_entity": "Binance",
+    "funder_tx": "0xf0d1011d011d011d011d011d011d011d011d011d011d011d011d011d011d011d",
+    "other_contracts": 1
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0001f001f001f001f001f001f001f001f001f",
+     "role": "payout",
+     "counterparty": "0xdec0000400040004000400040004000400040004",
+     "kind": "deposit_sweep",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012e012e012e012e012e012e012e012e012e012e012e012e012e012e012e",
+     "tx_in": "0xfe11012201220122012201220122012201220122012201220122012201220122",
+     "ts": "2026-11-23T04:00:00Z",
+     "amount": "4400",
+     "symbol": "USDT",
+     "usd": 4400.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xa0e0002000200020002000200020002000200020",
+     "role": "payout",
+     "counterparty": "0xb1ba000600060006000600060006000600060006",
+     "kind": "direct",
+     "entity": "MEXC",
+     "category": "exchange",
+     "tx": "0xfe12013001300130013001300130013001300130013001300130013001300130",
+     "tx_in": null,
+     "ts": "2026-11-23T01:00:00Z",
+     "amount": "120000",
+     "symbol": "CAKE",
+     "usd": null,
+     "confidence": "high"
+    },
+    {
+     "subject": "0xde91001300130013001300130013001300130013",
+     "role": "deployer",
+     "counterparty": "0xf0dd000400040004000400040004000400040004",
+     "kind": "funding",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012f012f012f012f012f012f012f012f012f012f012f012f012f012f012f",
+     "tx_in": null,
+     "ts": "2026-10-12T18:00:00Z",
+     "amount": "0.3",
+     "symbol": "BNB",
+     "usd": 183.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "split_pull",
+     "tx": "0xfee3010301030103010301030103010301030103010301030103010301030103",
+     "ts": "2026-11-23T09:00:00Z",
+     "detail": "one tx pulled 0x55d398326f99059ff775485246999027b3197955 from 1 victim(s) and split it: 0xa0e0001f001f001f001f001f001f001f001f001f 98% (affiliate), 0xa0e0002000200020002000200020002000200020 2% (operator)"
+    },
+    {
+     "type": "split_xtx",
+     "tx": "0xfee3010601060106010601060106010601060106010601060106010601060106",
+     "ts": "2026-11-23T06:00:00Z",
+     "detail": "caller 0xca11001300130013001300130013001300130013 pulled 0x55d398326f99059ff775485246999027b3197955 from victim 0xc0de003d003d003d003d003d003d003d003d003d in 2 txs within 60 s and split it: 0xa0e0001f001f001f001f001f001f001f001f001f 98% (affiliate), 0xa0e0002000200020002000200020002000200020 2% (operator)"
+    },
+    {
+     "type": "bytecode",
+     "tx": "0xfee3010701070107010701070107010701070107010701070107010701070107",
+     "ts": "2026-11-19T06:00:00Z",
+     "detail": "kit selector fingerprint verify_account"
+    }
+   ],
+   "cluster": "op_9b0d44e1a2",
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000b000b000b000b000b000b000b000b000b",
+   "tier": "T1",
+   "score": 84,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "approval_fingerprint",
+    "kit_router_swap"
+   ],
+   "first_seen": "2026-11-04T21:00:00Z",
+   "last_seen": "2026-11-23T08:53:52Z",
+   "victims": 7,
+   "drains": 7,
+   "usd": 5037.81,
+   "code_size": 0,
+   "verified": null,
+   "payouts": [],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "kit_router_swap",
+     "tx": "0xfee300f700f700f700f700f700f700f700f700f700f700f700f700f700f700f7",
+     "ts": "2026-11-23T01:00:00Z",
+     "detail": "victim 0xc0de002a002a002a002a002a002a002a002a002a signed a kit-amount approval to a legitimate router and in the same tx its tokens went to this EOA (1 leg(s)); nothing came back to the victim"
+    },
+    {
+     "type": "approval_fingerprint",
+     "tx": "0xfee300f800f800f800f800f800f800f800f800f800f800f800f800f800f800f8",
+     "ts": "2026-11-23T00:54:00Z",
+     "detail": "victim 0xc0de002a002a002a002a002a002a002a002a002a approved token 0xdac17f958d2ee523a2206206994597c13d831ec7 with the ms_drainer kit amount (hard-coded approval value: kit fingerprint)"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "tier": "T1",
+   "score": 87,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "foreign_recipient_swap",
+    "foreign_swap_kit",
+    "foreign_swap_multi"
+   ],
+   "first_seen": "2026-11-20T16:00:00Z",
+   "last_seen": "2026-11-23T08:33:22Z",
+   "victims": 8,
+   "drains": 8,
+   "usd": 8500.74,
+   "code_size": 0,
+   "verified": null,
+   "payouts": [],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [
+    {
+     "subject": "0xd1a1000c000c000c000c000c000c000c000c000c",
+     "role": "drainer",
+     "counterparty": "0xb1ba000500050005000500050005000500050005",
+     "kind": "direct",
+     "entity": "Stargate",
+     "category": "bridge",
+     "tx": "0xfe12012d012d012d012d012d012d012d012d012d012d012d012d012d012d012d",
+     "tx_in": null,
+     "ts": "2026-11-22T12:00:00Z",
+     "amount": "640",
+     "symbol": "USDC",
+     "usd": 640.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "foreign_recipient_swap",
+     "tx": "0xfee300f900f900f900f900f900f900f900f900f900f900f900f900f900f900f9",
+     "ts": "2026-11-23T07:00:00Z",
+     "detail": "victim 0xc0de002b002b002b002b002b002b002b002b002b signed swapExactTokensForETH on 0x0d1e000100010001000100010001000100010001 selling 2500.0 of 0xdac17f958d2ee523a2206206994597c13d831ec7 with amountOutMin 0, paying this EOA; deadline = block time + ~99 990 s (MS Drainer kit)"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000500050005000500050005000500050005",
+   "tier": "T1",
+   "score": 85,
+   "source": "detector",
+   "family": "ms_new",
+   "labels": [
+    "bait_payable",
+    "kit_deposit"
+   ],
+   "first_seen": "2026-11-10T16:00:00Z",
+   "last_seen": "2026-11-23T07:52:29Z",
+   "victims": 6,
+   "drains": 6,
+   "usd": 7429.67,
+   "code_size": 5402,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0000500050005000500050005000500050005",
+     "role": "customer",
+     "share": 0,
+     "txs": 4
+    },
+    {
+     "wallet": "0xa0e0000600060006000600060006000600060006",
+     "role": "worker",
+     "share": 0,
+     "txs": 4
+    }
+   ],
+   "deployer": {
+    "address": "0xde91000500050005000500050005000500050005",
+    "tx": "0xde01011401140114011401140114011401140114011401140114011401140114",
+    "via": "toplevel",
+    "factory": null,
+    "block": 21700005,
+    "funder": "0xf0dd000300030003000300030003000300030003",
+    "funder_entity": null,
+    "funder_tx": "0xf0d1011c011c011c011c011c011c011c011c011c011c011c011c011c011c011c",
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "bait_payable",
+     "tx": "0xfee300e100e100e100e100e100e100e100e100e100e100e100e100e100e100e1",
+     "ts": "2026-11-23T08:00:00Z",
+     "detail": "victim 0xc0de000c000c000c000c000c000c000c000c000c paid 800000000000000000 wei to MS_NEW ClaimRewards: handler (customer) 0xa0e0000500050005000500050005000500050005, keeper (worker) 0xa0e0000600060006000600060006000600060006, depositer 0xde90000100010001000100010001000100010001, percent 20"
+    },
+    {
+     "type": "kit_deposit",
+     "tx": "0xfee300e200e200e200e200e200e200e200e200e200e200e200e200e200e200e2",
+     "ts": "2026-11-23T07:54:00Z",
+     "detail": "fresh EOA 0xde90000100010001000100010001000100010001 (nonce 1) called MS_NEW Deposit with gasLimit 900000 and 799000000000000000 wei (97% of its balance): Wallet Randomizer native leg"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000100010001000100010001000100010001",
+   "tier": "T1",
+   "score": 96,
+   "source": "scamsniffer",
+   "family": "f_7c41e2",
+   "labels": [
+    "cross_chain",
+    "family_match",
+    "seed",
+    "split_pull"
+   ],
+   "first_seen": "2026-11-12T06:00:00Z",
+   "last_seen": "2026-11-23T07:34:55Z",
+   "victims": 14,
+   "drains": 15,
+   "usd": 13905.45,
+   "code_size": 2310,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0000100010001000100010001000100010001",
+     "role": "affiliate",
+     "share": 0.8,
+     "txs": 14
+    },
+    {
+     "wallet": "0xa0e0000200020002000200020002000200020002",
+     "role": "operator",
+     "share": 0.2,
+     "txs": 14
+    }
+   ],
+   "deployer": {
+    "address": "0xde91000100010001000100010001000100010001",
+    "tx": "0xde01010f010f010f010f010f010f010f010f010f010f010f010f010f010f010f",
+    "via": "toplevel",
+    "factory": null,
+    "block": 21700001,
+    "funder": "0xf0dd000100010001000100010001000100010001",
+    "funder_entity": "FixedFloat",
+    "funder_tx": "0xf0d1011a011a011a011a011a011a011a011a011a011a011a011a011a011a011a",
+    "other_contracts": 2
+   },
+   "vasp_links": [
+    {
+     "subject": "0xd1a1000100010001000100010001000100010001",
+     "role": "drainer",
+     "counterparty": "0xb1ba000100010001000100010001000100010001",
+     "kind": "direct",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012401240124012401240124012401240124012401240124012401240124",
+     "tx_in": null,
+     "ts": "2026-11-23T07:00:00Z",
+     "amount": "1250.5",
+     "symbol": "USDT",
+     "usd": 1250.5,
+     "confidence": "high"
+    },
+    {
+     "subject": "0xa0e0000100010001000100010001000100010001",
+     "role": "payout",
+     "counterparty": "0xdec0000100010001000100010001000100010001",
+     "kind": "deposit_sweep",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012501250125012501250125012501250125012501250125012501250125",
+     "tx_in": "0xfe11011f011f011f011f011f011f011f011f011f011f011f011f011f011f011f",
+     "ts": "2026-11-23T05:00:00Z",
+     "amount": "8200",
+     "symbol": "USDT",
+     "usd": 8200.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xa0e0000100010001000100010001000100010001",
+     "role": "payout",
+     "counterparty": "0xdec0000200020002000200020002000200020002",
+     "kind": "deposit_sweep",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012601260126012601260126012601260126012601260126012601260126",
+     "tx_in": "0xfe11012001200120012001200120012001200120012001200120012001200120",
+     "ts": "2026-11-22T04:00:00Z",
+     "amount": "3100",
+     "symbol": "USDC",
+     "usd": 3100.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xa0e0000200020002000200020002000200020002",
+     "role": "payout",
+     "counterparty": "0xb1ba000200020002000200020002000200020002",
+     "kind": "direct",
+     "entity": "FixedFloat",
+     "category": "instant-exchange",
+     "tx": "0xfe12012701270127012701270127012701270127012701270127012701270127",
+     "tx_in": null,
+     "ts": "2026-11-23T02:00:00Z",
+     "amount": "0.42",
+     "symbol": "ETH",
+     "usd": 1302.0,
+     "confidence": "high"
+    },
+    {
+     "subject": "0xde91000100010001000100010001000100010001",
+     "role": "deployer",
+     "counterparty": "0xf0dd000100010001000100010001000100010001",
+     "kind": "funding",
+     "entity": "FixedFloat",
+     "category": "instant-exchange",
+     "tx": "0xfe12012801280128012801280128012801280128012801280128012801280128",
+     "tx_in": null,
+     "ts": "2026-10-14T10:00:00Z",
+     "amount": "0.05",
+     "symbol": "ETH",
+     "usd": 155.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "split_pull",
+     "tx": "0xfee300d400d400d400d400d400d400d400d400d400d400d400d400d400d400d4",
+     "ts": "2026-11-23T08:30:00Z",
+     "detail": "one tx pulled 0xdac17f958d2ee523a2206206994597c13d831ec7 from 1 victim(s) and split it: 0xa0e0000100010001000100010001000100010001 80% (affiliate), 0xa0e0000200020002000200020002000200020002 20% (operator)"
+    },
+    {
+     "type": "seed_activity",
+     "tx": "0xfee300d300d300d300d300d300d300d300d300d300d300d300d300d300d300d3",
+     "ts": "2026-11-23T08:00:00Z",
+     "detail": "approval from victim 0xc0de000100010001000100010001000100010001 (token 0xdac17f958d2ee523a2206206994597c13d831ec7) to a seed address"
+    },
+    {
+     "type": "split_pull",
+     "tx": "0xfee300d500d500d500d500d500d500d500d500d500d500d500d500d500d500d5",
+     "ts": "2026-11-23T05:00:00Z",
+     "detail": "one tx pulled 0xdac17f958d2ee523a2206206994597c13d831ec7 from 1 victim(s) and split it: 0xa0e0000100010001000100010001000100010001 80% (affiliate), 0xa0e0000200020002000200020002000200020002 20% (operator)"
+    },
+    {
+     "type": "split_pull",
+     "tx": "0xfee300d600d600d600d600d600d600d600d600d600d600d600d600d600d600d6",
+     "ts": "2026-11-22T23:00:00Z",
+     "detail": "one tx pulled 0xdac17f958d2ee523a2206206994597c13d831ec7 from 1 victim(s) and split it: 0xa0e0000100010001000100010001000100010001 80% (affiliate), 0xa0e0000200020002000200020002000200020002 20% (operator)"
+    },
+    {
+     "type": "bytecode",
+     "tx": "0xfee300d700d700d700d700d700d700d700d700d700d700d700d700d700d700d7",
+     "ts": "2026-11-15T02:00:00Z",
+     "detail": "red-flag selectors Claim(); family f_7c41e2 (skeleton) matches seed 0x5eed000100010001000100010001000100010001"
+    }
+   ],
+   "cluster": "op_3f2a9c1e07",
+   "cross_chain": [
+    {
+     "chain": "base",
+     "tier": "T2"
+    },
+    {
+     "chain": "bsc",
+     "tier": "T3"
+    }
+   ]
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000700070007000700070007000700070007",
+   "tier": "T1",
+   "score": 90,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "eip7702_operator",
+    "oneshot_hub",
+    "oneshot_multi"
+   ],
+   "first_seen": "2026-11-16T09:00:00Z",
+   "last_seen": "2026-11-23T06:32:26Z",
+   "victims": 6,
+   "drains": 6,
+   "usd": 1568.14,
+   "code_size": 0,
+   "verified": null,
+   "payouts": [
+    {
+     "wallet": "0xa0e0000a000a000a000a000a000a000a000a000a",
+     "role": "worker",
+     "share": 0,
+     "txs": 1
+    },
+    {
+     "wallet": "0xa0e0000b000b000b000b000b000b000b000b000b",
+     "role": "worker",
+     "share": 0,
+     "txs": 1
+    },
+    {
+     "wallet": "0xa0e0000c000c000c000c000c000c000c000c000c",
+     "role": "worker",
+     "share": 0,
+     "txs": 1
+    },
+    {
+     "wallet": "0xa0e0000d000d000d000d000d000d000d000d000d",
+     "role": "worker",
+     "share": 0,
+     "txs": 1
+    },
+    {
+     "wallet": "0xa0e0000e000e000e000e000e000e000e000e000e",
+     "role": "collector",
+     "share": 0,
+     "txs": 4
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0000e000e000e000e000e000e000e000e000e",
+     "role": "payout",
+     "counterparty": "0xb1ba000300030003000300030003000300030003",
+     "kind": "direct",
+     "entity": "ChangeNOW",
+     "category": "instant-exchange",
+     "tx": "0xfe12012b012b012b012b012b012b012b012b012b012b012b012b012b012b012b",
+     "tx_in": null,
+     "ts": "2026-11-23T06:00:00Z",
+     "amount": "900",
+     "symbol": "USDT",
+     "usd": 900.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "oneshot_spender",
+     "tx": "0xfee300e800e800e800e800e800e800e800e800e800e800e800e800e800e800e8",
+     "ts": "2026-11-23T09:00:00Z",
+     "detail": "one-shot EOA 0xa0e0000a000a000a000a000a000a000a000a000a (nonce 1) pulled 0xdac17f958d2ee523a2206206994597c13d831ec7 from 0xc0de001400140014001400140014001400140014 to 0xa0e0000e000e000e000e000e000e000e000e000e; this hub funded it and received its leftover with gas 25 200"
+    },
+    {
+     "type": "oneshot_spender",
+     "tx": "0xfee300eb00eb00eb00eb00eb00eb00eb00eb00eb00eb00eb00eb00eb00eb00eb",
+     "ts": "2026-11-23T06:00:00Z",
+     "detail": "one-shot EOA 0xa0e0000b000b000b000b000b000b000b000b000b (nonce 1) pulled 0xdac17f958d2ee523a2206206994597c13d831ec7 from 0xc0de001500150015001500150015001500150015 to 0xa0e0000e000e000e000e000e000e000e000e000e; this hub funded it and received its leftover with gas 25 200"
+    },
+    {
+     "type": "oneshot_spender",
+     "tx": "0xfee300ee00ee00ee00ee00ee00ee00ee00ee00ee00ee00ee00ee00ee00ee00ee",
+     "ts": "2026-11-23T03:00:00Z",
+     "detail": "one-shot EOA 0xa0e0000c000c000c000c000c000c000c000c000c (nonce 1) pulled 0xdac17f958d2ee523a2206206994597c13d831ec7 from 0xc0de001600160016001600160016001600160016 to 0xa0e0000e000e000e000e000e000e000e000e000e; this hub funded it and received its leftover with gas 25 200"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000900090009000900090009000900090009",
+   "tier": "T1",
+   "score": 82,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "ms_deadline",
+    "ms_deadline_pull"
+   ],
+   "first_seen": "2026-11-09T08:00:00Z",
+   "last_seen": "2026-11-23T05:12:49Z",
+   "victims": 8,
+   "drains": 9,
+   "usd": 2424.9,
+   "code_size": 0,
+   "verified": null,
+   "payouts": [
+    {
+     "wallet": "0xa0e0001200120012001200120012001200120012",
+     "role": "submitter",
+     "share": 0,
+     "txs": 3
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "ms_deadline",
+     "tx": "0xfee300f500f500f500f500f500f500f500f500f500f500f500f500f500f500f5",
+     "ts": "2026-11-23T05:00:00Z",
+     "detail": "permit submitted by 0xa0e0001200120012001200120012001200120012 for owner 0xc0de002800280028002800280028002800280028 with a millisecond deadline (deadline=1795000000000); tokens pulled from the owner in the same chunk"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1001a001a001a001a001a001a001a001a001a",
+   "tier": "T1",
+   "score": 92,
+   "source": "local",
+   "family": null,
+   "labels": [
+    "seed"
+   ],
+   "first_seen": "2026-11-05T06:00:00Z",
+   "last_seen": "2026-11-23T04:04:28Z",
+   "victims": 6,
+   "drains": 6,
+   "usd": 1403.31,
+   "code_size": 1544,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0001700170017001700170017001700170017",
+     "role": "affiliate",
+     "share": 0.85,
+     "txs": 2
+    },
+    {
+     "wallet": "0xa0e0001800180018001800180018001800180018",
+     "role": "operator",
+     "share": 0.15,
+     "txs": 2
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "seed_activity",
+     "tx": "0xfee3010201020102010201020102010201020102010201020102010201020102",
+     "ts": "2026-11-23T07:00:00Z",
+     "detail": "transfer from victim 0xc0de003700370037003700370037003700370037 (token 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48) to a seed address"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000300030003000300030003000300030003",
+   "tier": "T1",
+   "score": 88,
+   "source": "detector",
+   "family": "ms_drainer",
+   "labels": [
+    "bait_payable",
+    "bait_withdraw",
+    "kit_signature",
+    "redflag_selectors"
+   ],
+   "first_seen": "2026-11-21T08:00:00Z",
+   "last_seen": "2026-11-23T01:19:35Z",
+   "victims": 9,
+   "drains": 9,
+   "usd": 5447.87,
+   "code_size": 3120,
+   "verified": true,
+   "payouts": [
+    {
+     "wallet": "0xa0e0000300030003000300030003000300030003",
+     "role": "customer",
+     "share": 0,
+     "txs": 5
+    }
+   ],
+   "deployer": {
+    "address": "0xde91000300030003000300030003000300030003",
+    "tx": "0xde01011201120112011201120112011201120112011201120112011201120112",
+    "via": "etherscan",
+    "factory": "0xfac0000100010001000100010001000100010001",
+    "block": 21700003,
+    "funder": "0xf0dd000200020002000200020002000200020002",
+    "funder_entity": "Binance",
+    "funder_tx": "0xf0d1011b011b011b011b011b011b011b011b011b011b011b011b011b011b011b",
+    "other_contracts": 1
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0000300030003000300030003000300030003",
+     "role": "payout",
+     "counterparty": "0xdec0000300030003000300030003000300030003",
+     "kind": "deposit_sweep",
+     "entity": "OKX",
+     "category": "exchange",
+     "tx": "0xfe12012901290129012901290129012901290129012901290129012901290129",
+     "tx_in": "0xfe11012101210121012101210121012101210121012101210121012101210121",
+     "ts": "2026-11-22T22:00:00Z",
+     "amount": "2.1",
+     "symbol": "ETH",
+     "usd": 6510.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xde91000300030003000300030003000300030003",
+     "role": "deployer",
+     "counterparty": "0xf0dd000200020002000200020002000200020002",
+     "kind": "funding",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012a012a012a012a012a012a012a012a012a012a012a012a012a012a012a",
+     "tx_in": null,
+     "ts": "2026-10-16T22:00:00Z",
+     "amount": "0.1",
+     "symbol": "ETH",
+     "usd": 310.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "bait_payable",
+     "tx": "0xfee300dc00dc00dc00dc00dc00dc00dc00dc00dc00dc00dc00dc00dc00dc00dc",
+     "ts": "2026-11-23T09:00:00Z",
+     "detail": "victim 0xc0de000a000a000a000a000a000a000a000a000a paid 150000000000000000 wei to bait function SecurityUpdate; argument = customer payout wallet 0xa0e0000300030003000300030003000300030003"
+    },
+    {
+     "type": "bait_payable",
+     "tx": "0xfee300dd00dd00dd00dd00dd00dd00dd00dd00dd00dd00dd00dd00dd00dd00dd",
+     "ts": "2026-11-23T04:00:00Z",
+     "detail": "victim 0xc0de000b000b000b000b000b000b000b000b000b paid 420000000000000000 wei to bait function Claim; argument = customer payout wallet 0xa0e0000300030003000300030003000300030003; pass-through variant: the argument received msg.value in the same tx (contract balance unchanged)"
+    },
+    {
+     "type": "bait_withdraw",
+     "tx": "0xfee300de00de00de00de00de00de00de00de00de00de00de00de00de00de00de",
+     "ts": "2026-11-23T03:00:00Z",
+     "detail": "customer 0xa0e0000300030003000300030003000300030003 called withdraw(address) on the bait contract (to 0xa0e0000300030003000300030003000300030003)"
+    },
+    {
+     "type": "bytecode",
+     "tx": "0xfee300df00df00df00df00df00df00df00df00df00df00df00df00df00df00df",
+     "ts": "2026-11-10T22:00:00Z",
+     "detail": "red-flag selectors SecurityUpdate(address), Claim(address); kit selector fingerprint ms_drainer"
+    }
+   ],
+   "cluster": "op_3f2a9c1e07",
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000a000a000a000a000a000a000a000a000a",
+   "tier": "T1",
+   "score": 80,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "batch_approval_drain"
+   ],
+   "first_seen": "2026-11-15T08:00:00Z",
+   "last_seen": "2026-11-22T13:42:42Z",
+   "victims": 4,
+   "drains": 4,
+   "usd": 1743.63,
+   "code_size": 0,
+   "verified": null,
+   "payouts": [],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "batch_approval_drain",
+     "tx": "0xfee300f600f600f600f600f600f600f600f600f600f600f600f600f600f600f6",
+     "ts": "2026-11-23T02:00:00Z",
+     "detail": "victim 0xc0de002900290029002900290029002900290029 signed a batch of approvals (kit amount / max) and in the same tx its tokens went to this EOA (3 leg(s)); nothing came back to the victim"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "base",
+   "address": "0xd1a1001800180018001800180018001800180018",
+   "tier": "T2",
+   "score": 57,
+   "source": "detector",
+   "family": "f_7c41e2",
+   "labels": [
+    "family_match",
+    "pays_known_operator",
+    "split_pull"
+   ],
+   "first_seen": "2026-11-18T16:00:00Z",
+   "last_seen": "2026-11-23T09:49:37Z",
+   "victims": 20,
+   "drains": 20,
+   "usd": 7738.14,
+   "code_size": 2302,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0002900290029002900290029002900290029",
+     "role": "affiliate",
+     "share": 0.72,
+     "txs": 3
+    },
+    {
+     "wallet": "0xa0e0002a002a002a002a002a002a002a002a002a",
+     "role": "operator",
+     "share": 0.18,
+     "txs": 3
+    },
+    {
+     "wallet": "0xa0e0002b002b002b002b002b002b002b002b002b",
+     "role": "operator",
+     "share": 0.1,
+     "txs": 3
+    }
+   ],
+   "deployer": {
+    "address": "0xde91001800180018001800180018001800180018",
+    "tx": "0xde01011901190119011901190119011901190119011901190119011901190119",
+    "via": "etherscan",
+    "factory": null,
+    "block": 21700024,
+    "funder": "0xf0dd000500050005000500050005000500050005",
+    "funder_entity": null,
+    "funder_tx": "0xf0d1011e011e011e011e011e011e011e011e011e011e011e011e011e011e011e",
+    "other_contracts": 0
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0002900290029002900290029002900290029",
+     "role": "payout",
+     "counterparty": "0xdec0000500050005000500050005000500050005",
+     "kind": "deposit_sweep",
+     "entity": "Coinbase",
+     "category": "exchange",
+     "tx": "0xfe12013101310131013101310131013101310131013101310131013101310131",
+     "tx_in": "0xfe11012301230123012301230123012301230123012301230123012301230123",
+     "ts": "2026-11-23T00:00:00Z",
+     "amount": "760",
+     "symbol": "USDC",
+     "usd": 760.0,
+     "confidence": "medium"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "split_pull",
+     "tx": "0xfee3010c010c010c010c010c010c010c010c010c010c010c010c010c010c010c",
+     "ts": "2026-11-23T08:00:00Z",
+     "detail": "one tx pulled 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913 from 1 victim(s) and split it: 0xa0e0002900290029002900290029002900290029 72% (affiliate), 0xa0e0002a002a002a002a002a002a002a002a002a 18% (operator), 0xa0e0002b002b002b002b002b002b002b002b002b 10% (operator)"
+    },
+    {
+     "type": "pays_known_operator",
+     "tx": "0xfee3010d010d010d010d010d010d010d010d010d010d010d010d010d010d010d",
+     "ts": "2026-11-23T07:30:00Z",
+     "detail": "token transfer to known operator/payout wallet 0xa0e0002900290029002900290029002900290029"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "bsc",
+   "address": "0xd1a1001500150015001500150015001500150015",
+   "tier": "T2",
+   "score": 41,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "cluster_inherited",
+    "multi_victim_pull"
+   ],
+   "first_seen": "2026-11-18T16:00:00Z",
+   "last_seen": "2026-11-23T09:09:33Z",
+   "victims": 8,
+   "drains": 8,
+   "usd": 1998.88,
+   "code_size": 1980,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0002100210021002100210021002100210021",
+     "role": "affiliate",
+     "share": 0.7,
+     "txs": 2
+    },
+    {
+     "wallet": "0xa0e0002000200020002000200020002000200020",
+     "role": "operator",
+     "share": 0.3,
+     "txs": 2
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": "0xfac0000200020002000200020002000200020002",
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0002000200020002000200020002000200020",
+     "role": "payout",
+     "counterparty": "0xb1ba000600060006000600060006000600060006",
+     "kind": "direct",
+     "entity": "MEXC",
+     "category": "exchange",
+     "tx": "0xfe12013001300130013001300130013001300130013001300130013001300130",
+     "tx_in": null,
+     "ts": "2026-11-23T01:00:00Z",
+     "amount": "120000",
+     "symbol": "CAKE",
+     "usd": null,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "multi_victim_pull",
+     "tx": "0xfee3010901090109010901090109010901090109010901090109010901090109",
+     "ts": "2026-11-23T01:00:00Z",
+     "detail": "pulled tokens from 3 approving wallet(s) in one tx"
+    }
+   ],
+   "cluster": "op_9b0d44e1a2",
+   "cross_chain": []
+  },
+  {
+   "chain": "base",
+   "address": "0xd1a1000100010001000100010001000100010001",
+   "tier": "T2",
+   "score": 62,
+   "source": "detector",
+   "family": "f_7c41e2",
+   "labels": [
+    "cross_chain",
+    "cross_chain_t1"
+   ],
+   "first_seen": "2026-11-01T05:00:00Z",
+   "last_seen": "2026-11-23T08:37:01Z",
+   "victims": 17,
+   "drains": 17,
+   "usd": 14820.9,
+   "code_size": 2310,
+   "verified": false,
+   "payouts": [],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "cross_chain",
+     "tx": "0xfee3010b010b010b010b010b010b010b010b010b010b010b010b010b010b010b",
+     "ts": "2026-11-21T08:00:00Z",
+     "detail": "same address and opcode skeleton on eth (flagged T1 there)"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": [
+    {
+     "chain": "eth",
+     "tier": "T1"
+    },
+    {
+     "chain": "bsc",
+     "tier": "T3"
+    }
+   ]
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1001100110011001100110011001100110011",
+   "tier": "T2",
+   "score": 52,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "eoa_spender_multi",
+    "eoa_spender_pull",
+    "wa_scam"
+   ],
+   "first_seen": "2026-11-10T09:00:00Z",
+   "last_seen": "2026-11-23T07:33:41Z",
+   "victims": 11,
+   "drains": 11,
+   "usd": 8746.92,
+   "code_size": 0,
+   "verified": null,
+   "payouts": [
+    {
+     "wallet": "0xa0e0001400140014001400140014001400140014",
+     "role": "collector",
+     "share": 0,
+     "txs": 6
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0001400140014001400140014001400140014",
+     "role": "payout",
+     "counterparty": "0xb1ba000400040004000400040004000400040004",
+     "kind": "direct",
+     "entity": "Tornado Cash",
+     "category": "mixer",
+     "tx": "0xfe12012c012c012c012c012c012c012c012c012c012c012c012c012c012c012c",
+     "tx_in": null,
+     "ts": "2026-11-22T19:00:00Z",
+     "amount": "1.0",
+     "symbol": "ETH",
+     "usd": 3100.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "eoa_spender_pull",
+     "tx": "0xfee3010001000100010001000100010001000100010001000100010001000100",
+     "ts": "2026-11-23T08:00:00Z",
+     "detail": "EOA spender pulled 0xdac17f958d2ee523a2206206994597c13d831ec7 from victim 0xc0de003500350035003500350035003500350035 to 0xa0e0001400140014001400140014001400140014 (via permit2)"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "bsc",
+   "address": "0xd1a1001400140014001400140014001400140014",
+   "tier": "T2",
+   "score": 60,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "split_pull"
+   ],
+   "first_seen": "2026-11-17T17:00:00Z",
+   "last_seen": "2026-11-23T06:39:57Z",
+   "victims": 8,
+   "drains": 9,
+   "usd": 1363.46,
+   "code_size": 2650,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0001f001f001f001f001f001f001f001f001f",
+     "role": "affiliate",
+     "share": 0.9,
+     "txs": 2
+    },
+    {
+     "wallet": "0xa0e0002100210021002100210021002100210021",
+     "role": "operator",
+     "share": 0.1,
+     "txs": 2
+    }
+   ],
+   "deployer": {
+    "address": "0xde91001300130013001300130013001300130013",
+    "tx": "0xde01011801180118011801180118011801180118011801180118011801180118",
+    "via": "etherscan",
+    "factory": null,
+    "block": 21700020,
+    "funder": "0xf0dd000400040004000400040004000400040004",
+    "funder_entity": "Binance",
+    "funder_tx": "0xf0d1011d011d011d011d011d011d011d011d011d011d011d011d011d011d011d",
+    "other_contracts": 1
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0001f001f001f001f001f001f001f001f001f",
+     "role": "payout",
+     "counterparty": "0xdec0000400040004000400040004000400040004",
+     "kind": "deposit_sweep",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012e012e012e012e012e012e012e012e012e012e012e012e012e012e012e",
+     "tx_in": "0xfe11012201220122012201220122012201220122012201220122012201220122",
+     "ts": "2026-11-23T04:00:00Z",
+     "amount": "4400",
+     "symbol": "USDT",
+     "usd": 4400.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xde91001300130013001300130013001300130013",
+     "role": "deployer",
+     "counterparty": "0xf0dd000400040004000400040004000400040004",
+     "kind": "funding",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012f012f012f012f012f012f012f012f012f012f012f012f012f012f012f",
+     "tx_in": null,
+     "ts": "2026-10-12T18:00:00Z",
+     "amount": "0.3",
+     "symbol": "BNB",
+     "usd": 183.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "split_pull",
+     "tx": "0xfee3010801080108010801080108010801080108010801080108010801080108",
+     "ts": "2026-11-23T04:00:00Z",
+     "detail": "one tx pulled 0x55d398326f99059ff775485246999027b3197955 from 1 victim(s) and split it: 0xa0e0001f001f001f001f001f001f001f001f001f 90% (affiliate), 0xa0e0002100210021002100210021002100210021 10% (operator)"
+    }
+   ],
+   "cluster": "op_9b0d44e1a2",
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000800080008000800080008000800080008",
+   "tier": "T2",
+   "score": 55,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "prefund_hub",
+    "prefund_multi"
+   ],
+   "first_seen": "2026-11-19T21:00:00Z",
+   "last_seen": "2026-11-23T01:07:12Z",
+   "victims": 3,
+   "drains": 3,
+   "usd": 3435.16,
+   "code_size": 0,
+   "verified": null,
+   "payouts": [
+    {
+     "wallet": "0xa0e0000f000f000f000f000f000f000f000f000f",
+     "role": "worker",
+     "share": 0,
+     "txs": 1
+    },
+    {
+     "wallet": "0xa0e0001000100010001000100010001000100010",
+     "role": "worker",
+     "share": 0,
+     "txs": 1
+    },
+    {
+     "wallet": "0xa0e0001100110011001100110011001100110011",
+     "role": "worker",
+     "share": 0,
+     "txs": 1
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "oneshot_spender",
+     "tx": "0xfee300f000f000f000f000f000f000f000f000f000f000f000f000f000f000f0",
+     "ts": "2026-11-23T08:00:00Z",
+     "detail": "one-shot EOA 0xa0e0000f000f000f000f000f000f000f000f000f (nonce 2) pulled 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 from 0xc0de001e001e001e001e001e001e001e001e001e to 0xa0e0000f000f000f000f000f000f000f000f000f; this hub funded it"
+    },
+    {
+     "type": "oneshot_spender",
+     "tx": "0xfee300f200f200f200f200f200f200f200f200f200f200f200f200f200f200f2",
+     "ts": "2026-11-23T04:00:00Z",
+     "detail": "one-shot EOA 0xa0e0001000100010001000100010001000100010 (nonce 2) pulled 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 from 0xc0de001f001f001f001f001f001f001f001f001f to 0xa0e0000f000f000f000f000f000f000f000f000f; this hub funded it"
+    },
+    {
+     "type": "oneshot_spender",
+     "tx": "0xfee300f400f400f400f400f400f400f400f400f400f400f400f400f400f400f4",
+     "ts": "2026-11-23T00:00:00Z",
+     "detail": "one-shot EOA 0xa0e0001100110011001100110011001100110011 (nonce 2) pulled 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 from 0xc0de002000200020002000200020002000200020 to 0xa0e0000f000f000f000f000f000f000f000f000f; this hub funded it"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000d000d000d000d000d000d000d000d000d",
+   "tier": "T2",
+   "score": 58,
+   "source": "detector",
+   "family": "owner_collector",
+   "labels": [
+    "owner_collect",
+    "owner_gated_puller"
+   ],
+   "first_seen": "2026-11-19T03:00:00Z",
+   "last_seen": "2026-11-22T22:11:13Z",
+   "victims": 3,
+   "drains": 3,
+   "usd": 230.32,
+   "code_size": 1406,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0001300130013001300130013001300130013",
+     "role": "collector",
+     "share": 0,
+     "txs": 2
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "owner_collect",
+     "tx": "0xfee300fa00fa00fa00fa00fa00fa00fa00fa00fa00fa00fa00fa00fa00fa00fa",
+     "ts": "2026-11-23T04:00:00Z",
+     "detail": "owner-collector contract pulled 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 from 0xc0de002c002c002c002c002c002c002c002c002c to its caller/owner 0xa0e0001300130013001300130013001300130013 (owner_collector)"
+    },
+    {
+     "type": "bytecode",
+     "tx": "0xfee300fb00fb00fb00fb00fb00fb00fb00fb00fb00fb00fb00fb00fb00fb00fb",
+     "ts": "2026-11-19T16:00:00Z",
+     "detail": "owner-gated parametric transferFrom puller (CALLER==SLOAD check, no hard-coded address)"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000200020002000200020002000200020002",
+   "tier": "T2",
+   "score": 64,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "cluster_inherited",
+    "pays_known_operator",
+    "split_xtx"
+   ],
+   "first_seen": "2026-11-09T14:00:00Z",
+   "last_seen": "2026-11-22T21:00:26Z",
+   "victims": 5,
+   "drains": 5,
+   "usd": 1132.88,
+   "code_size": 1890,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0000100010001000100010001000100010001",
+     "role": "affiliate",
+     "share": 0.75,
+     "txs": 3
+    },
+    {
+     "wallet": "0xa0e0000200020002000200020002000200020002",
+     "role": "operator",
+     "share": 0.25,
+     "txs": 3
+    },
+    {
+     "wallet": "0xa0e0000300030003000300030003000300030003",
+     "role": "customer",
+     "share": 0,
+     "txs": 1
+    }
+   ],
+   "deployer": {
+    "address": "0xde91000100010001000100010001000100010001",
+    "tx": "0xde01011001100110011001100110011001100110011001100110011001100110",
+    "via": "etherscan",
+    "factory": null,
+    "block": 21700002,
+    "funder": "0xf0dd000100010001000100010001000100010001",
+    "funder_entity": "FixedFloat",
+    "funder_tx": "0xf0d1011a011a011a011a011a011a011a011a011a011a011a011a011a011a011a",
+    "other_contracts": 2
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0000100010001000100010001000100010001",
+     "role": "payout",
+     "counterparty": "0xdec0000100010001000100010001000100010001",
+     "kind": "deposit_sweep",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012501250125012501250125012501250125012501250125012501250125",
+     "tx_in": "0xfe11011f011f011f011f011f011f011f011f011f011f011f011f011f011f011f",
+     "ts": "2026-11-23T05:00:00Z",
+     "amount": "8200",
+     "symbol": "USDT",
+     "usd": 8200.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xa0e0000100010001000100010001000100010001",
+     "role": "payout",
+     "counterparty": "0xdec0000200020002000200020002000200020002",
+     "kind": "deposit_sweep",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012601260126012601260126012601260126012601260126012601260126",
+     "tx_in": "0xfe11012001200120012001200120012001200120012001200120012001200120",
+     "ts": "2026-11-22T04:00:00Z",
+     "amount": "3100",
+     "symbol": "USDC",
+     "usd": 3100.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xa0e0000200020002000200020002000200020002",
+     "role": "payout",
+     "counterparty": "0xb1ba000200020002000200020002000200020002",
+     "kind": "direct",
+     "entity": "FixedFloat",
+     "category": "instant-exchange",
+     "tx": "0xfe12012701270127012701270127012701270127012701270127012701270127",
+     "tx_in": null,
+     "ts": "2026-11-23T02:00:00Z",
+     "amount": "0.42",
+     "symbol": "ETH",
+     "usd": 1302.0,
+     "confidence": "high"
+    },
+    {
+     "subject": "0xa0e0000300030003000300030003000300030003",
+     "role": "payout",
+     "counterparty": "0xdec0000300030003000300030003000300030003",
+     "kind": "deposit_sweep",
+     "entity": "OKX",
+     "category": "exchange",
+     "tx": "0xfe12012901290129012901290129012901290129012901290129012901290129",
+     "tx_in": "0xfe11012101210121012101210121012101210121012101210121012101210121",
+     "ts": "2026-11-22T22:00:00Z",
+     "amount": "2.1",
+     "symbol": "ETH",
+     "usd": 6510.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xde91000100010001000100010001000100010001",
+     "role": "deployer",
+     "counterparty": "0xf0dd000100010001000100010001000100010001",
+     "kind": "funding",
+     "entity": "FixedFloat",
+     "category": "instant-exchange",
+     "tx": "0xfe12012801280128012801280128012801280128012801280128012801280128",
+     "tx_in": null,
+     "ts": "2026-10-14T10:00:00Z",
+     "amount": "0.05",
+     "symbol": "ETH",
+     "usd": 155.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "pays_known_operator",
+     "tx": "0xfee300d800d800d800d800d800d800d800d800d800d800d800d800d800d800d8",
+     "ts": "2026-11-23T07:00:00Z",
+     "detail": "token transfer to known operator/payout wallet 0xa0e0000100010001000100010001000100010001"
+    },
+    {
+     "type": "split_xtx",
+     "tx": "0xfee300db00db00db00db00db00db00db00db00db00db00db00db00db00db00db",
+     "ts": "2026-11-23T06:48:00Z",
+     "detail": "caller 0xca11000200020002000200020002000200020002 pulled 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 from victim 0xc0de000900090009000900090009000900090009 in 2 txs within 60 s and split it: 0xa0e0000100010001000100010001000100010001 75% (affiliate), 0xa0e0000200020002000200020002000200020002 25% (operator)"
+    }
+   ],
+   "cluster": "op_3f2a9c1e07",
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000600060006000600060006000600060006",
+   "tier": "T2",
+   "score": 70,
+   "source": "detector",
+   "family": "ms_generated",
+   "labels": [
+    "bait_payable",
+    "gen_back_transfer",
+    "kit_exact"
+   ],
+   "first_seen": "2026-11-20T18:00:00Z",
+   "last_seen": "2026-11-22T08:28:53Z",
+   "victims": 2,
+   "drains": 2,
+   "usd": 558.28,
+   "code_size": 912,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0000700070007000700070007000700070007",
+     "role": "customer",
+     "share": 0,
+     "txs": 2
+    },
+    {
+     "wallet": "0xa0e0000800080008000800080008000800080008",
+     "role": "kit_fee",
+     "share": 0,
+     "txs": 2
+    },
+    {
+     "wallet": "0xa0e0000900090009000900090009000900090009",
+     "role": "kit_wallet",
+     "share": 0,
+     "txs": 1
+    }
+   ],
+   "deployer": {
+    "address": "0xde91000600060006000600060006000600060006",
+    "tx": "0xde01011501150115011501150115011501150115011501150115011501150115",
+    "via": "toplevel",
+    "factory": null,
+    "block": 21700006,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "bait_payable",
+     "tx": "0xfee300e300e300e300e300e300e300e300e300e300e300e300e300e300e300e3",
+     "ts": "2026-11-23T06:00:00Z",
+     "detail": "victim 0xc0de000d000d000d000d000d000d000d000d000d paid 300000000000000000 wei to generated bait Connect: main receiver (customer) 0xa0e0000700070007000700070007000700070007, 10% to 0xa0e0000800080008000800080008000800080008; created 1800 s before; use #2"
+    },
+    {
+     "type": "gen_back_transfer",
+     "tx": "0xfee300e400e400e400e400e400e400e400e400e400e400e400e400e400e400e4",
+     "ts": "2026-11-22T04:00:00Z",
+     "detail": "deployer 0xde91000600060006000600060006000600060006 sent its leftover 12000000000000000 wei to 0xa0e0000900090009000900090009000900090009 after deploying this generated bait (kit 'back' transfer)"
+    },
+    {
+     "type": "bytecode",
+     "tx": "0xfee300e500e500e500e500e500e500e500e500e500e500e500e500e500e500e5",
+     "ts": "2026-11-22T04:00:00Z",
+     "detail": "exact runtime of the MS Contract Generator bait gen_v07"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "base",
+   "address": "0xd1a1001900190019001900190019001900190019",
+   "tier": "T3",
+   "score": 15,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "eoa_spender_pull"
+   ],
+   "first_seen": "2026-11-03T14:00:00Z",
+   "last_seen": "2026-11-23T08:34:08Z",
+   "victims": 9,
+   "drains": 9,
+   "usd": 2679.0,
+   "code_size": 0,
+   "verified": null,
+   "payouts": [
+    {
+     "wallet": "0xa0e0002c002c002c002c002c002c002c002c002c",
+     "role": "collector",
+     "share": 0,
+     "txs": 1
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "eoa_spender_pull",
+     "tx": "0xfee3010e010e010e010e010e010e010e010e010e010e010e010e010e010e010e",
+     "ts": "2026-11-23T03:00:00Z",
+     "detail": "EOA spender pulled 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913 from victim 0xc0de004300430043004300430043004300430043 to 0xa0e0002c002c002c002c002c002c002c002c002c (via transferFrom)"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000f000f000f000f000f000f000f000f000f",
+   "tier": "T3",
+   "score": 25,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "redflag_payable",
+    "redflag_selectors"
+   ],
+   "first_seen": "2026-11-04T09:00:00Z",
+   "last_seen": "2026-11-23T05:06:31Z",
+   "victims": 2,
+   "drains": 2,
+   "usd": 0,
+   "code_size": 1720,
+   "verified": false,
+   "payouts": [],
+   "deployer": {
+    "address": "0xde91000100010001000100010001000100010001",
+    "tx": "0xde01011101110111011101110111011101110111011101110111011101110111",
+    "via": "etherscan",
+    "factory": null,
+    "block": 21700015,
+    "funder": "0xf0dd000100010001000100010001000100010001",
+    "funder_entity": "FixedFloat",
+    "funder_tx": "0xf0d1011a011a011a011a011a011a011a011a011a011a011a011a011a011a011a",
+    "other_contracts": 2
+   },
+   "vasp_links": [
+    {
+     "subject": "0xde91000100010001000100010001000100010001",
+     "role": "deployer",
+     "counterparty": "0xf0dd000100010001000100010001000100010001",
+     "kind": "funding",
+     "entity": "FixedFloat",
+     "category": "instant-exchange",
+     "tx": "0xfe12012801280128012801280128012801280128012801280128012801280128",
+     "tx_in": null,
+     "ts": "2026-10-14T10:00:00Z",
+     "amount": "0.05",
+     "symbol": "ETH",
+     "usd": 155.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "redflag_payable",
+     "tx": "0xfee300fd00fd00fd00fd00fd00fd00fd00fd00fd00fd00fd00fd00fd00fd00fd",
+     "ts": "2026-11-22T20:00:00Z",
+     "detail": "payable call ClaimReward() with 50000000000000000 wei (native forwarding not visible without traces)"
+    },
+    {
+     "type": "bytecode",
+     "tx": "0xfee300fe00fe00fe00fe00fe00fe00fe00fe00fe00fe00fe00fe00fe00fe00fe",
+     "ts": "2026-11-22T20:00:00Z",
+     "detail": "red-flag selectors ClaimReward()"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "bsc",
+   "address": "0xd1a1000100010001000100010001000100010001",
+   "tier": "T3",
+   "score": 30,
+   "source": "detector",
+   "family": "f_7c41e2",
+   "labels": [
+    "cross_chain"
+   ],
+   "first_seen": "2026-11-12T17:00:00Z",
+   "last_seen": "2026-11-23T00:25:38Z",
+   "victims": 4,
+   "drains": 4,
+   "usd": 90.54,
+   "code_size": 2310,
+   "verified": false,
+   "payouts": [],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "cross_chain",
+     "tx": "0xfee3010a010a010a010a010a010a010a010a010a010a010a010a010a010a010a",
+     "ts": "2026-11-21T08:00:00Z",
+     "detail": "same address and opcode skeleton on eth (flagged T1 there)"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": [
+    {
+     "chain": "eth",
+     "tier": "T1"
+    },
+    {
+     "chain": "base",
+     "tier": "T2"
+    }
+   ]
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1001200120012001200120012001200120012",
+   "tier": "T3",
+   "score": 12,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "pays_inferred_operator",
+    "spoof_split"
+   ],
+   "first_seen": "2026-11-15T09:00:00Z",
+   "last_seen": "2026-11-22T19:12:39Z",
+   "victims": 2,
+   "drains": 2,
+   "usd": 10.08,
+   "code_size": 1311,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0001500150015001500150015001500150015",
+     "role": "affiliate",
+     "share": 0.7,
+     "txs": 2
+    },
+    {
+     "wallet": "0xa0e0001600160016001600160016001600160016",
+     "role": "operator",
+     "share": 0.3,
+     "txs": 2
+    }
+   ],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "split_pull",
+     "tx": "0xfee3010101010101010101010101010101010101010101010101010101010101",
+     "ts": "2026-11-22T14:00:00Z",
+     "detail": "one tx pulled 0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48 from 1 victim(s) and split it: 0xa0e0001500150015001500150015001500150015 70% (affiliate), 0xa0e0001600160016001600160016001600160016 30% (operator)"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000e000e000e000e000e000e000e000e000e",
+   "tier": "T3",
+   "score": 20,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "eip7702_sweeper"
+   ],
+   "first_seen": "2026-11-01T14:00:00Z",
+   "last_seen": "2026-11-16T23:12:33Z",
+   "victims": 2,
+   "drains": 2,
+   "usd": 150.23,
+   "code_size": 212,
+   "verified": false,
+   "payouts": [],
+   "deployer": {
+    "address": null,
+    "tx": null,
+    "via": "unknown",
+    "factory": null,
+    "block": null,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "eip7702_sweeper",
+     "tx": "0xfee300fc00fc00fc00fc00fc00fc00fc00fc00fc00fc00fc00fc00fc00fc00fc",
+     "ts": "2026-11-22T22:00:00Z",
+     "detail": "EIP-7702 delegate: 3 authorization(s); small CALLVALUE+PUSH20+CALL delegate without SLOAD"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1001000100010001000100010001000100010",
+   "tier": "T3",
+   "score": 18,
+   "source": "detector",
+   "family": null,
+   "labels": [
+    "multi_victim_pull"
+   ],
+   "first_seen": "2026-11-03T16:00:00Z",
+   "last_seen": "2026-11-16T10:49:57Z",
+   "victims": 3,
+   "drains": 2,
+   "usd": 285.75,
+   "code_size": 2044,
+   "verified": false,
+   "payouts": [],
+   "deployer": {
+    "address": "0xde91001000100010001000100010001000100010",
+    "tx": "0xde01011601160116011601160116011601160116011601160116011601160116",
+    "via": "etherscan",
+    "factory": null,
+    "block": 21700016,
+    "funder": null,
+    "funder_entity": null,
+    "funder_tx": null,
+    "other_contracts": 0
+   },
+   "vasp_links": [],
+   "evidence": [
+    {
+     "type": "multi_victim_pull",
+     "tx": "0xfee300ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff00ff",
+     "ts": "2026-11-23T06:00:00Z",
+     "detail": "pulled tokens from 3 approving wallet(s) in one tx"
+    }
+   ],
+   "cluster": null,
+   "cross_chain": []
+  },
+  {
+   "chain": "eth",
+   "address": "0xd1a1000400040004000400040004000400040004",
+   "tier": "T3",
+   "score": 22,
+   "source": "detector",
+   "family": "ms_drainer",
+   "labels": [
+    "kit_signature",
+    "redflag_selectors"
+   ],
+   "first_seen": "2026-11-05T07:00:00Z",
+   "last_seen": "2026-11-05T10:00:00Z",
+   "victims": 0,
+   "drains": 0,
+   "usd": 0,
+   "code_size": 2988,
+   "verified": false,
+   "payouts": [
+    {
+     "wallet": "0xa0e0000300030003000300030003000300030003",
+     "role": "customer",
+     "share": 0,
+     "txs": 1
+    }
+   ],
+   "deployer": {
+    "address": "0xde91000300030003000300030003000300030003",
+    "tx": "0xde01011301130113011301130113011301130113011301130113011301130113",
+    "via": "etherscan",
+    "factory": "0xfac0000100010001000100010001000100010001",
+    "block": 21700004,
+    "funder": "0xf0dd000200020002000200020002000200020002",
+    "funder_entity": "Binance",
+    "funder_tx": "0xf0d1011b011b011b011b011b011b011b011b011b011b011b011b011b011b011b",
+    "other_contracts": 1
+   },
+   "vasp_links": [
+    {
+     "subject": "0xa0e0000300030003000300030003000300030003",
+     "role": "payout",
+     "counterparty": "0xdec0000300030003000300030003000300030003",
+     "kind": "deposit_sweep",
+     "entity": "OKX",
+     "category": "exchange",
+     "tx": "0xfe12012901290129012901290129012901290129012901290129012901290129",
+     "tx_in": "0xfe11012101210121012101210121012101210121012101210121012101210121",
+     "ts": "2026-11-22T22:00:00Z",
+     "amount": "2.1",
+     "symbol": "ETH",
+     "usd": 6510.0,
+     "confidence": "medium"
+    },
+    {
+     "subject": "0xde91000300030003000300030003000300030003",
+     "role": "deployer",
+     "counterparty": "0xf0dd000200020002000200020002000200020002",
+     "kind": "funding",
+     "entity": "Binance",
+     "category": "exchange",
+     "tx": "0xfe12012a012a012a012a012a012a012a012a012a012a012a012a012a012a012a",
+     "tx_in": null,
+     "ts": "2026-10-16T22:00:00Z",
+     "amount": "0.1",
+     "symbol": "ETH",
+     "usd": 310.0,
+     "confidence": "high"
+    }
+   ],
+   "evidence": [
+    {
+     "type": "bytecode",
+     "tx": "0xfee300e000e000e000e000e000e000e000e000e000e000e000e000e000e000e0",
+     "ts": "2026-11-06T18:00:00Z",
+     "detail": "kit selector fingerprint ms_drainer; MS bait variant passthrough"
+    }
+   ],
+   "cluster": "op_3f2a9c1e07",
+   "cross_chain": []
+  }
+ ],
+ "drains": [
+  {
+   "chain": "base",
+   "tx": "0xfee2006800680068006800680068006800680068006800680068006800680068",
+   "ts": "2026-11-23T09:49:37Z",
+   "victim": "0xc0de006900690069006900690069006900690069",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "1079448.0",
+   "usd": null,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006900690069006900690069006900690069006900690069006900690069",
+   "ts": "2026-11-23T09:46:59Z",
+   "victim": "0xc0de006a006a006a006a006a006a006a006a006a",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.02937",
+   "usd": 91.05,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006200620062006200620062006200620062006200620062006200620062",
+   "ts": "2026-11-23T09:11:10Z",
+   "victim": "0xc0de006300630063006300630063006300630063",
+   "drainer": "0xd1a1006200620062006200620062006200620062",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "2862.7",
+   "usd": 2862.7,
+   "recipient": "0xa0e0005d005d005d005d005d005d005d005d005d"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003700370037003700370037003700370037003700370037003700370037",
+   "ts": "2026-11-23T09:09:48Z",
+   "victim": "0xc0de003800380038003800380038003800380038",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "376932.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2005500550055005500550055005500550055005500550055005500550055",
+   "ts": "2026-11-23T09:09:33Z",
+   "victim": "0xc0de005600560056005600560056005600560056",
+   "drainer": "0xd1a1001500150015001500150015001500150015",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "1816.47",
+   "usd": 1816.47,
+   "recipient": "0xa0e0002100210021002100210021002100210021"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002a002a002a002a002a002a002a002a002a002a002a002a002a002a002a",
+   "ts": "2026-11-23T08:53:52Z",
+   "victim": "0xc0de002b002b002b002b002b002b002b002b002b",
+   "drainer": "0xd1a1000b000b000b000b000b000b000b000b000b",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.148618",
+   "usd": 460.72,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006500650065006500650065006500650065006500650065006500650065",
+   "ts": "2026-11-23T08:37:01Z",
+   "victim": "0xc0de006600660066006600660066006600660066",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "1455.5",
+   "usd": 1455.5,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005d005d005d005d005d005d005d005d005d005d005d005d005d005d005d",
+   "ts": "2026-11-23T08:34:08Z",
+   "victim": "0xc0de005e005e005e005e005e005e005e005e005e",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "17.93",
+   "usd": 17.93,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2003100310031003100310031003100310031003100310031003100310031",
+   "ts": "2026-11-23T08:33:22Z",
+   "victim": "0xc0de003200320032003200320032003200320032",
+   "drainer": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.002222",
+   "usd": 6.89,
+   "recipient": "0xa0e0005c005c005c005c005c005c005c005c005c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002e002e002e002e002e002e002e002e002e002e002e002e002e002e002e",
+   "ts": "2026-11-23T07:52:29Z",
+   "victim": "0xc0de002f002f002f002f002f002f002f002f002f",
+   "drainer": "0xd1a1000500050005000500050005000500050005",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "102.03",
+   "usd": 102.03,
+   "recipient": "0xa0e0000500050005000500050005000500050005"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2005000500050005000500050005000500050005000500050005000500050",
+   "ts": "2026-11-23T07:48:04Z",
+   "victim": "0xc0de005100510051005100510051005100510051",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.043336",
+   "usd": 26.43,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000a000a000a000a000a000a000a000a000a000a000a000a000a000a000a",
+   "ts": "2026-11-23T07:34:55Z",
+   "victim": "0xc0de000b000b000b000b000b000b000b000b000b",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "525782611.0",
+   "usd": null,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000700070007000700070007000700070007000700070007000700070007",
+   "ts": "2026-11-23T07:33:41Z",
+   "victim": "0xc0de000800080008000800080008000800080008",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.001255",
+   "usd": 3.89,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001b001b001b001b001b001b001b001b001b001b001b001b001b001b001b",
+   "ts": "2026-11-23T07:28:29Z",
+   "victim": "0xc0de001c001c001c001c001c001c001c001c001c",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "101.06",
+   "usd": 101.06,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002c002c002c002c002c002c002c002c002c002c002c002c002c002c002c",
+   "ts": "2026-11-23T07:17:06Z",
+   "victim": "0xc0de002d002d002d002d002d002d002d002d002d",
+   "drainer": "0xd1a1000b000b000b000b000b000b000b000b000b",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.092096",
+   "usd": 285.5,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003800380038003800380038003800380038003800380038003800380038",
+   "ts": "2026-11-23T07:01:01Z",
+   "victim": "0xc0de003900390039003900390039003900390039",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "343.67",
+   "usd": 343.67,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003900390039003900390039003900390039003900390039003900390039",
+   "ts": "2026-11-23T06:53:44Z",
+   "victim": "0xc0de003a003a003a003a003a003a003a003a003a",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.885559",
+   "usd": 540.19,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004400440044004400440044004400440044004400440044004400440044",
+   "ts": "2026-11-23T06:39:57Z",
+   "victim": "0xc0de004500450045004500450045004500450045",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x55d398326f99059ff775485246999027b3197955",
+   "symbol": "USDT",
+   "amount": "11.18",
+   "usd": 11.18,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000f000f000f000f000f000f000f000f000f000f000f000f000f000f000f",
+   "ts": "2026-11-23T06:32:26Z",
+   "victim": "0xc0de001000100010001000100010001000100010",
+   "drainer": "0xd1a1000700070007000700070007000700070007",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "144.15",
+   "usd": 144.15,
+   "recipient": "0xa0e0000e000e000e000e000e000e000e000e000e"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003b003b003b003b003b003b003b003b003b003b003b003b003b003b003b",
+   "ts": "2026-11-23T06:23:27Z",
+   "victim": "0xc0de003c003c003c003c003c003c003c003c003c",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "755581057.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005f005f005f005f005f005f005f005f005f005f005f005f005f005f005f",
+   "ts": "2026-11-23T05:14:17Z",
+   "victim": "0xc0de006000600060006000600060006000600060",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.003355",
+   "usd": 10.4,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001100110011001100110011001100110011001100110011001100110011",
+   "ts": "2026-11-23T05:12:49Z",
+   "victim": "0xc0de001200120012001200120012001200120012",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "1591.78",
+   "usd": 1591.78,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2003300330033003300330033003300330033003300330033003300330033",
+   "ts": "2026-11-23T05:06:31Z",
+   "victim": "0xc0de003400340034003400340034003400340034",
+   "drainer": "0xd1a1000f000f000f000f000f000f000f000f000f",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "148827050.0",
+   "usd": null,
+   "recipient": "0xa0e0005a005a005a005a005a005a005a005a005a"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004e004e004e004e004e004e004e004e004e004e004e004e004e004e004e",
+   "ts": "2026-11-23T04:55:10Z",
+   "victim": "0xc0de004f004f004f004f004f004f004f004f004f",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "13.19",
+   "usd": 13.19,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006100610061006100610061006100610061006100610061006100610061",
+   "ts": "2026-11-23T04:55:07Z",
+   "victim": "0xc0de006200620062006200620062006200620062",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "736953938.0",
+   "usd": null,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003d003d003d003d003d003d003d003d003d003d003d003d003d003d003d",
+   "ts": "2026-11-23T04:50:35Z",
+   "victim": "0xc0de003e003e003e003e003e003e003e003e003e",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "56717518.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002400240024002400240024002400240024002400240024002400240024",
+   "ts": "2026-11-23T04:30:57Z",
+   "victim": "0xc0de002500250025002500250025002500250025",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.000894",
+   "usd": 2.77,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002500250025002500250025002500250025002500250025002500250025",
+   "ts": "2026-11-23T04:25:25Z",
+   "victim": "0xc0de002600260026002600260026002600260026",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "12039359.0",
+   "usd": null,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001600160016001600160016001600160016001600160016001600160016",
+   "ts": "2026-11-23T04:04:28Z",
+   "victim": "0xc0de001700170017001700170017001700170017",
+   "drainer": "0xd1a1001a001a001a001a001a001a001a001a001a",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.029924",
+   "usd": 92.76,
+   "recipient": "0xa0e0001700170017001700170017001700170017"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002100210021002100210021002100210021002100210021002100210021",
+   "ts": "2026-11-23T03:57:59Z",
+   "victim": "0xc0de002200220022002200220022002200220022",
+   "drainer": "0xd1a1001a001a001a001a001a001a001a001a001a",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "7.61",
+   "usd": 7.61,
+   "recipient": "0xa0e0001700170017001700170017001700170017"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001300130013001300130013001300130013001300130013001300130013",
+   "ts": "2026-11-23T03:50:21Z",
+   "victim": "0xc0de001400140014001400140014001400140014",
+   "drainer": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "1.764577",
+   "usd": 5470.19,
+   "recipient": "0xa0e0005c005c005c005c005c005c005c005c005c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001000100010001000100010001000100010001000100010001000100010",
+   "ts": "2026-11-23T03:47:50Z",
+   "victim": "0xc0de001100110011001100110011001100110011",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "2361146.0",
+   "usd": null,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000c000c000c000c000c000c000c000c000c000c000c000c000c000c000c",
+   "ts": "2026-11-23T03:39:57Z",
+   "victim": "0xc0de000d000d000d000d000d000d000d000d000d",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "76.96",
+   "usd": 76.96,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004300430043004300430043004300430043004300430043004300430043",
+   "ts": "2026-11-23T03:28:49Z",
+   "victim": "0xc0de004400440044004400440044004400440044",
+   "drainer": "0xd1a1001500150015001500150015001500150015",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "57.86",
+   "usd": 57.86,
+   "recipient": "0xa0e0002100210021002100210021002100210021"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005a005a005a005a005a005a005a005a005a005a005a005a005a005a005a",
+   "ts": "2026-11-23T03:27:03Z",
+   "victim": "0xc0de005b005b005b005b005b005b005b005b005b",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "599441.0",
+   "usd": null,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003a003a003a003a003a003a003a003a003a003a003a003a003a003a003a",
+   "ts": "2026-11-23T03:18:11Z",
+   "victim": "0xc0de003b003b003b003b003b003b003b003b003b",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.043321",
+   "usd": 26.43,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005b005b005b005b005b005b005b005b005b005b005b005b005b005b005b",
+   "ts": "2026-11-23T02:51:06Z",
+   "victim": "0xc0de005c005c005c005c005c005c005c005c005c",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.029339",
+   "usd": 90.95,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003500350035003500350035003500350035003500350035003500350035",
+   "ts": "2026-11-23T02:32:03Z",
+   "victim": "0xc0de003600360036003600360036003600360036",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "148494780.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001900190019001900190019001900190019001900190019001900190019",
+   "ts": "2026-11-23T02:29:57Z",
+   "victim": "0xc0de001a001a001a001a001a001a001a001a001a",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.058655",
+   "usd": 181.83,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000900090009000900090009000900090009000900090009000900090009",
+   "ts": "2026-11-23T02:21:53Z",
+   "victim": "0xc0de000a000a000a000a000a000a000a000a000a",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.006662",
+   "usd": 20.65,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2005100510051005100510051005100510051005100510051005100510051",
+   "ts": "2026-11-23T02:14:39Z",
+   "victim": "0xc0de005200520052005200520052005200520052",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "5.520576",
+   "usd": 3367.55,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000e000e000e000e000e000e000e000e000e000e000e000e000e000e000e",
+   "ts": "2026-11-23T01:38:09Z",
+   "victim": "0xc0de000f000f000f000f000f000f000f000f000f",
+   "drainer": "0xd1a1000700070007000700070007000700070007",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.034519",
+   "usd": 107.01,
+   "recipient": "0xa0e0000e000e000e000e000e000e000e000e000e"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000200020002000200020002000200020002000200020002000200020002",
+   "ts": "2026-11-23T01:36:41Z",
+   "victim": "0xc0de000300030003000300030003000300030003",
+   "drainer": "0xd1a1000500050005000500050005000500050005",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.007002",
+   "usd": 21.71,
+   "recipient": "0xa0e0000500050005000500050005000500050005"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002700270027002700270027002700270027002700270027002700270027",
+   "ts": "2026-11-23T01:19:35Z",
+   "victim": "0xc0de002800280028002800280028002800280028",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "2.85",
+   "usd": 2.85,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000d000d000d000d000d000d000d000d000d000d000d000d000d000d000d",
+   "ts": "2026-11-23T01:07:12Z",
+   "victim": "0xc0de000e000e000e000e000e000e000e000e000e",
+   "drainer": "0xd1a1000800080008000800080008000800080008",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.104254",
+   "usd": 323.19,
+   "recipient": "0xa0e0005d005d005d005d005d005d005d005d005d"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004000400040004000400040004000400040004000400040004000400040",
+   "ts": "2026-11-23T00:58:17Z",
+   "victim": "0xc0de004100410041004100410041004100410041",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.025837",
+   "usd": 15.76,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004200420042004200420042004200420042004200420042004200420042",
+   "ts": "2026-11-23T00:57:03Z",
+   "victim": "0xc0de004300430043004300430043004300430043",
+   "drainer": "0xd1a1001500150015001500150015001500150015",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "111.7",
+   "usd": 111.7,
+   "recipient": "0xa0e0002100210021002100210021002100210021"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004f004f004f004f004f004f004f004f004f004f004f004f004f004f004f",
+   "ts": "2026-11-23T00:55:52Z",
+   "victim": "0xc0de005000500050005000500050005000500050",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "571.79",
+   "usd": 571.79,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006a006a006a006a006a006a006a006a006a006a006a006a006a006a006a",
+   "ts": "2026-11-23T00:30:26Z",
+   "victim": "0xc0de006b006b006b006b006b006b006b006b006b",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.011514",
+   "usd": 35.69,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2005600560056005600560056005600560056005600560056005600560056",
+   "ts": "2026-11-23T00:25:38Z",
+   "victim": "0xc0de005700570057005700570057005700570057",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.047707",
+   "usd": 29.1,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006700670067006700670067006700670067006700670067006700670067",
+   "ts": "2026-11-23T00:12:37Z",
+   "victim": "0xc0de006800680068006800680068006800680068",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.019922",
+   "usd": 61.76,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001e001e001e001e001e001e001e001e001e001e001e001e001e001e001e",
+   "ts": "2026-11-23T00:04:48Z",
+   "victim": "0xc0de001f001f001f001f001f001f001f001f001f",
+   "drainer": "0xd1a1000b000b000b000b000b000b000b000b000b",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "1.351019",
+   "usd": 4188.16,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003e003e003e003e003e003e003e003e003e003e003e003e003e003e003e",
+   "ts": "2026-11-23T00:00:42Z",
+   "victim": "0xc0de003f003f003f003f003f003f003f003f003f",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "2.02",
+   "usd": 2.02,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002000200020002000200020002000200020002000200020002000200020",
+   "ts": "2026-11-22T23:42:28Z",
+   "victim": "0xc0de002100210021002100210021002100210021",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "6069.62",
+   "usd": 6069.62,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002f002f002f002f002f002f002f002f002f002f002f002f002f002f002f",
+   "ts": "2026-11-22T23:27:50Z",
+   "victim": "0xc0de003000300030003000300030003000300030",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "6.58",
+   "usd": 6.58,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005900590059005900590059005900590059005900590059005900590059",
+   "ts": "2026-11-22T23:24:27Z",
+   "victim": "0xc0de005a005a005a005a005a005a005a005a005a",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "2.44",
+   "usd": 2.44,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000800080008000800080008000800080008000800080008000800080008",
+   "ts": "2026-11-22T23:01:54Z",
+   "victim": "0xc0de000900090009000900090009000900090009",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "6.97",
+   "usd": 6.97,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004700470047004700470047004700470047004700470047004700470047",
+   "ts": "2026-11-22T22:50:37Z",
+   "victim": "0xc0de004800480048004800480048004800480048",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.007047",
+   "usd": 4.3,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002600260026002600260026002600260026002600260026002600260026",
+   "ts": "2026-11-22T22:44:01Z",
+   "victim": "0xc0de002700270027002700270027002700270027",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.821539",
+   "usd": 2546.77,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001f001f001f001f001f001f001f001f001f001f001f001f001f001f001f",
+   "ts": "2026-11-22T22:38:39Z",
+   "victim": "0xc0de002000200020002000200020002000200020",
+   "drainer": "0xd1a1000b000b000b000b000b000b000b000b000b",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.00118",
+   "usd": 3.66,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2005300530053005300530053005300530053005300530053005300530053",
+   "ts": "2026-11-22T22:38:16Z",
+   "victim": "0xc0de005400540054005400540054005400540054",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "259907.0",
+   "usd": null,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005e005e005e005e005e005e005e005e005e005e005e005e005e005e005e",
+   "ts": "2026-11-22T22:31:40Z",
+   "victim": "0xc0de005f005f005f005f005f005f005f005f005f",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.317216",
+   "usd": 983.37,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004100410041004100410041004100410041004100410041004100410041",
+   "ts": "2026-11-22T22:31:29Z",
+   "victim": "0xc0de004200420042004200420042004200420042",
+   "drainer": "0xd1a1006300630063006300630063006300630063",
+   "token": "0x55d398326f99059ff775485246999027b3197955",
+   "symbol": "USDT",
+   "amount": "1671.34",
+   "usd": 1671.34,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004500450045004500450045004500450045004500450045004500450045",
+   "ts": "2026-11-22T22:14:43Z",
+   "victim": "0xc0de004600460046004600460046004600460046",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "200.05",
+   "usd": 200.05,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001800180018001800180018001800180018001800180018001800180018",
+   "ts": "2026-11-22T22:11:13Z",
+   "victim": "0xc0de001900190019001900190019001900190019",
+   "drainer": "0xd1a1000d000d000d000d000d000d000d000d000d",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "156.92",
+   "usd": 156.92,
+   "recipient": "0xa0e0001300130013001300130013001300130013"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002200220022002200220022002200220022002200220022002200220022",
+   "ts": "2026-11-22T21:58:22Z",
+   "victim": "0xc0de002300230023002300230023002300230023",
+   "drainer": "0xd1a1000500050005000500050005000500050005",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.000756",
+   "usd": 2.34,
+   "recipient": "0xa0e0000500050005000500050005000500050005"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006000600060006000600060006000600060006000600060006000600060",
+   "ts": "2026-11-22T21:53:53Z",
+   "victim": "0xc0de006100610061006100610061006100610061",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.001101",
+   "usd": 3.41,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002900290029002900290029002900290029002900290029002900290029",
+   "ts": "2026-11-22T21:30:27Z",
+   "victim": "0xc0de002a002a002a002a002a002a002a002a002a",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.000874",
+   "usd": 2.71,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006300630063006300630063006300630063006300630063006300630063",
+   "ts": "2026-11-22T21:26:32Z",
+   "victim": "0xc0de006400640064006400640064006400640064",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "4.8",
+   "usd": 4.8,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001d001d001d001d001d001d001d001d001d001d001d001d001d001d001d",
+   "ts": "2026-11-22T21:14:35Z",
+   "victim": "0xc0de001e001e001e001e001e001e001e001e001e",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "622.06",
+   "usd": 622.06,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2003400340034003400340034003400340034003400340034003400340034",
+   "ts": "2026-11-22T21:08:31Z",
+   "victim": "0xc0de003500350035003500350035003500350035",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "1.831876",
+   "usd": 5678.82,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001400140014001400140014001400140014001400140014001400140014",
+   "ts": "2026-11-22T21:00:26Z",
+   "victim": "0xc0de001500150015001500150015001500150015",
+   "drainer": "0xd1a1000200020002000200020002000200020002",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "702904606.0",
+   "usd": null,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001a001a001a001a001a001a001a001a001a001a001a001a001a001a001a",
+   "ts": "2026-11-22T20:44:27Z",
+   "victim": "0xc0de001b001b001b001b001b001b001b001b001b",
+   "drainer": "0xd1a1000700070007000700070007000700070007",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "589858.0",
+   "usd": null,
+   "recipient": "0xa0e0000e000e000e000e000e000e000e000e000e"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006b006b006b006b006b006b006b006b006b006b006b006b006b006b006b",
+   "ts": "2026-11-22T20:41:23Z",
+   "victim": "0xc0de006c006c006c006c006c006c006c006c006c",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.007842",
+   "usd": 24.31,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000100010001000100010001000100010001000100010001000100010001",
+   "ts": "2026-11-22T20:39:46Z",
+   "victim": "0xc0de000200020002000200020002000200020002",
+   "drainer": "0xd1a1000800080008000800080008000800080008",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.030535",
+   "usd": 94.66,
+   "recipient": "0xa0e0005d005d005d005d005d005d005d005d005d"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005700570057005700570057005700570057005700570057005700570057",
+   "ts": "2026-11-22T20:13:10Z",
+   "victim": "0xc0de005800580058005800580058005800580058",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "279472.0",
+   "usd": null,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004b004b004b004b004b004b004b004b004b004b004b004b004b004b004b",
+   "ts": "2026-11-22T19:36:14Z",
+   "victim": "0xc0de004c004c004c004c004c004c004c004c004c",
+   "drainer": "0xd1a1006300630063006300630063006300630063",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "159.12",
+   "usd": 159.12,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000b000b000b000b000b000b000b000b000b000b000b000b000b000b000b",
+   "ts": "2026-11-22T19:12:39Z",
+   "victim": "0xc0de000c000c000c000c000c000c000c000c000c",
+   "drainer": "0xd1a1001200120012001200120012001200120012",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "5158983.0",
+   "usd": null,
+   "recipient": "0xa0e0001500150015001500150015001500150015"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000400040004000400040004000400040004000400040004000400040004",
+   "ts": "2026-11-22T18:26:43Z",
+   "victim": "0xc0de000500050005000500050005000500050005",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "147506485.0",
+   "usd": null,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003600360036003600360036003600360036003600360036003600360036",
+   "ts": "2026-11-22T18:14:30Z",
+   "victim": "0xc0de003700370037003700370037003700370037",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "1613975.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004900490049004900490049004900490049004900490049004900490049",
+   "ts": "2026-11-22T18:12:40Z",
+   "victim": "0xc0de004a004a004a004a004a004a004a004a004a",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "445511199.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2003000300030003000300030003000300030003000300030003000300030",
+   "ts": "2026-11-22T17:54:03Z",
+   "victim": "0xc0de003100310031003100310031003100310031",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "235337425.0",
+   "usd": null,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000300030003000300030003000300030003000300030003000300030003",
+   "ts": "2026-11-22T17:45:36Z",
+   "victim": "0xc0de000400040004000400040004000400040004",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "1128.38",
+   "usd": 1128.38,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2005400540054005400540054005400540054005400540054005400540054",
+   "ts": "2026-11-22T17:36:46Z",
+   "victim": "0xc0de005500550055005500550055005500550055",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x55d398326f99059ff775485246999027b3197955",
+   "symbol": "USDT",
+   "amount": "3.82",
+   "usd": 3.82,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000500050005000500050005000500050005000500050005000500050005",
+   "ts": "2026-11-22T17:14:53Z",
+   "victim": "0xc0de000600060006000600060006000600060006",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "750145282.0",
+   "usd": null,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002b002b002b002b002b002b002b002b002b002b002b002b002b002b002b",
+   "ts": "2026-11-22T16:58:47Z",
+   "victim": "0xc0de002c002c002c002c002c002c002c002c002c",
+   "drainer": "0xd1a1000200020002000200020002000200020002",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "57.14",
+   "usd": 57.14,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001700170017001700170017001700170017001700170017001700170017",
+   "ts": "2026-11-22T16:58:08Z",
+   "victim": "0xc0de001800180018001800180018001800180018",
+   "drainer": "0xd1a1000700070007000700070007000700070007",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "317.44",
+   "usd": 317.44,
+   "recipient": "0xa0e0000e000e000e000e000e000e000e000e000e"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004800480048004800480048004800480048004800480048004800480048",
+   "ts": "2026-11-22T16:57:17Z",
+   "victim": "0xc0de004900490049004900490049004900490049",
+   "drainer": "0xd1a1006300630063006300630063006300630063",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.004273",
+   "usd": 2.61,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005c005c005c005c005c005c005c005c005c005c005c005c005c005c005c",
+   "ts": "2026-11-22T16:56:27Z",
+   "victim": "0xc0de005d005d005d005d005d005d005d005d005d",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "341223.0",
+   "usd": null,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004a004a004a004a004a004a004a004a004a004a004a004a004a004a004a",
+   "ts": "2026-11-22T16:49:24Z",
+   "victim": "0xc0de004b004b004b004b004b004b004b004b004b",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "403657.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003c003c003c003c003c003c003c003c003c003c003c003c003c003c003c",
+   "ts": "2026-11-22T16:10:30Z",
+   "victim": "0xc0de003d003d003d003d003d003d003d003d003d",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "5.99",
+   "usd": 5.99,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006400640064006400640064006400640064006400640064006400640064",
+   "ts": "2026-11-22T16:08:20Z",
+   "victim": "0xc0de006500650065006500650065006500650065",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "2.559669",
+   "usd": 7934.97,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004c004c004c004c004c004c004c004c004c004c004c004c004c004c004c",
+   "ts": "2026-11-22T15:40:42Z",
+   "victim": "0xc0de004d004d004d004d004d004d004d004d004d",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.081614",
+   "usd": 49.78,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001c001c001c001c001c001c001c001c001c001c001c001c001c001c001c",
+   "ts": "2026-11-22T15:36:54Z",
+   "victim": "0xc0de001d001d001d001d001d001d001d001d001d",
+   "drainer": "0xd1a1000800080008000800080008000800080008",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "3017.31",
+   "usd": 3017.31,
+   "recipient": "0xa0e0005d005d005d005d005d005d005d005d005d"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2005800580058005800580058005800580058005800580058005800580058",
+   "ts": "2026-11-22T15:21:41Z",
+   "victim": "0xc0de005900590059005900590059005900590059",
+   "drainer": "0xd1a1006200620062006200620062006200620062",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "17.53",
+   "usd": 17.53,
+   "recipient": "0xa0e0005d005d005d005d005d005d005d005d005d"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006600660066006600660066006600660066006600660066006600660066",
+   "ts": "2026-11-22T14:09:50Z",
+   "victim": "0xc0de006700670067006700670067006700670067",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "447.72",
+   "usd": 447.72,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002800280028002800280028002800280028002800280028002800280028",
+   "ts": "2026-11-22T13:42:42Z",
+   "victim": "0xc0de002900290029002900290029002900290029",
+   "drainer": "0xd1a1000a000a000a000a000a000a000a000a000a",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "108191643.0",
+   "usd": null,
+   "recipient": "0xa0e0005a005a005a005a005a005a005a005a005a"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001500150015001500150015001500150015001500150015001500150015",
+   "ts": "2026-11-22T13:27:24Z",
+   "victim": "0xc0de001600160016001600160016001600160016",
+   "drainer": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "104.93",
+   "usd": 104.93,
+   "recipient": "0xa0e0005c005c005c005c005c005c005c005c005c"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2005200520052005200520052005200520052005200520052005200520052",
+   "ts": "2026-11-22T13:23:36Z",
+   "victim": "0xc0de005300530053005300530053005300530053",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x55d398326f99059ff775485246999027b3197955",
+   "symbol": "USDT",
+   "amount": "11.66",
+   "usd": 11.66,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006c006c006c006c006c006c006c006c006c006c006c006c006c006c006c",
+   "ts": "2026-11-22T13:04:37Z",
+   "victim": "0xc0de006d006d006d006d006d006d006d006d006d",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.129959",
+   "usd": 402.87,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004600460046004600460046004600460046004600460046004600460046",
+   "ts": "2026-11-22T12:56:57Z",
+   "victim": "0xc0de004700470047004700470047004700470047",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.074368",
+   "usd": 45.36,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2004d004d004d004d004d004d004d004d004d004d004d004d004d004d004d",
+   "ts": "2026-11-22T12:49:39Z",
+   "victim": "0xc0de004e004e004e004e004e004e004e004e004e",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "417.32",
+   "usd": 417.32,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2001200120012001200120012001200120012001200120012001200120012",
+   "ts": "2026-11-22T12:44:39Z",
+   "victim": "0xc0de001300130013001300130013001300130013",
+   "drainer": "0xd1a1000500050005000500050005000500050005",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "7287.41",
+   "usd": 7287.41,
+   "recipient": "0xa0e0000500050005000500050005000500050005"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2000600060006000600060006000600060006000600060006000600060006",
+   "ts": "2026-11-22T12:31:09Z",
+   "victim": "0xc0de000700070007000700070007000700070007",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "119.48",
+   "usd": 119.48,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2003f003f003f003f003f003f003f003f003f003f003f003f003f003f003f",
+   "ts": "2026-11-22T12:17:18Z",
+   "victim": "0xc0de004000400040004000400040004000400040",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "16.28",
+   "usd": 16.28,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002d002d002d002d002d002d002d002d002d002d002d002d002d002d002d",
+   "ts": "2026-11-22T11:40:08Z",
+   "victim": "0xc0de002e002e002e002e002e002e002e002e002e",
+   "drainer": "0xd1a1000500050005000500050005000500050005",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "2915560.0",
+   "usd": null,
+   "recipient": "0xa0e0000500050005000500050005000500050005"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2002300230023002300230023002300230023002300230023002300230023",
+   "ts": "2026-11-22T11:12:42Z",
+   "victim": "0xc0de002400240024002400240024002400240024",
+   "drainer": "0xd1a1000a000a000a000a000a000a000a000a000a",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "573837553.0",
+   "usd": null,
+   "recipient": "0xa0e0005a005a005a005a005a005a005a005a005a"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2003200320032003200320032003200320032003200320032003200320032",
+   "ts": "2026-11-22T11:12:26Z",
+   "victim": "0xc0de003300330033003300330033003300330033",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.282167",
+   "usd": 874.72,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2006e006e006e006e006e006e006e006e006e006e006e006e006e006e006e",
+   "ts": "2026-11-22T08:28:53Z",
+   "victim": "0xc0de006f006f006f006f006f006f006f006f006f",
+   "drainer": "0xd1a1000600060006000600060006000600060006",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "730002.0",
+   "usd": null,
+   "recipient": "0xa0e0000700070007000700070007000700070007"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2006d006d006d006d006d006d006d006d006d006d006d006d006d006d006d",
+   "ts": "2026-11-21T11:37:07Z",
+   "victim": "0xc0de006e006e006e006e006e006e006e006e006e",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "909235.0",
+   "usd": null,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2006f006f006f006f006f006f006f006f006f006f006f006f006f006f006f",
+   "ts": "2026-11-21T04:33:30Z",
+   "victim": "0xc0de007000700070007000700070007000700070",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "2.81",
+   "usd": 2.81,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2007000700070007000700070007000700070007000700070007000700070",
+   "ts": "2026-11-20T22:11:47Z",
+   "victim": "0xc0de007100710071007100710071007100710071",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "8722492.0",
+   "usd": null,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2007100710071007100710071007100710071007100710071007100710071",
+   "ts": "2026-11-20T10:22:11Z",
+   "victim": "0xc0de007200720072007200720072007200720072",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.111515",
+   "usd": 68.02,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2007700770077007700770077007700770077007700770077007700770077",
+   "ts": "2026-11-20T08:01:28Z",
+   "victim": "0xc0de007800780078007800780078007800780078",
+   "drainer": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.144053",
+   "usd": 446.56,
+   "recipient": "0xa0e0005c005c005c005c005c005c005c005c005c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2007600760076007600760076007600760076007600760076007600760076",
+   "ts": "2026-11-20T07:00:21Z",
+   "victim": "0xc0de007700770077007700770077007700770077",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.405628",
+   "usd": 1257.45,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2007500750075007500750075007500750075007500750075007500750075",
+   "ts": "2026-11-20T06:39:39Z",
+   "victim": "0xc0de007600760076007600760076007600760076",
+   "drainer": "0xd1a1001500150015001500150015001500150015",
+   "token": "0x55d398326f99059ff775485246999027b3197955",
+   "symbol": "USDT",
+   "amount": "2.79",
+   "usd": 2.79,
+   "recipient": "0xa0e0002100210021002100210021002100210021"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2007400740074007400740074007400740074007400740074007400740074",
+   "ts": "2026-11-19T19:25:27Z",
+   "victim": "0xc0de007500750075007500750075007500750075",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.012575",
+   "usd": 38.98,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2007200720072007200720072007200720072007200720072007200720072",
+   "ts": "2026-11-19T17:43:59Z",
+   "victim": "0xc0de007300730073007300730073007300730073",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.00397",
+   "usd": 2.42,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2007300730073007300730073007300730073007300730073007300730073",
+   "ts": "2026-11-19T17:03:36Z",
+   "victim": "0xc0de007400740074007400740074007400740074",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "204909708.0",
+   "usd": null,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2007800780078007800780078007800780078007800780078007800780078",
+   "ts": "2026-11-19T07:35:00Z",
+   "victim": "0xc0de007900790079007900790079007900790079",
+   "drainer": "0xd1a1001a001a001a001a001a001a001a001a001a",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "9.94",
+   "usd": 9.94,
+   "recipient": "0xa0e0001700170017001700170017001700170017"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2007900790079007900790079007900790079007900790079007900790079",
+   "ts": "2026-11-18T23:31:07Z",
+   "victim": "0xc0de007a007a007a007a007a007a007a007a007a",
+   "drainer": "0xd1a1006200620062006200620062006200620062",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.189986",
+   "usd": 588.96,
+   "recipient": "0xa0e0005d005d005d005d005d005d005d005d005d"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2007a007a007a007a007a007a007a007a007a007a007a007a007a007a007a",
+   "ts": "2026-11-18T07:36:53Z",
+   "victim": "0xc0de007b007b007b007b007b007b007b007b007b",
+   "drainer": "0xd1a1000f000f000f000f000f000f000f000f000f",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "105256072.0",
+   "usd": null,
+   "recipient": "0xa0e0005a005a005a005a005a005a005a005a005a"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2007c007c007c007c007c007c007c007c007c007c007c007c007c007c007c",
+   "ts": "2026-11-18T04:46:22Z",
+   "victim": "0xc0de007d007d007d007d007d007d007d007d007d",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "1121926.0",
+   "usd": null,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2007f007f007f007f007f007f007f007f007f007f007f007f007f007f007f",
+   "ts": "2026-11-18T03:51:23Z",
+   "victim": "0xc0de008000800080008000800080008000800080",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.001671",
+   "usd": 5.18,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2007e007e007e007e007e007e007e007e007e007e007e007e007e007e007e",
+   "ts": "2026-11-18T03:22:13Z",
+   "victim": "0xc0de007f007f007f007f007f007f007f007f007f",
+   "drainer": "0xd1a1000600060006000600060006000600060006",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.180089",
+   "usd": 558.28,
+   "recipient": "0xa0e0000700070007000700070007000700070007"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2007b007b007b007b007b007b007b007b007b007b007b007b007b007b007b",
+   "ts": "2026-11-17T22:12:34Z",
+   "victim": "0xc0de007c007c007c007c007c007c007c007c007c",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "1.166439",
+   "usd": 3615.96,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2007d007d007d007d007d007d007d007d007d007d007d007d007d007d007d",
+   "ts": "2026-11-17T11:34:38Z",
+   "victim": "0xc0de007e007e007e007e007e007e007e007e007e",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "43.67",
+   "usd": 43.67,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2008100810081008100810081008100810081008100810081008100810081",
+   "ts": "2026-11-17T00:49:26Z",
+   "victim": "0xc0de008200820082008200820082008200820082",
+   "drainer": "0xd1a1001a001a001a001a001a001a001a001a001a",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.291851",
+   "usd": 904.74,
+   "recipient": "0xa0e0001700170017001700170017001700170017"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2008200820082008200820082008200820082008200820082008200820082",
+   "ts": "2026-11-17T00:21:39Z",
+   "victim": "0xc0de008300830083008300830083008300830083",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "239.06",
+   "usd": 239.06,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2008400840084008400840084008400840084008400840084008400840084",
+   "ts": "2026-11-16T23:12:33Z",
+   "victim": "0xc0de008500850085008500850085008500850085",
+   "drainer": "0xd1a1000e000e000e000e000e000e000e000e000e",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.008412",
+   "usd": 26.08,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2008300830083008300830083008300830083008300830083008300830083",
+   "ts": "2026-11-16T21:57:18Z",
+   "victim": "0xc0de008400840084008400840084008400840084",
+   "drainer": "0xd1a1001500150015001500150015001500150015",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "1343292.0",
+   "usd": null,
+   "recipient": "0xa0e0002100210021002100210021002100210021"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2008000800080008000800080008000800080008000800080008000800080",
+   "ts": "2026-11-16T10:49:57Z",
+   "victim": "0xc0de008100810081008100810081008100810081",
+   "drainer": "0xd1a1001000100010001000100010001000100010",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.064163",
+   "usd": 198.91,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2008500850085008500850085008500850085008500850085008500850085",
+   "ts": "2026-11-16T09:56:06Z",
+   "victim": "0xc0de008600860086008600860086008600860086",
+   "drainer": "0xd1a1001500150015001500150015001500150015",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.011282",
+   "usd": 6.88,
+   "recipient": "0xa0e0002100210021002100210021002100210021"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2008800880088008800880088008800880088008800880088008800880088",
+   "ts": "2026-11-15T22:56:29Z",
+   "victim": "0xc0de008900890089008900890089008900890089",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "167.03",
+   "usd": 167.03,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2008600860086008600860086008600860086008600860086008600860086",
+   "ts": "2026-11-15T18:47:33Z",
+   "victim": "0xc0de008700870087008700870087008700870087",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "5.96",
+   "usd": 5.96,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2008900890089008900890089008900890089008900890089008900890089",
+   "ts": "2026-11-15T12:45:08Z",
+   "victim": "0xc0de008a008a008a008a008a008a008a008a008a",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.003497",
+   "usd": 10.84,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2008700870087008700870087008700870087008700870087008700870087",
+   "ts": "2026-11-15T11:41:56Z",
+   "victim": "0xc0de008800880088008800880088008800880088",
+   "drainer": "0xd1a1000b000b000b000b000b000b000b000b000b",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "3.13",
+   "usd": 3.13,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2008b008b008b008b008b008b008b008b008b008b008b008b008b008b008b",
+   "ts": "2026-11-15T06:30:43Z",
+   "victim": "0xc0de008c008c008c008c008c008c008c008c008c",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.88159",
+   "usd": 2732.93,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2008a008a008a008a008a008a008a008a008a008a008a008a008a008a008a",
+   "ts": "2026-11-15T04:13:29Z",
+   "victim": "0xc0de008b008b008b008b008b008b008b008b008b",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.226746",
+   "usd": 702.91,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2008e008e008e008e008e008e008e008e008e008e008e008e008e008e008e",
+   "ts": "2026-11-15T00:57:09Z",
+   "victim": "0xc0de000300030003000300030003000300030003",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "2.87",
+   "usd": 2.87,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2008c008c008c008c008c008c008c008c008c008c008c008c008c008c008c",
+   "ts": "2026-11-14T19:21:56Z",
+   "victim": "0xc0de000100010001000100010001000100010001",
+   "drainer": "0xd1a1001500150015001500150015001500150015",
+   "token": "0x55d398326f99059ff775485246999027b3197955",
+   "symbol": "USDT",
+   "amount": "3.18",
+   "usd": 3.18,
+   "recipient": "0xa0e0002100210021002100210021002100210021"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2008d008d008d008d008d008d008d008d008d008d008d008d008d008d008d",
+   "ts": "2026-11-14T12:20:49Z",
+   "victim": "0xc0de000200020002000200020002000200020002",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "29293636.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009000900090009000900090009000900090009000900090009000900090",
+   "ts": "2026-11-14T09:33:02Z",
+   "victim": "0xc0de000500050005000500050005000500050005",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "6.49",
+   "usd": 6.49,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2008f008f008f008f008f008f008f008f008f008f008f008f008f008f008f",
+   "ts": "2026-11-13T19:13:07Z",
+   "victim": "0xc0de000400040004000400040004000400040004",
+   "drainer": "0xd1a1000200020002000200020002000200020002",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "3.24",
+   "usd": 3.24,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009300930093009300930093009300930093009300930093009300930093",
+   "ts": "2026-11-13T16:35:58Z",
+   "victim": "0xc0de000800080008000800080008000800080008",
+   "drainer": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "44.73",
+   "usd": 44.73,
+   "recipient": "0xa0e0005c005c005c005c005c005c005c005c005c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009100910091009100910091009100910091009100910091009100910091",
+   "ts": "2026-11-13T15:07:51Z",
+   "victim": "0xc0de000600060006000600060006000600060006",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "42790577.0",
+   "usd": null,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2009200920092009200920092009200920092009200920092009200920092",
+   "ts": "2026-11-13T11:40:29Z",
+   "victim": "0xc0de000700070007000700070007000700070007",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.001092",
+   "usd": 3.39,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2009600960096009600960096009600960096009600960096009600960096",
+   "ts": "2026-11-13T08:05:15Z",
+   "victim": "0xc0de000b000b000b000b000b000b000b000b000b",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "58700437.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2009400940094009400940094009400940094009400940094009400940094",
+   "ts": "2026-11-13T07:04:12Z",
+   "victim": "0xc0de000900090009000900090009000900090009",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "853906.0",
+   "usd": null,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009500950095009500950095009500950095009500950095009500950095",
+   "ts": "2026-11-13T00:28:55Z",
+   "victim": "0xc0de000a000a000a000a000a000a000a000a000a",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "5.54",
+   "usd": 5.54,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee2009700970097009700970097009700970097009700970097009700970097",
+   "ts": "2026-11-12T23:14:13Z",
+   "victim": "0xc0de000c000c000c000c000c000c000c000c000c",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.00664",
+   "usd": 4.05,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009900990099009900990099009900990099009900990099009900990099",
+   "ts": "2026-11-12T04:12:16Z",
+   "victim": "0xc0de000e000e000e000e000e000e000e000e000e",
+   "drainer": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.003159",
+   "usd": 9.79,
+   "recipient": "0xa0e0005c005c005c005c005c005c005c005c005c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009800980098009800980098009800980098009800980098009800980098",
+   "ts": "2026-11-12T03:49:08Z",
+   "victim": "0xc0de000d000d000d000d000d000d000d000d000d",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "2138.96",
+   "usd": 2138.96,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2009c009c009c009c009c009c009c009c009c009c009c009c009c009c009c",
+   "ts": "2026-11-12T01:29:12Z",
+   "victim": "0xc0de001100110011001100110011001100110011",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.446444",
+   "usd": 1383.98,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2009a009a009a009a009a009a009a009a009a009a009a009a009a009a009a",
+   "ts": "2026-11-11T22:02:16Z",
+   "victim": "0xc0de000f000f000f000f000f000f000f000f000f",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "369186846.0",
+   "usd": null,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee2009b009b009b009b009b009b009b009b009b009b009b009b009b009b009b",
+   "ts": "2026-11-11T16:48:36Z",
+   "victim": "0xc0de001000100010001000100010001000100010",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "2438.27",
+   "usd": 2438.27,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009f009f009f009f009f009f009f009f009f009f009f009f009f009f009f",
+   "ts": "2026-11-11T08:57:14Z",
+   "victim": "0xc0de001400140014001400140014001400140014",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "621.51",
+   "usd": 621.51,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200a000a000a000a000a000a000a000a000a000a000a000a000a000a000a0",
+   "ts": "2026-11-11T07:31:50Z",
+   "victim": "0xc0de001500150015001500150015001500150015",
+   "drainer": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "2417.65",
+   "usd": 2417.65,
+   "recipient": "0xa0e0005c005c005c005c005c005c005c005c005c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009e009e009e009e009e009e009e009e009e009e009e009e009e009e009e",
+   "ts": "2026-11-11T06:06:58Z",
+   "victim": "0xc0de001300130013001300130013001300130013",
+   "drainer": "0xd1a1000a000a000a000a000a000a000a000a000a",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "34.79",
+   "usd": 34.79,
+   "recipient": "0xa0e0005a005a005a005a005a005a005a005a005a"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee2009d009d009d009d009d009d009d009d009d009d009d009d009d009d009d",
+   "ts": "2026-11-10T13:25:18Z",
+   "victim": "0xc0de001200120012001200120012001200120012",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "2.62",
+   "usd": 2.62,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200a200a200a200a200a200a200a200a200a200a200a200a200a200a200a2",
+   "ts": "2026-11-10T06:06:01Z",
+   "victim": "0xc0de001700170017001700170017001700170017",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.001628",
+   "usd": 5.05,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200a100a100a100a100a100a100a100a100a100a100a100a100a100a100a1",
+   "ts": "2026-11-09T14:33:42Z",
+   "victim": "0xc0de001600160016001600160016001600160016",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "2930.71",
+   "usd": 2930.71,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200a300a300a300a300a300a300a300a300a300a300a300a300a300a300a3",
+   "ts": "2026-11-09T10:54:38Z",
+   "victim": "0xc0de001800180018001800180018001800180018",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.033593",
+   "usd": 104.14,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200a500a500a500a500a500a500a500a500a500a500a500a500a500a500a5",
+   "ts": "2026-11-09T09:14:19Z",
+   "victim": "0xc0de001a001a001a001a001a001a001a001a001a",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "2.98",
+   "usd": 2.98,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200a400a400a400a400a400a400a400a400a400a400a400a400a400a400a4",
+   "ts": "2026-11-08T10:28:06Z",
+   "victim": "0xc0de001900190019001900190019001900190019",
+   "drainer": "0xd1a1000200020002000200020002000200020002",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.010474",
+   "usd": 32.47,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200a700a700a700a700a700a700a700a700a700a700a700a700a700a700a7",
+   "ts": "2026-11-07T18:57:58Z",
+   "victim": "0xc0de001c001c001c001c001c001c001c001c001c",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "121030044.0",
+   "usd": null,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200a800a800a800a800a800a800a800a800a800a800a800a800a800a800a8",
+   "ts": "2026-11-07T16:55:35Z",
+   "victim": "0xc0de001d001d001d001d001d001d001d001d001d",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "1.220322",
+   "usd": 744.4,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200a600a600a600a600a600a600a600a600a600a600a600a600a600a600a6",
+   "ts": "2026-11-07T12:04:54Z",
+   "victim": "0xc0de001b001b001b001b001b001b001b001b001b",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "335.58",
+   "usd": 335.58,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200a900a900a900a900a900a900a900a900a900a900a900a900a900a900a9",
+   "ts": "2026-11-07T03:47:50Z",
+   "victim": "0xc0de001e001e001e001e001e001e001e001e001e",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.035701",
+   "usd": 21.78,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200aa00aa00aa00aa00aa00aa00aa00aa00aa00aa00aa00aa00aa00aa00aa",
+   "ts": "2026-11-05T21:20:13Z",
+   "victim": "0xc0de001f001f001f001f001f001f001f001f001f",
+   "drainer": "0xd1a1000700070007000700070007000700070007",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.204827",
+   "usd": 634.96,
+   "recipient": "0xa0e0000e000e000e000e000e000e000e000e000e"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200ac00ac00ac00ac00ac00ac00ac00ac00ac00ac00ac00ac00ac00ac00ac",
+   "ts": "2026-11-04T23:40:11Z",
+   "victim": "0xc0de002100210021002100210021002100210021",
+   "drainer": "0xd1a1000e000e000e000e000e000e000e000e000e",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "124.15",
+   "usd": 124.15,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200ab00ab00ab00ab00ab00ab00ab00ab00ab00ab00ab00ab00ab00ab00ab",
+   "ts": "2026-11-04T12:25:33Z",
+   "victim": "0xc0de002000200020002000200020002000200020",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.077529",
+   "usd": 240.34,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200ad00ad00ad00ad00ad00ad00ad00ad00ad00ad00ad00ad00ad00ad00ad",
+   "ts": "2026-11-03T16:08:57Z",
+   "victim": "0xc0de002200220022002200220022002200220022",
+   "drainer": "0xd1a1000d000d000d000d000d000d000d000d000d",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "135818608.0",
+   "usd": null,
+   "recipient": "0xa0e0001300130013001300130013001300130013"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200b000b000b000b000b000b000b000b000b000b000b000b000b000b000b0",
+   "ts": "2026-11-03T00:25:03Z",
+   "victim": "0xc0de002500250025002500250025002500250025",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.075887",
+   "usd": 46.29,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200b200b200b200b200b200b200b200b200b200b200b200b200b200b200b2",
+   "ts": "2026-11-02T21:18:44Z",
+   "victim": "0xc0de002700270027002700270027002700270027",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "723063.0",
+   "usd": null,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200ae00ae00ae00ae00ae00ae00ae00ae00ae00ae00ae00ae00ae00ae00ae",
+   "ts": "2026-11-02T21:03:09Z",
+   "victim": "0xc0de002300230023002300230023002300230023",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "324063565.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200af00af00af00af00af00af00af00af00af00af00af00af00af00af00af",
+   "ts": "2026-11-02T18:37:51Z",
+   "victim": "0xc0de002400240024002400240024002400240024",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "43.55",
+   "usd": 43.55,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200b100b100b100b100b100b100b100b100b100b100b100b100b100b100b1",
+   "ts": "2026-11-02T17:13:08Z",
+   "victim": "0xc0de002600260026002600260026002600260026",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "103779709.0",
+   "usd": null,
+   "recipient": "0xa0e0000100010001000100010001000100010001"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200b300b300b300b300b300b300b300b300b300b300b300b300b300b300b3",
+   "ts": "2026-11-02T13:50:21Z",
+   "victim": "0xc0de002800280028002800280028002800280028",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.029923",
+   "usd": 92.76,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200b900b900b900b900b900b900b900b900b900b900b900b900b900b900b9",
+   "ts": "2026-11-02T04:36:00Z",
+   "victim": "0xc0de002e002e002e002e002e002e002e002e002e",
+   "drainer": "0xd1a1000d000d000d000d000d000d000d000d000d",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.023679",
+   "usd": 73.4,
+   "recipient": "0xa0e0001300130013001300130013001300130013"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200b600b600b600b600b600b600b600b600b600b600b600b600b600b600b6",
+   "ts": "2026-11-02T04:19:15Z",
+   "victim": "0xc0de002b002b002b002b002b002b002b002b002b",
+   "drainer": "0xd1a1001a001a001a001a001a001a001a001a001a",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.095293",
+   "usd": 295.41,
+   "recipient": "0xa0e0001700170017001700170017001700170017"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200b700b700b700b700b700b700b700b700b700b700b700b700b700b700b7",
+   "ts": "2026-11-02T04:08:28Z",
+   "victim": "0xc0de002c002c002c002c002c002c002c002c002c",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "BNB",
+   "amount": "0.027922",
+   "usd": 17.03,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200b800b800b800b800b800b800b800b800b800b800b800b800b800b800b8",
+   "ts": "2026-11-02T04:00:26Z",
+   "victim": "0xc0de002d002d002d002d002d002d002d002d002d",
+   "drainer": "0xd1a1001200120012001200120012001200120012",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "10.08",
+   "usd": 10.08,
+   "recipient": "0xa0e0001500150015001500150015001500150015"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200b500b500b500b500b500b500b500b500b500b500b500b500b500b500b5",
+   "ts": "2026-11-01T15:30:55Z",
+   "victim": "0xc0de002a002a002a002a002a002a002a002a002a",
+   "drainer": "0xd1a1000200020002000200020002000200020002",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.335494",
+   "usd": 1040.03,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200b400b400b400b400b400b400b400b400b400b400b400b400b400b400b4",
+   "ts": "2026-11-01T12:54:48Z",
+   "victim": "0xc0de002900290029002900290029002900290029",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+   "symbol": "USDC",
+   "amount": "91.89",
+   "usd": 91.89,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200bb00bb00bb00bb00bb00bb00bb00bb00bb00bb00bb00bb00bb00bb00bb",
+   "ts": "2026-10-31T17:06:34Z",
+   "victim": "0xc0de003000300030003000300030003000300030",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x532f27101965dd16442e59d40670faf5ebb142e4",
+   "symbol": "BRETT",
+   "amount": "237453993.0",
+   "usd": null,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200ba00ba00ba00ba00ba00ba00ba00ba00ba00ba00ba00ba00ba00ba00ba",
+   "ts": "2026-10-31T10:46:19Z",
+   "victim": "0xc0de002f002f002f002f002f002f002f002f002f",
+   "drainer": "0xd1a1001100110011001100110011001100110011",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.003563",
+   "usd": 11.05,
+   "recipient": "0xa0e0001400140014001400140014001400140014"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200bf00bf00bf00bf00bf00bf00bf00bf00bf00bf00bf00bf00bf00bf00bf",
+   "ts": "2026-10-31T01:40:42Z",
+   "victim": "0xc0de003400340034003400340034003400340034",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.179964",
+   "usd": 557.89,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200bd00bd00bd00bd00bd00bd00bd00bd00bd00bd00bd00bd00bd00bd00bd",
+   "ts": "2026-10-31T00:38:07Z",
+   "victim": "0xc0de003200320032003200320032003200320032",
+   "drainer": "0xd1a1000900090009000900090009000900090009",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.000674",
+   "usd": 2.09,
+   "recipient": "0xa0e0005e005e005e005e005e005e005e005e005e"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200be00be00be00be00be00be00be00be00be00be00be00be00be00be00be",
+   "ts": "2026-10-30T18:20:36Z",
+   "victim": "0xc0de003300330033003300330033003300330033",
+   "drainer": "0xd1a1000b000b000b000b000b000b000b000b000b",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "99256785.0",
+   "usd": null,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200bc00bc00bc00bc00bc00bc00bc00bc00bc00bc00bc00bc00bc00bc00bc",
+   "ts": "2026-10-30T15:46:41Z",
+   "victim": "0xc0de003100310031003100310031003100310031",
+   "drainer": "0xd1a1001a001a001a001a001a001a001a001a001a",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.029953",
+   "usd": 92.85,
+   "recipient": "0xa0e0001700170017001700170017001700170017"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200c400c400c400c400c400c400c400c400c400c400c400c400c400c400c4",
+   "ts": "2026-10-30T09:36:47Z",
+   "victim": "0xc0de003900390039003900390039003900390039",
+   "drainer": "0xd1a1001300130013001300130013001300130013",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "371100099.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200c500c500c500c500c500c500c500c500c500c500c500c500c500c500c5",
+   "ts": "2026-10-30T08:36:41Z",
+   "victim": "0xc0de003a003a003a003a003a003a003a003a003a",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "7.57",
+   "usd": 7.57,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200c200c200c200c200c200c200c200c200c200c200c200c200c200c200c2",
+   "ts": "2026-10-30T00:53:45Z",
+   "victim": "0xc0de003700370037003700370037003700370037",
+   "drainer": "0xd1a1001000100010001000100010001000100010",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.028012",
+   "usd": 86.84,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200c100c100c100c100c100c100c100c100c100c100c100c100c100c100c1",
+   "ts": "2026-10-29T18:43:25Z",
+   "victim": "0xc0de003600360036003600360036003600360036",
+   "drainer": "0xd1a1000300030003000300030003000300030003",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.237673",
+   "usd": 736.79,
+   "recipient": "0xa0e0000300030003000300030003000300030003"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200c000c000c000c000c000c000c000c000c000c000c000c000c000c000c0",
+   "ts": "2026-10-29T17:28:27Z",
+   "victim": "0xc0de003500350035003500350035003500350035",
+   "drainer": "0xd1a1000700070007000700070007000700070007",
+   "token": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+   "symbol": "WETH",
+   "amount": "0.117608",
+   "usd": 364.58,
+   "recipient": "0xa0e0000e000e000e000e000e000e000e000e000e"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200c300c300c300c300c300c300c300c300c300c300c300c300c300c300c3",
+   "ts": "2026-10-29T15:07:52Z",
+   "victim": "0xc0de003800380038003800380038003800380038",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "1.068607",
+   "usd": 3312.68,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200c600c600c600c600c600c600c600c600c600c600c600c600c600c600c6",
+   "ts": "2026-10-29T06:19:11Z",
+   "victim": "0xc0de003b003b003b003b003b003b003b003b003b",
+   "drainer": "0xd1a1001500150015001500150015001500150015",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "17689972.0",
+   "usd": null,
+   "recipient": "0xa0e0002100210021002100210021002100210021"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200c700c700c700c700c700c700c700c700c700c700c700c700c700c700c7",
+   "ts": "2026-10-28T15:21:07Z",
+   "victim": "0xc0de003c003c003c003c003c003c003c003c003c",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.048609",
+   "usd": 150.69,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200c800c800c800c800c800c800c800c800c800c800c800c800c800c800c8",
+   "ts": "2026-10-28T02:21:04Z",
+   "victim": "0xc0de003d003d003d003d003d003d003d003d003d",
+   "drainer": "0xd1a1006200620062006200620062006200620062",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.016658",
+   "usd": 51.64,
+   "recipient": "0xa0e0005d005d005d005d005d005d005d005d005d"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200ca00ca00ca00ca00ca00ca00ca00ca00ca00ca00ca00ca00ca00ca00ca",
+   "ts": "2026-10-27T19:26:53Z",
+   "victim": "0xc0de003f003f003f003f003f003f003f003f003f",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "64.11",
+   "usd": 64.11,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200c900c900c900c900c900c900c900c900c900c900c900c900c900c900c9",
+   "ts": "2026-10-27T11:38:42Z",
+   "victim": "0xc0de003e003e003e003e003e003e003e003e003e",
+   "drainer": "0xd1a1000500050005000500050005000500050005",
+   "token": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+   "symbol": "USDT",
+   "amount": "16.18",
+   "usd": 16.18,
+   "recipient": "0xa0e0000500050005000500050005000500050005"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200cb00cb00cb00cb00cb00cb00cb00cb00cb00cb00cb00cb00cb00cb00cb",
+   "ts": "2026-10-27T11:06:53Z",
+   "victim": "0xc0de004000400040004000400040004000400040",
+   "drainer": "0xd1a1001800180018001800180018001800180018",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.078935",
+   "usd": 244.7,
+   "recipient": "0xa0e0002900290029002900290029002900290029"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200cc00cc00cc00cc00cc00cc00cc00cc00cc00cc00cc00cc00cc00cc00cc",
+   "ts": "2026-10-26T22:57:01Z",
+   "victim": "0xc0de004100410041004100410041004100410041",
+   "drainer": "0xd1a1000c000c000c000c000c000c000c000c000c",
+   "token": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+   "symbol": "PEPE",
+   "amount": "627196975.0",
+   "usd": null,
+   "recipient": "0xa0e0005c005c005c005c005c005c005c005c005c"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200cd00cd00cd00cd00cd00cd00cd00cd00cd00cd00cd00cd00cd00cd00cd",
+   "ts": "2026-10-26T02:16:52Z",
+   "victim": "0xc0de004200420042004200420042004200420042",
+   "drainer": "0xd1a1000100010001000100010001000100010001",
+   "token": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+   "symbol": "USDC",
+   "amount": "1638.55",
+   "usd": 1638.55,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200cf00cf00cf00cf00cf00cf00cf00cf00cf00cf00cf00cf00cf00cf00cf",
+   "ts": "2026-10-25T21:08:35Z",
+   "victim": "0xc0de004400440044004400440044004400440044",
+   "drainer": "0xd1a1000b000b000b000b000b000b000b000b000b",
+   "token": "0x0000000000000000000000000000000000000000",
+   "symbol": "ETH",
+   "amount": "0.031175",
+   "usd": 96.64,
+   "recipient": "0xa0e0005b005b005b005b005b005b005b005b005b"
+  },
+  {
+   "chain": "eth",
+   "tx": "0xfee200ce00ce00ce00ce00ce00ce00ce00ce00ce00ce00ce00ce00ce00ce00ce",
+   "ts": "2026-10-25T16:55:07Z",
+   "victim": "0xc0de004300430043004300430043004300430043",
+   "drainer": "0xd1a1000a000a000a000a000a000a000a000a000a",
+   "token": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+   "symbol": "USDC",
+   "amount": "1708.84",
+   "usd": 1708.84,
+   "recipient": "0xa0e0005a005a005a005a005a005a005a005a005a"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200d000d000d000d000d000d000d000d000d000d000d000d000d000d000d0",
+   "ts": "2026-10-25T14:02:18Z",
+   "victim": "0xc0de004500450045004500450045004500450045",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "3776471.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  },
+  {
+   "chain": "base",
+   "tx": "0xfee200d200d200d200d200d200d200d200d200d200d200d200d200d200d200d2",
+   "ts": "2026-10-25T09:54:07Z",
+   "victim": "0xc0de004700470047004700470047004700470047",
+   "drainer": "0xd1a1001900190019001900190019001900190019",
+   "token": "0x4200000000000000000000000000000000000006",
+   "symbol": "WETH",
+   "amount": "0.012513",
+   "usd": 38.79,
+   "recipient": "0xa0e0002c002c002c002c002c002c002c002c002c"
+  },
+  {
+   "chain": "bsc",
+   "tx": "0xfee200d100d100d100d100d100d100d100d100d100d100d100d100d100d100d1",
+   "ts": "2026-10-24T20:18:18Z",
+   "victim": "0xc0de004600460046004600460046004600460046",
+   "drainer": "0xd1a1001400140014001400140014001400140014",
+   "token": "0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82",
+   "symbol": "CAKE",
+   "amount": "55430272.0",
+   "usd": null,
+   "recipient": "0xa0e0001f001f001f001f001f001f001f001f001f"
+  }
+ ],
+ "operators": [
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000100010001000100010001000100010001",
+   "drainers": 2,
+   "affiliates": 2,
+   "usd": 13905.45
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001400140014001400140014001400140014",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 8746.92
+  },
+  {
+   "chain": "base",
+   "wallet": "0xa0e0002900290029002900290029002900290029",
+   "drainers": 1,
+   "affiliates": 1,
+   "usd": 7738.14
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000500050005000500050005000500050005",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 7429.67
+  },
+  {
+   "chain": "bsc",
+   "wallet": "0xa0e0001f001f001f001f001f001f001f001f001f",
+   "drainers": 2,
+   "affiliates": 2,
+   "usd": 7395.53
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000300030003000300030003000300030003",
+   "drainers": 3,
+   "affiliates": 0,
+   "usd": 6580.75
+  },
+  {
+   "chain": "base",
+   "wallet": "0xa0e0002c002c002c002c002c002c002c002c002c",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 2679.0
+  },
+  {
+   "chain": "bsc",
+   "wallet": "0xa0e0002100210021002100210021002100210021",
+   "drainers": 2,
+   "affiliates": 1,
+   "usd": 1998.88
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000e000e000e000e000e000e000e000e000e",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 1568.14
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001700170017001700170017001700170017",
+   "drainers": 1,
+   "affiliates": 1,
+   "usd": 1403.31
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000700070007000700070007000700070007",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 558.28
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001300130013001300130013001300130013",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 230.32
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001500150015001500150015001500150015",
+   "drainers": 1,
+   "affiliates": 1,
+   "usd": 10.08
+  },
+  {
+   "chain": "bsc",
+   "wallet": "0xa0e0002000200020002000200020002000200020",
+   "drainers": 2,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000200020002000200020002000200020002",
+   "drainers": 2,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "base",
+   "wallet": "0xa0e0002a002a002a002a002a002a002a002a002a",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "base",
+   "wallet": "0xa0e0002b002b002b002b002b002b002b002b002b",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000600060006000600060006000600060006",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000800080008000800080008000800080008",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000900090009000900090009000900090009",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000a000a000a000a000a000a000a000a000a",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000b000b000b000b000b000b000b000b000b",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000c000c000c000c000c000c000c000c000c",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000d000d000d000d000d000d000d000d000d",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0000f000f000f000f000f000f000f000f000f",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001000100010001000100010001000100010",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001100110011001100110011001100110011",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001200120012001200120012001200120012",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001600160016001600160016001600160016",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  },
+  {
+   "chain": "eth",
+   "wallet": "0xa0e0001800180018001800180018001800180018",
+   "drainers": 1,
+   "affiliates": 0,
+   "usd": 0
+  }
+ ],
+ "families": [
+  {
+   "family": "f_7c41e2",
+   "members": 4,
+   "seed_members": 1,
+   "chains": [
+    "base",
+    "bsc",
+    "eth"
+   ]
+  },
+  {
+   "family": "ms_drainer",
+   "members": 2,
+   "seed_members": 0,
+   "chains": [
+    "eth"
+   ]
+  },
+  {
+   "family": "verify_account",
+   "members": 1,
+   "seed_members": 0,
+   "chains": [
+    "bsc"
+   ]
+  },
+  {
+   "family": "ms_new",
+   "members": 1,
+   "seed_members": 0,
+   "chains": [
+    "eth"
+   ]
+  },
+  {
+   "family": "owner_collector",
+   "members": 1,
+   "seed_members": 0,
+   "chains": [
+    "eth"
+   ]
+  },
+  {
+   "family": "ms_generated",
+   "members": 1,
+   "seed_members": 0,
+   "chains": [
+    "eth"
+   ]
+  }
+ ],
+ "deployers": [
+  {
+   "chain": "eth",
+   "address": "0xde91000100010001000100010001000100010001",
+   "contracts": 3,
+   "funder_entity": "FixedFloat"
+  },
+  {
+   "chain": "bsc",
+   "address": "0xde91001300130013001300130013001300130013",
+   "contracts": 2,
+   "funder_entity": "Binance"
+  },
+  {
+   "chain": "eth",
+   "address": "0xde91000300030003000300030003000300030003",
+   "contracts": 2,
+   "funder_entity": "Binance"
+  },
+  {
+   "chain": "eth",
+   "address": "0xde91000500050005000500050005000500050005",
+   "contracts": 1,
+   "funder_entity": null
+  },
+  {
+   "chain": "base",
+   "address": "0xde91001800180018001800180018001800180018",
+   "contracts": 1,
+   "funder_entity": null
+  },
+  {
+   "chain": "eth",
+   "address": "0xde91000600060006000600060006000600060006",
+   "contracts": 1,
+   "funder_entity": null
+  },
+  {
+   "chain": "eth",
+   "address": "0xde91001000100010001000100010001000100010",
+   "contracts": 1,
+   "funder_entity": null
+  }
+ ],
+ "vasps": [
+  {
+   "entity": "Binance",
+   "category": "exchange",
+   "links": 6,
+   "usd": 17443.5,
+   "subjects": 5,
+   "deposit_addresses": [
+    "0xdec0000100010001000100010001000100010001",
+    "0xdec0000200020002000200020002000200020002",
+    "0xdec0000400040004000400040004000400040004"
+   ],
+   "chains": [
+    "bsc",
+    "eth"
+   ]
+  },
+  {
+   "entity": "OKX",
+   "category": "exchange",
+   "links": 1,
+   "usd": 6510.0,
+   "subjects": 1,
+   "deposit_addresses": [
+    "0xdec0000300030003000300030003000300030003"
+   ],
+   "chains": [
+    "eth"
+   ]
+  },
+  {
+   "entity": "Tornado Cash",
+   "category": "mixer",
+   "links": 1,
+   "usd": 3100.0,
+   "subjects": 1,
+   "deposit_addresses": [],
+   "chains": [
+    "eth"
+   ]
+  },
+  {
+   "entity": "FixedFloat",
+   "category": "instant-exchange",
+   "links": 2,
+   "usd": 1457.0,
+   "subjects": 2,
+   "deposit_addresses": [],
+   "chains": [
+    "eth"
+   ]
+  },
+  {
+   "entity": "ChangeNOW",
+   "category": "instant-exchange",
+   "links": 1,
+   "usd": 900.0,
+   "subjects": 1,
+   "deposit_addresses": [],
+   "chains": [
+    "eth"
+   ]
+  },
+  {
+   "entity": "Coinbase",
+   "category": "exchange",
+   "links": 1,
+   "usd": 760.0,
+   "subjects": 1,
+   "deposit_addresses": [
+    "0xdec0000500050005000500050005000500050005"
+   ],
+   "chains": [
+    "base"
+   ]
+  },
+  {
+   "entity": "Stargate",
+   "category": "bridge",
+   "links": 1,
+   "usd": 640.0,
+   "subjects": 1,
+   "deposit_addresses": [],
+   "chains": [
+    "eth"
+   ]
+  },
+  {
+   "entity": "MEXC",
+   "category": "exchange",
+   "links": 1,
+   "usd": 0,
+   "subjects": 1,
+   "deposit_addresses": [],
+   "chains": [
+    "bsc"
+   ]
+  }
+ ],
+ "daily": [
+  {
+   "date": "2026-10-24",
+   "usd": 0,
+   "victims": 1,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-10-25",
+   "usd": 1844.27,
+   "victims": 4,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-10-26",
+   "usd": 1638.55,
+   "victims": 2,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-10-27",
+   "usd": 324.99,
+   "victims": 3,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-10-28",
+   "usd": 202.33,
+   "victims": 2,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-10-29",
+   "usd": 4414.05,
+   "victims": 4,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-10-30",
+   "usd": 187.26,
+   "victims": 5,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-10-31",
+   "usd": 571.03,
+   "victims": 4,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-11-01",
+   "usd": 1131.92,
+   "victims": 2,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-02",
+   "usd": 532.23,
+   "victims": 9,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-11-03",
+   "usd": 46.29,
+   "victims": 2,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-04",
+   "usd": 364.49,
+   "victims": 2,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-05",
+   "usd": 634.96,
+   "victims": 1,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-07",
+   "usd": 1101.76,
+   "victims": 4,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-11-08",
+   "usd": 32.47,
+   "victims": 1,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-11-09",
+   "usd": 3037.83,
+   "victims": 3,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-10",
+   "usd": 7.67,
+   "victims": 2,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-11",
+   "usd": 5512.22,
+   "victims": 5,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-11-12",
+   "usd": 3536.78,
+   "victims": 4,
+   "new_contracts": 3
+  },
+  {
+   "date": "2026-11-13",
+   "usd": 56.9,
+   "victims": 7,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-11-14",
+   "usd": 9.67,
+   "victims": 3,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-11-15",
+   "usd": 3625.67,
+   "victims": 7,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-16",
+   "usd": 231.87,
+   "victims": 4,
+   "new_contracts": 1
+  },
+  {
+   "date": "2026-11-17",
+   "usd": 4803.43,
+   "victims": 4,
+   "new_contracts": 1
+  },
+  {
+   "date": "2026-11-18",
+   "usd": 1152.42,
+   "victims": 5,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-19",
+   "usd": 51.34,
+   "victims": 4,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-20",
+   "usd": 1774.82,
+   "victims": 5,
+   "new_contracts": 2
+  },
+  {
+   "date": "2026-11-21",
+   "usd": 2.81,
+   "victims": 2,
+   "new_contracts": 1
+  },
+  {
+   "date": "2026-11-22",
+   "usd": 40506.97,
+   "victims": 56,
+   "new_contracts": 0
+  },
+  {
+   "date": "2026-11-23",
+   "usd": 24751.03,
+   "victims": 53,
+   "new_contracts": 0
+  }
+ ],
+ "clusters": [
+  {
+   "cluster": "op_3f2a9c1e07",
+   "chain": "eth",
+   "members": [
+    "0xd1a1000100010001000100010001000100010001",
+    "0xd1a1000200020002000200020002000200020002",
+    "0xd1a1000300030003000300030003000300030003",
+    "0xd1a1000400040004000400040004000400040004"
+   ],
+   "shared_wallets": [
+    "0xa0e0000100010001000100010001000100010001",
+    "0xa0e0000200020002000200020002000200020002",
+    "0xa0e0000300030003000300030003000300030003"
+   ],
+   "max_tier": "T1",
+   "tiers": {
+    "T1": 2,
+    "T2": 1,
+    "T3": 1
+   }
+  },
+  {
+   "cluster": "op_9b0d44e1a2",
+   "chain": "bsc",
+   "members": [
+    "0xd1a1001300130013001300130013001300130013",
+    "0xd1a1001400140014001400140014001400140014",
+    "0xd1a1001500150015001500150015001500150015"
+   ],
+   "shared_wallets": [
+    "0xa0e0001f001f001f001f001f001f001f001f001f",
+    "0xa0e0002000200020002000200020002000200020",
+    "0xa0e0002100210021002100210021002100210021"
+   ],
+   "max_tier": "T1",
+   "tiers": {
+    "T1": 1,
+    "T2": 2
+   }
+  }
+ ]
+}
