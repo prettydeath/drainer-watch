@@ -198,6 +198,7 @@ def build_payload(conn, now=None):
                               family=r["family"], labels=json.loads(r["labels"] or "[]"), first_seen=r["first_seen"] or "",
                               last_seen=r["last_seen"] or "", victims=r["victims"], drains=r["drains"], usd=_num(r["usd"]),
                               code_size=r["code_size"], verified=None if r["verified"] is None else bool(r["verified"]),
+                              contract_name=r["contract_name"] if "contract_name" in r.keys() else None,
                               payouts=pay.get(k, []), deployer=deployer, vasp_links=vl, evidence=ev.get(k, []),
                               cluster=r["cluster"] if "cluster" in r.keys() else None,
                               cross_chain=twins.get(k, [])))

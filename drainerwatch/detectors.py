@@ -34,6 +34,33 @@ def d1_seed_activity(chain, transfers, approvals, seeds):
     return ev, legs
 
 
+# ---------- redemption guard (D2 / R-A1) ----------
+D2_MIN_RECIPIENTS, D2_MAX_RECIPIENTS = 2, 3     # drainer splits: operator + affiliate, sometimes +1
+REDEEM_MIN_RECIPIENTS = 4
+
+
+def mint_burn_by_tx(transfers):
+    """tx -> list of mint/burn transfers (Transfer from or to the zero address, value > 0)."""
+    out = defaultdict(list)
+    for t in transfers:
+        if (t["frm"] == ZERO) != (t["to"] == ZERO) and t["value"] > 0:
+            out[t["tx"]].append(t)
+    return out
+
+
+def redemption_like(mintburn, tx_to, recipients):
+    """A vault/share-token redemption or deposit batch is not a drainer split. True if the same tx
+    * mints/burns a token whose contract is tx.to, or burns tokens held by tx.to (the contract burns its own shares), or
+    * pays >= 4 distinct recipients with at least one burn per recipient (one redemption per payee).
+    mintburn: mint/burn transfers of that tx; tx_to: lower-case tx.to; recipients: distinct pull-leg recipients."""
+    if not mintburn:
+        return False
+    burns = [m for m in mintburn if m["to"] == ZERO]
+    if any(m["token"] == tx_to for m in mintburn) or any(m["frm"] == tx_to for m in burns):
+        return True
+    return len(set(recipients)) >= REDEEM_MIN_RECIPIENTS and len(burns) >= len(set(recipients))
+
+
 # ---------- D2 split_pull ----------
 def d2_candidates(transfers, is_allowed):
     """Same tx, same token, same `from` (victim), >=2 distinct recipients, largest recipient share in [0.60, 0.95]."""
@@ -58,11 +85,16 @@ def d2_candidates(transfers, is_allowed):
     return out
 
 
-def d2_confirm(cand, tx, is_contract, is_allowed, is_legit=lambda a: False):
+def d2_confirm(cand, tx, is_contract, is_allowed, is_legit=lambda a: False, mintburn=()):
     """tx = {'from','to'} of the transaction. Requires tx.from != victim, tx.to a non-allowlisted contract, victim an
-    EOA (or 7702-delegated EOA: is_contract() must return False for those). Returns dict or None."""
+    EOA (or 7702-delegated EOA: is_contract() must return False for those), 2-3 recipients, and no vault-redemption
+    shape (mint/burn in the same tx, see redemption_like). mintburn: mint/burn transfers of this tx. Returns dict or None."""
     to, frm = (tx.get("to") or "").lower(), (tx.get("from") or "").lower()
     victim = cand["victim"]
+    if not D2_MIN_RECIPIENTS <= len(cand["per"]) <= D2_MAX_RECIPIENTS:
+        return None
+    if redemption_like(mintburn, to, cand["per"]):
+        return None
     if not to or frm == victim or to == victim or to == cand["token"] or is_allowed(to):
         return None
     if not is_contract(to) or is_contract(victim):
@@ -479,14 +511,20 @@ def k7k8_tx(approvals, transfers, kit_amounts, is_legit):
 
 
 # ---------- R-A1 cross-tx split ----------
-def xsplit_groups(transfers, txs, is_allowed):
+def xsplit_groups(transfers, txs, is_allowed, mintburn=None):
     """Pull legs keyed by (caller=tx.from, subject, victim, token) where victim = Transfer.from != tx.from. subject =
     tx.from when tx.to is the token itself / Permit2 (EOA spender), else tx.to (puller contract). Only keys seen in
     >= 2 different txs are returned (single-tx splits are D2's job). Needs tx.from/to of every tx (receipts source)."""
     groups = defaultdict(list)
+    rec_by_tx = defaultdict(set)
+    for t in transfers:
+        if t["frm"] != ZERO and t["to"] != ZERO:
+            rec_by_tx[t["tx"]].add(t["to"])
     for t in transfers:
         tx = txs.get(t["tx"])
         if not tx or t["value"] == 0 or t["frm"] == ZERO or t["to"] == ZERO:
+            continue
+        if mintburn and redemption_like(mintburn.get(t["tx"]), (tx.get("to") or "").lower(), rec_by_tx[t["tx"]]):
             continue
         caller, to = tx["from"], tx.get("to")
         if not to or t["frm"] in (caller, to) or t["to"] in (caller, t["frm"]):

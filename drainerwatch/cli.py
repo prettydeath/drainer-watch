@@ -67,6 +67,7 @@ def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
         enrich.resolve_deployers(conn, es, rpcs, labels)
         enrich.walk_payouts(conn, es, labels, prices)
         enrich.cross_chain_check(conn, rpcs)
+        enrich.lookup_verified(conn, es, rows)
         rows = rollup.rollup(conn, sd, labels)
     except Exception as e:  # noqa: BLE001 - enrichment is best effort
         log.warning("enrichment failed: %s", redact(e))

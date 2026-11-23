@@ -54,6 +54,7 @@ class Ctx:
         self.subjects: dict = {}
         self.pending_x: dict = {}
         self.xs_carry: list = []          # R-A1: pull legs of the last blocks of the previous chunk
+        self.mb: dict = {}                # tx -> mint/burn transfers (redemption guard), pruned with xs_carry
         self.xs_batch: set = set()        # R-A1: txs moving tokens of >= 3 owners (batch relayers), never a split leg
         self.bait_set = None              # D7: contracts known as bait (bait_payable evidence / ms_drainer kit code)
         self.chunk_tr, self.chunk_ap = [], []   # parsed logs of the current chunk (the ETH block pass reuses them)
@@ -293,6 +294,9 @@ def process_chunk(ctx, a, b, logs, txmeta=None):
         ctx.full_txs = True
     tr, ap = parse_logs(logs)
     ctx.chunk_tr, ctx.chunk_ap = tr, ap
+    mb = detectors.mint_burn_by_tx(tr)
+    if ctx.full_txs:
+        ctx.mb.update(mb)
     ctx.stats["logs"] += len(logs)
     ctx.stats["transfers"] += len(tr)
     ctx.stats["approvals"] += len(ap)
@@ -346,7 +350,7 @@ def process_chunk(ctx, a, b, logs, txmeta=None):
             continue
         if int(c["victim"], 16) <= 0xFFFF:
             continue                            # precompile-like 'victim'
-        res = detectors.d2_confirm(c, t, ctx.is_contract, ctx.is_allowed, ctx.is_allowed)
+        res = detectors.d2_confirm(c, t, ctx.is_contract, ctx.is_allowed, ctx.is_allowed, mb.get(c["tx"], ()))
         if not res:
             continue
         spoof = ctx.tokens.is_spoof(c["token"])   # fake lookalike token: address-poisoning pattern, T3 at most
@@ -456,11 +460,13 @@ def xsplit(ctx, tr):
         froms[t["tx"]].add(t["frm"])
     ctx.xs_batch |= {h for h, f in froms.items() if len(f) >= 3}
     groups = detectors.xsplit_groups([t for t in ctx.xs_carry + tr if t["tx"] not in ctx.xs_batch], ctx.txs,
-                                     ctx.is_allowed)
+                                     ctx.is_allowed, ctx.mb)
     last = max((t["block"] for t in tr), default=None)
     keep = int(XSPLIT_MAX_GAP / CHAINS[chain].get("block_sec", 12)) + 1     # blocks spanning the max gap
     ctx.xs_carry = [t for t in ctx.xs_carry + tr if last is not None and t["block"] >= last - keep]
     ctx.xs_batch &= {t["tx"] for t in ctx.xs_carry}
+    keep_tx = {t["tx"] for t in ctx.xs_carry}
+    ctx.mb = {h: v for h, v in ctx.mb.items() if h in keep_tx}
     ctx.stats["xsplit_groups"] += len(groups)
     if not groups:
         return

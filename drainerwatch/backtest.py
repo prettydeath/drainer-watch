@@ -155,6 +155,8 @@ def run(incidents_path, split, blind=True, window=1, budget_sec=7200, cache_path
                       "k7k8_kit_router_swap", "d7_ms_new", "d7_ms_generated",
                       "tx_lookups", "code_lookups", "nonce_lookups"):
                 stats[k] += st.get(k, 0)
+        rows0 = rollup.rollup(conn, det_seeds, labels)
+        enrich.lookup_verified(conn, es, rows0, cap=60)       # verified-source cap (T3) for split-only evidence
         flagged = {r["address"]: r for r in rollup.rollup(conn, det_seeds, labels)}
         payouts = defaultdict(list)
         for p in conn.execute("SELECT drainer,wallet,role,share,txs FROM payouts"):

@@ -4,9 +4,10 @@ import json
 from collections import defaultdict
 
 from . import bytecode
-from .constants import (AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, MALICIOUS_CATEGORIES, MIN_USD,
+from .constants import (ALLOWLIST, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, MALICIOUS_CATEGORIES, MIN_USD,
                         ONESHOT_T1_WORKERS, POOL_SELECTORS)
 from .detectors import assign_tier, score_of, window_hit
+from .seeds import load_allowlist
 from .util import iso, now_ts
 
 ACTIVITY_TYPES = {"seed_activity", "split_pull", "pays_known_operator", "redflag_payable", "multi_victim_pull",
@@ -20,11 +21,53 @@ STATIC_LABELS = {"redflag_selectors", "family_match", "kit_signature", "owner_ga
 KIT_EVIDENCE_LABELS = ("owner_collect", "ms_deadline", "batch_approval_drain", "kit_router_swap", "kit_deposit",
                        "gen_back_transfer")
 TIER_RANK = {"T1": 1, "T2": 2, "T3": 3}
+# an Etherscan-verified contract whose only behavioural evidence is one of these is capped at T3: drainers are virtually
+# always unverified, while generic multicall utilities and vault/redemption contracts look exactly like a split pull
+VERIFIED_CAPPABLE = {"split_pull", "split_xtx", "multi_victim_pull", "cross_chain", "redflag_selectors",
+                     "pays_inferred_operator"}
+BEHAVIOUR_CAPPED = {"split_pull", "split_xtx", "multi_victim_pull"}
 
 
-def is_legit_subject(chain, addr, labels, dep=None, sels=None):
-    """Never flag: wallet-attribution labelled with a non-malicious category, anything created by a known AMM factory
-    (when the creator/factory is resolved), or a contract whose dispatcher has token0()+token1() (AMM pair/pool)."""
+def allow_sets():
+    """chain -> benign addresses: built-in ALLOWLIST + data/allowlist.csv (global and per chain)."""
+    return {ch: set(ALLOWLIST) | load_allowlist(ch) for ch in CHAINS}
+
+
+def purge_allowlisted(conn, allow):
+    """Drop stored evidence / drains / payouts of allowlisted subjects and payout wallets, whatever was recorded before
+    the address was added to the allowlist."""
+    n = 0
+    for ch, addrs in allow.items():
+        for a in addrs:
+            for sql, args in (("DELETE FROM evidence WHERE chain=? AND address=?", (ch, a)),
+                              ("DELETE FROM drains WHERE chain=? AND drainer=?", (ch, a)),
+                              ("DELETE FROM payouts WHERE chain=? AND (drainer=? OR wallet=?)", (ch, a, a))):
+                n += max(0, conn.execute(sql, args).rowcount)
+    return n
+
+
+def load_verified(conn):
+    """(chain, address) -> dict(verified, name); a proxy counts as verified only if its implementation is."""
+    out = {}
+    for r in conn.execute("SELECT * FROM verified_cache"):
+        if r["proxy"]:
+            ver = None if r["impl_verified"] is None else bool(r["impl_verified"])
+            if r["impl_name"]:
+                name = f"{r['name'] or '?'} (proxy of {r['impl_name']})"
+            else:
+                name = f"{r['name'] or '?'} (proxy, implementation " + ("unknown)" if ver is None else "unverified)")
+        else:
+            ver, name = bool(r["verified"]), r["name"]
+        out[(r["chain"], r["address"])] = dict(verified=ver, name=name)
+    return out
+
+
+def is_legit_subject(chain, addr, labels, dep=None, sels=None, allow=None):
+    """Never flag: allowlisted addresses, wallet-attribution labelled with a non-malicious category, anything created by
+    a known AMM factory (when the creator/factory is resolved), or a contract whose dispatcher has token0()+token1()
+    (AMM pair/pool)."""
+    if addr in (allow or {}).get(chain, ()):
+        return True
     lb = labels.get((chain, addr))
     if lb and lb[1] not in MALICIOUS_CATEGORIES:
         return True
@@ -36,6 +79,9 @@ def is_legit_subject(chain, addr, labels, dep=None, sels=None):
 
 def rollup(conn, seeds, labels, now=None):
     now = now or now_ts()
+    allow = allow_sets()
+    purge_allowlisted(conn, allow)
+    verified = load_verified(conn)
     per = defaultdict(lambda: dict(types=defaultdict(list), victims=set(), mvp=[], esp=[], tx_d4=set(), tx_d4w=set(), spoof=False, real_split=False, fam=None,
                                    redflags=False, ts=[], kit=None, puller=False, frs=[], frs_all=[], frs_kit=False,
                                    osp=[], msd_pulled=False, op7702=False, kit_exact=None, xchain=[]))
@@ -110,7 +156,7 @@ def rollup(conn, seeds, labels, now=None):
             for r in conn.execute("SELECT chain,address,selectors FROM codes")}
     rows = []
     for (chain, addr), p in per.items():
-        if is_legit_subject(chain, addr, labels, dep, sels):
+        if is_legit_subject(chain, addr, labels, dep, sels, allow):
             continue
         lb = set()
         if "seed_activity" in p["types"] and seeds.has(chain, addr):
@@ -184,6 +230,10 @@ def rollup(conn, seeds, labels, now=None):
         wl = labels.get((chain, addr))
         if wl and wl[1] in ("scam", "hack"):
             lb.add("wa_scam")
+        vf = verified.get((chain, addr))
+        if vf and vf["verified"] and tier in ("T1", "T2") and lb & BEHAVIOUR_CAPPED and lb <= VERIFIED_CAPPABLE:
+            tier = "T3"
+            lb.add("verified_capped")
         c = codes.get((chain, addr))
         ts = p["ts"] or [now]
         src = seeds.get(chain, addr)[1] if "seed" in lb else "detector"
@@ -191,7 +241,9 @@ def rollup(conn, seeds, labels, now=None):
                          source=src, family=p["fam"] or p["kit"], labels=sorted(lb), first=min(ts), last=max(ts),
                          victims=len(victims), drains=n_dr, usd=round(usd, 2),
                          code_hash=c["code_hash"] if c else None, size=c["size"] if c else None,
-                         is_contract=(1 if c["size"] else 0) if c else None, skeleton=c["skeleton"] if c else None))
+                         is_contract=(1 if c["size"] else 0) if c else None, skeleton=c["skeleton"] if c else None,
+                         verified=None if not vf or vf["verified"] is None else int(vf["verified"]),
+                         contract_name=vf["name"] if vf else None))
 
     cross_chain_rows(rows)
     # families: evidence family, its anchor skeleton (the seed itself), and shared skeletons between tracked contracts
@@ -205,14 +257,14 @@ def rollup(conn, seeds, labels, now=None):
         if fid in fams or len(group) >= 2:
             for r in group:
                 r["family"] = r["family"] or fid
-    clusters(conn, rows)
+    clusters(conn, rows, labels, allow)
     conn.execute("DELETE FROM contracts")
     conn.executemany(
         "INSERT INTO contracts(chain,address,tier,score,source,family,labels,first_seen,last_seen,victims,drains,usd,"
-        "code_hash,code_size,is_contract,verified,cluster) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,?)",
+        "code_hash,code_size,is_contract,verified,cluster,contract_name) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(r["chain"], r["address"], r["tier"], r["score"], r["source"], r["family"], json.dumps(r["labels"]),
           iso(r["first"]), iso(r["last"]), r["victims"], r["drains"], r["usd"], r["code_hash"], r["size"],
-          r["is_contract"], r.get("cluster")) for r in rows])
+          r["is_contract"], r["verified"], r.get("cluster"), r["contract_name"]) for r in rows])
     conn.commit()
     return rows
 
@@ -223,7 +275,7 @@ def cross_chain_rows(rows):
     tiers only. Mutates rows in place."""
     by_addr = defaultdict(list)
     for r in rows:
-        if r["skeleton"] and (r["size"] or 0) >= 100:
+        if r["skeleton"] and (r["size"] or 0) >= 100 and "verified_capped" not in r["labels"]:
             by_addr[(r["address"], r["skeleton"])].append(r)
     for group in by_addr.values():
         if len({r["chain"] for r in group}) < 2:
@@ -239,7 +291,7 @@ def cross_chain_rows(rows):
                 r["tier"] = new
 
 
-def clusters(conn, rows):
+def clusters(conn, rows, labels=None, allow=None):
     """R-A4 shared collectors. Flagged subjects (contracts or EOA drainers) that share a payout wallet (split payout,
     D8 collector, MS customer) form one operator cluster: union-find over (chain, payout wallet) with >= 2 flagged
     subjects. cluster id = "op_" + sha256(chain:min shared wallet)[:10] (stable while that wallet stays shared).
@@ -252,7 +304,8 @@ def clusters(conn, rows):
     by_wallet = defaultdict(list)
     for p in conn.execute("SELECT chain,drainer,wallet,role,txs FROM payouts"):
         k = (p["chain"], p["drainer"])
-        if k in flagged and p["wallet"] != p["drainer"]:
+        if k in flagged and p["wallet"] != p["drainer"] and not is_legit_subject(p["chain"], p["wallet"], labels or {},
+                                                                                  allow=allow):
             by_wallet[(p["chain"], p["wallet"])].append(dict(drainer=p["drainer"], role=p["role"], txs=p["txs"] or 0))
     shared = {w: m for w, m in by_wallet.items() if len({x["drainer"] for x in m}) >= 2}
     parent = {}
@@ -281,7 +334,7 @@ def clusters(conn, rows):
         for k in members:
             r = flagged[k]
             r["cluster"] = cid
-            if TIER_RANK[own[k]] <= best:
+            if TIER_RANK[own[k]] <= best or "verified_capped" in r["labels"]:
                 continue
             if not (set(r["labels"]) - STATIC_LABELS - {"cluster_inherited"}):
                 continue                                   # static-only member: no independent evidence

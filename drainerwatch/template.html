@@ -521,7 +521,8 @@ const LABELS = {
   cross_chain:['Same code on another chain','The same address with the same code is flagged on another chain.'],
   cross_chain_t1:['Twin of a confirmed drainer','The same address and code is confirmed (T1) on another chain.'],
   cluster_inherited:['Tier from its cluster','Tier raised because it shares payout wallets with a better-evidenced cluster member.'],
-  wa_scam:['Labelled scam','The wallet-attribution dataset labels this address scam or hack.']
+  wa_scam:['Labelled scam','The wallet-attribution dataset labels this address scam or hack.'],
+  verified_capped:['Verified source, capped at T3','Etherscan shows verified source code and the only evidence is a split or multi-victim pull; drainers are almost never verified.']
 };
 const FAMILIES = {
   ms_drainer:['MS Drainer','Bait function taking the customer wallet, plus the kit\'s companion functions.'],
@@ -882,7 +883,7 @@ function renderLedgerHead(){
   });
 }
 function whyShort(c){
-  const ls = c.labels.filter(l => !['cross_chain','cluster_inherited','eip7702_operator','wa_scam'].includes(l));
+  const ls = c.labels.filter(l => !['cross_chain','cluster_inherited','eip7702_operator','wa_scam','verified_capped'].includes(l));
   const sup = {oneshot_hub:'oneshot_multi', prefund_hub:'prefund_multi', eoa_spender_pull:'eoa_spender_multi', foreign_recipient_swap:'foreign_swap_multi', ms_deadline:'ms_deadline_pull'};
   const pool = (ls.length ? ls : c.labels).filter(l => !(sup[l] && c.labels.includes(sup[l]))).filter(l => !(c.family && (l === 'family_match' || l === 'kit_signature')));
   const all = [...new Set(pool.map(l => labelInfo(l)[0].toLowerCase()))];
@@ -1059,7 +1060,7 @@ function sec(title, ...kids){ return el('section', {class:'dsec'}, el('h3', {tex
 function kv(rows){ return el('table', {class:'kv'}, el('tbody', null, rows.filter(Boolean).map(([k, v]) => el('tr', null, el('td', {text:k}), el('td', null, v))))); }
 function noneP(t){ return el('p', {class:'note', text:t}); }
 function verdictSentence(c){
-  const strong = c.labels.filter(l => !['cross_chain','cluster_inherited','eip7702_operator','wa_scam','spoof_split'].includes(l));
+  const strong = c.labels.filter(l => !['cross_chain','cluster_inherited','eip7702_operator','wa_scam','verified_capped','spoof_split'].includes(l));
   const base = (strong.length ? strong : c.labels).slice(0, 2).map(l => labelInfo(l)[0].toLowerCase());
   const t = (TIERS[c.tier] || ['Untiered'])[0];
   let s = t + ' because of ' + (base.length ? base.join(' and ') : 'its recorded evidence');
@@ -1086,7 +1087,7 @@ function openCase(chain, address, fromHash){
       el('div', null, el('div', {class:'k', text:'Victims'}), el('div', {class:'v', text: fmtN(c.victims)})),
       el('div', null, el('div', {class:'k', text:'Drains'}), el('div', {class:'v', text: fmtN(c.drains)})),
       el('div', null, el('div', {class:'k', text:'USD'}), el('div', {class:'v', text: num(c.usd) ? usd(c.usd) : '–'}))),
-    el('p', {class:'note', text:'First seen ' + dt(c.first_seen) + ', last seen ' + dt(c.last_seen) + '.' + (c.family ? ' Family: ' + famInfo(c.family)[0] + ' (' + famInfo(c.family)[1].replace(/\.$/, '') + ').' : '')})));
+    el('p', {class:'note', text:'First seen ' + dt(c.first_seen) + ', last seen ' + dt(c.last_seen) + '.' + (c.family ? ' Family: ' + famInfo(c.family)[0] + ' (' + famInfo(c.family)[1].replace(/\.$/, '') + ').' : '') + (c.contract_name ? ' Etherscan contract: ' + c.contract_name + '.' : '')})));
 
   // 2. Evidence
   const labelsUl = el('ul', {class:'labels'}, c.labels.map(l => el('li', null, el('b', {text: labelInfo(l)[0]}), ': ', el('span', {class:'mut', text: labelInfo(l)[1]}))));
@@ -1173,7 +1174,7 @@ function openCase(chain, address, fromHash){
 
   // 8. Raw facts
   const raw = {chain:c.chain, address:c.address, tier:c.tier, score:c.score, source:c.source, family:c.family, labels:c.labels, first_seen:c.first_seen, last_seen:c.last_seen,
-    victims:c.victims, drains:c.drains, usd:c.usd, code_size:c.code_size, verified:c.verified, cluster:c.cluster};
+    victims:c.victims, drains:c.drains, usd:c.usd, code_size:c.code_size, verified:c.verified, contract_name:c.contract_name, cluster:c.cluster};
   b.appendChild(sec('Raw facts', kv(Object.keys(raw).map(key => {
     const v = raw[key];
     const txt = v == null ? 'null' : Array.isArray(v) ? (v.join(', ') || '[]') : String(v);

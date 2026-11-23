@@ -260,6 +260,60 @@ class Etherscan:
         return None
 
 
+VERIFY_MAX_LOOKUPS = 30                 # Etherscan getsourcecode calls per run (a proxy costs two)
+VERIFY_RECHECK_SEC = 3 * 86400          # unverified / unresolved results are re-checked after this long
+
+
+def parse_source(res):
+    """Etherscan getsourcecode result -> dict(verified, name, proxy, impl) or None if the shape is unexpected."""
+    if not res or not isinstance(res, list) or not isinstance(res[0], dict):
+        return None
+    r = res[0]
+    ver = bool(r.get("SourceCode")) and "not verified" not in str(r.get("ABI") or "").lower()
+    return dict(verified=ver, name=(r.get("ContractName") or None) if ver else None,
+                proxy=str(r.get("Proxy") or "0") == "1", impl=norm_addr(r.get("Implementation")))
+
+
+def lookup_verified(conn, es, rows, cap=VERIFY_MAX_LOOKUPS, now=None):
+    """Fill verified_cache for T1/T2 ETH contract candidates (best effort, cached, <= `cap` API calls). Proxies
+    (Proxy=1) get a second lookup on the implementation. Failed calls are not cached. Returns the number of calls."""
+    now = now or now_ts()
+    if not es.enabled:
+        return 0
+    cached = {r["address"]: r for r in conn.execute("SELECT * FROM verified_cache WHERE chain='eth'")}
+
+    def fresh(c):
+        if c is None:
+            return False
+        if c["proxy"] and c["impl_verified"] is None:
+            return now - (c["checked_at"] or 0) < VERIFY_RECHECK_SEC
+        return bool(c["verified"] and (not c["proxy"] or c["impl_verified"])) or now - (c["checked_at"] or 0) < VERIFY_RECHECK_SEC
+
+    todo = sorted((r for r in rows if r["chain"] == "eth" and r["tier"] in ("T1", "T2") and r["is_contract"] != 0
+                   and not fresh(cached.get(r["address"]))), key=lambda r: (r["tier"], -(r["score"] or 0)))
+    calls = 0
+    for r in todo:
+        if calls >= cap:
+            break
+        addr = r["address"]
+        calls += 1
+        info = parse_source(es.call("eth", dict(module="contract", action="getsourcecode", address=addr)))
+        if info is None:
+            continue
+        iv = iname = None
+        if info["proxy"] and info["impl"]:
+            if calls < cap:
+                calls += 1
+                ii = parse_source(es.call("eth", dict(module="contract", action="getsourcecode", address=info["impl"])))
+                if ii:
+                    iv, iname = int(ii["verified"]), ii["name"]
+        conn.execute("INSERT OR REPLACE INTO verified_cache(chain,address,verified,name,proxy,impl,impl_verified,impl_name,"
+                     "checked_at) VALUES('eth',?,?,?,?,?,?,?,?)",
+                     (addr, int(info["verified"]), info["name"], int(info["proxy"]), info["impl"], iv, iname, now))
+    conn.commit()
+    return calls
+
+
 def pick_funder(deployer, normal, internal):
     """Earliest incoming native transfer to `deployer` (value>0, successful) among normal and internal txs."""
     best = None

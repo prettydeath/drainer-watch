@@ -108,6 +108,12 @@ variants, the TRON VerifyAccount family and others); the research notes and real
   7702-delegated EOAs), transfers below 1 USD ignored where a price is known, fake lookalike tokens (non-ASCII or
   within one edit of USDT/USDC/... on a non-canonical contract) are treated as address poisoning and skipped.
   USD is only known for stablecoins/wrapped natives by address; other tokens show amount only.
+  Allowlisted subjects and payout wallets are dropped on every roll-up and their stored evidence is purged.
+  Redemption guard: a tx that mints/burns a token whose contract or burner is `tx.to` (or pays 4+ recipients with a burn
+  each) is a vault redemption, not a split; D2 needs 2-3 recipients. Verified-source cap: an Etherscan-verified contract
+  (a proxy counts via its implementation; `getsourcecode`, cached, <= 30 calls per run, ETH only) whose only behavioural
+  evidence is split_pull / split_xtx / multi_victim_pull is capped at T3 (`verified_capped`); the contract name is shown
+  in the case file.
 * **Tiers.** T1 confirmed (seed with activity; D2 with 3+ victims; D2 + family match; D9 kit approval amount; bait
   contract with 3+ victims; R-A1 with 3+ victims; D10 multi-victim + kit deadline; K7/K8 batch or kit-router drain;
   K5 hub with 3+ one-shot workers; K4 ms-deadline + pull; K9 owner-collector with 3+ victims). T2 strong (D2 with 1-2 victims;

@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS codes (
 CREATE TABLE IF NOT EXISTS seeds (
     address TEXT NOT NULL, chain TEXT, label TEXT, source TEXT, added TEXT, UNIQUE (address, chain)
 );
+CREATE TABLE IF NOT EXISTS verified_cache (       -- Etherscan getsourcecode (ETH); proxies resolved to the implementation
+    chain TEXT NOT NULL, address TEXT NOT NULL, verified INTEGER, name TEXT, proxy INTEGER, impl TEXT,
+    impl_verified INTEGER, impl_name TEXT, checked_at INTEGER, PRIMARY KEY (chain, address)
+);
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
 
 -- deployer / VASP section
@@ -89,7 +93,8 @@ def connect(path=None):
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.executescript(SCHEMA)
     for ddl in ("ALTER TABLE contract_deployer ADD COLUMN block INTEGER",   # migrations for older databases
-                "ALTER TABLE contracts ADD COLUMN cluster TEXT"):
+                "ALTER TABLE contracts ADD COLUMN cluster TEXT",
+                "ALTER TABLE contracts ADD COLUMN contract_name TEXT"):
         try:
             conn.execute(ddl)
         except sqlite3.OperationalError:
