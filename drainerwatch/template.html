@@ -560,7 +560,7 @@ function norm(d){
   const t = obj(d.totals);
   const o = {
     generated_at: str(d.generated_at), chains: obj(d.chains),
-    totals: {tiers: obj(t.tiers), victims_24h: num(t.victims_24h), usd_24h: num(t.usd_24h), usd_7d: num(t.usd_7d), drains_24h: num(t.drains_24h)},
+    totals: {tiers: obj(t.tiers), victims_24h: num(t.victims_24h), usd_24h: num(t.usd_24h), usd_7d: num(t.usd_7d), drains_24h: num(t.drains_24h), drains_24h_all: num(t.drains_24h_all)},
     contracts: arr(d.contracts).filter(c => c && c.address), drains: arr(d.drains).filter(Boolean), operators: arr(d.operators),
     families: arr(d.families), deployers: arr(d.deployers), vasps: arr(d.vasps), daily: arr(d.daily), clusters: arr(d.clusters)
   };
@@ -815,7 +815,8 @@ function renderSentence(){
     : 'Nothing is flagged yet.';
   if(tot){
     sub.textContent = 'We track ' + plural(tot, 'address', 'addresses') + ': ' + fmtN(num(tt.T1)) + ' confirmed, ' + fmtN(num(tt.T2)) + ' strong and ' + fmtN(num(tt.T3)) + ' suspect. ' +
-      (T.usd_7d > 0 ? usd(T.usd_7d) + ' was drained over the last 7 days; ' : '') + plural(T.drains_24h, 'drain') + ' in the last 24 hours.';
+      (T.usd_7d > 0 ? usd(T.usd_7d) + ' was drained by confirmed and strong drainers over the last 7 days; ' : '') + plural(T.drains_24h, 'drain') + ' by them in the last 24 hours' +
+      (num(T.drains_24h_all) > num(T.drains_24h) ? ', ' + fmtN(num(T.drains_24h_all)) + ' including unconfirmed leads.' : '.');
   }
 }
 

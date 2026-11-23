@@ -199,6 +199,9 @@ ALLOWLIST = {
     "0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789": "ERC-4337 EntryPoint v0.6",
     "0x0000000071727de22e5e9d8baf0edac6f37da032": "ERC-4337 EntryPoint v0.7",
     "0x4337084d9e255ff0702461cf8895ce9e3b5ff108": "ERC-4337 EntryPoint v0.8",
+    # Tangem wallet gasless EIP-7702 entry point (Etherscan verified ContractName Tangem7702GaslessEntryPoint):
+    # relays delegated-EOA batches, so third-party pulls/splits are normal there
+    "0xf67e35af6a18a01702e6c2f1e18a63c2fc3a528c": "Tangem 7702 Gasless EntryPoint",
     # CoW Protocol GPv2Settlement (docs.cow.fi)
     "0x9008d19f58aabd9ed0d60971565aa8510560ab41": "CoW GPv2Settlement",
     # UniswapX reactors (github.com/Uniswap/UniswapX deployments)

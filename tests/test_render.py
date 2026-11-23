@@ -22,7 +22,7 @@ def test_empty_payload_has_every_key():
     ctx = make_ctx()
     p = render.build_payload(ctx.conn)
     assert set(p) == TOP_KEYS
-    assert p["totals"] == {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0}
+    assert p["totals"] == {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0, "drains_24h_all": 0}
     assert p["contracts"] == [] and p["chains"] == {}
 
 

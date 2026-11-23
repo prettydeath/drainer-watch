@@ -206,11 +206,15 @@ def build_payload(conn, now=None):
                    token=r["token"], symbol=r["symbol"], amount=r["amount"], usd=r["usd"], recipient=r["recipient"])
               for r in conn.execute("SELECT * FROM drains ORDER BY ts DESC, tx DESC LIMIT ?", (MAX_DRAINS,))]
 
-    t = conn.execute("SELECT COUNT(DISTINCT victim) v, COALESCE(SUM(usd),0) u, COUNT(*) n FROM drains WHERE ts>=?",
+    # headline totals count only drains attributed to T1/T2 subjects; T3 leads (e.g. custodial sweeps) stay out
+    strong = ("FROM drains d JOIN contracts c ON c.chain=d.chain AND c.address=d.drainer "
+              "AND c.tier IN ('T1','T2') WHERE d.ts>=?")
+    t = conn.execute("SELECT COUNT(DISTINCT d.victim) v, COALESCE(SUM(d.usd),0) u, COUNT(*) n " + strong,
                      (d24,)).fetchone()
-    u7 = conn.execute("SELECT COALESCE(SUM(usd),0) u FROM drains WHERE ts>=?", (d7,)).fetchone()["u"]
+    u7 = conn.execute("SELECT COALESCE(SUM(d.usd),0) u " + strong, (d7,)).fetchone()["u"]
+    n_all = conn.execute("SELECT COUNT(*) n FROM drains WHERE ts>=?", (d24,)).fetchone()["n"]
     totals = dict(tiers={k: tiers.get(k, 0) for k in ("T1", "T2", "T3")}, victims_24h=t["v"], usd_24h=_num(t["u"]),
-                  usd_7d=_num(u7), drains_24h=t["n"])
+                  usd_7d=_num(u7), drains_24h=t["n"], drains_24h_all=n_all)
 
     ops = []
     for r in conn.execute(
