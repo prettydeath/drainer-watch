@@ -15,7 +15,7 @@ from .constants import (CHAINS, MIN_USD, TRON_ALLOWLIST, TRON_FEE_WINDOW, TRON_K
                         TRON_HUB_MAX_FUNDED, TRON_PREFUND_KEEP, TRON_PREFUND_MAX, TRON_PREFUND_MIN, TRON_PREFUND_MIN_GAP,
                         TRON_PREFUND_WINDOW, TRON_USDT,
                         XSPLIT_MAX_GAP)
-from .db import meta_set
+from .db import meta_get, meta_set
 from .scan import Ctx, add_evidence_pending, add_payout, load_state, plan_range, update_payouts
 from .seeds import load_allowlist
 from .tron import TRON_ZERO, TronRpc, is_tron_addr, parse_block, parse_infos, signer_of
@@ -552,6 +552,8 @@ def scan_tron(conn, seeds, labels, prices, max_blocks=None, deadline=None, rpc=N
             mb = min(mb, cfg.get("max_blocks_keyless", mb))      # ~300 credits/s per IP without a key
         start, end = plan_range(conn, CHAIN, head, mb)
     meta_set(conn, f"head:{CHAIN}", head)
+    if persist_cursor and not meta_get(conn, f"cursor:{CHAIN}"):
+        meta_set(conn, f"cursor:{CHAIN}", start - 1)     # the chain is listed (with its lag) even if nothing was fetched
     st = ctx.stats
     st["head"], st["start"] = head, start
     done = start - 1
@@ -570,7 +572,7 @@ def scan_tron(conn, seeds, labels, prices, max_blocks=None, deadline=None, rpc=N
             tf = time.monotonic()
             try:
                 blocks = rpc.blocks(a, hi)
-                infos = rpc.tx_infos([int(b["block_header"]["raw_data"].get("number", 0)) for b in blocks])
+                infos = rpc.tx_infos([int(b["block_header"]["raw_data"].get("number", 0)) for b in blocks], deadline=deadline)
             except HttpError as e:
                 log.warning("tron: blocks %s-%s unavailable (%s); stopping this run", a, hi, e)
                 break
@@ -582,7 +584,8 @@ def scan_tron(conn, seeds, labels, prices, max_blocks=None, deadline=None, rpc=N
                 blocks = [b for b in blocks if int(b["block_header"]["raw_data"].get("number", 0)) < first]
                 infos = {n: v for n, v in infos.items() if n < first}
                 hi = first - 1
-                log.warning("tron: tx info of block %s unavailable (credit limit?); stopping this run at %s", first, hi)
+                log.warning("tron: tx info of block %s unavailable (credit limit / time budget); stopping this run at %s",
+                            first, hi)
             if not blocks:
                 break
             t1 = time.monotonic()

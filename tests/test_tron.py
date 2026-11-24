@@ -598,7 +598,7 @@ def test_missing_tx_info_never_advances_past_the_block(monkeypatch):
         def blocks(self, a, b):
             return [blk(n, []) for n in range(a, b + 1)]
 
-        def tx_infos(self, ns):
+        def tx_infos(self, ns, deadline=None):
             return {n: (None if n == 945 else []) for n in ns}
 
     conn = connect(":memory:")
@@ -609,3 +609,22 @@ def test_missing_tx_info_never_advances_past_the_block(monkeypatch):
     assert meta_get(conn, "cursor:tron") == "944" and st["info_missing"] == 1
     p = render.build_payload(conn)
     assert "API key" in p["chains"]["tron"]["note"]
+
+
+def test_keyless_tx_infos_stop_at_first_failure(monkeypatch):
+    from drainerwatch.tron import TronRpc
+    from drainerwatch.util import HttpError
+    monkeypatch.delenv("TRONGRID_API_KEYS", raising=False)
+    r = TronRpc(url="http://invalid.local")
+    calls = []
+
+    def post(path, body, retries=6, timeout=60):
+        calls.append(body["num"])
+        if body["num"] == 3:
+            raise HttpError("429")
+        return []
+    monkeypatch.setattr(r, "post", post)
+    out = r.tx_infos([1, 2, 3, 4, 5])
+    assert calls == [1, 2, 3] and out[4] is None and out[2] == []
+    import time as _t
+    assert all(v is None for v in r.tx_infos([7, 8], deadline=_t.monotonic() - 1).values())

@@ -173,7 +173,8 @@ class TronRpc:
         n = a
         while n <= b:
             hi = min(b, n + 99)
-            r = self.post("/wallet/getblockbylimitnext", {"startNum": n, "endNum": hi + 1, "visible": True})
+            r = self.post("/wallet/getblockbylimitnext", {"startNum": n, "endNum": hi + 1, "visible": True},
+                          retries=3 if self.keyless else 6)
             got = r.get("block") or []
             out += got
             n = hi + 1
@@ -183,13 +184,21 @@ class TronRpc:
             self._ts[int(hd.get("number", 0))] = int(hd.get("timestamp", 0)) // 1000
         return out
 
-    def tx_infos(self, numbers):
-        """gettransactioninfobyblocknum for each block (parallel over the key pool) -> {block: [info] | None}."""
+    def tx_infos(self, numbers, deadline=None):
+        """gettransactioninfobyblocknum for each block (parallel over the key pool) -> {block: [info] | None}. Blocks not
+        fetched before `deadline` (monotonic) are None; without keys the first failure stops the rest (the IP is
+        suspended, every further call would only burn the run's time budget)."""
+        failed = threading.Event()
+
         def one(n):
+            if failed.is_set() or (deadline is not None and time.monotonic() > deadline):
+                return n, None
             try:
-                return n, self.post("/wallet/gettransactioninfobyblocknum", {"num": n}, retries=3 if self.keyless else 5)
+                return n, self.post("/wallet/gettransactioninfobyblocknum", {"num": n}, retries=2 if self.keyless else 5)
             except HttpError as e:
                 log.warning("tron: tx info of block %s unavailable (%s)", n, e)
+                if self.keyless:
+                    failed.set()
                 return n, None
         if self.workers <= 1:
             return dict(one(n) for n in numbers)
