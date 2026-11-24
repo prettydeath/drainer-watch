@@ -21,7 +21,8 @@ ACTIVITY_TYPES = {"seed_activity", "split_pull", "pays_known_operator", "redflag
                   "seaport_zero", "nft_operator_pull", "batch7702_approve", "vanity_approval", "safe_approval"}
 # labels that come from code alone (no on-chain behaviour): never enough for cluster tier inheritance
 STATIC_LABELS = {"redflag_selectors", "family_match", "kit_signature", "owner_gated_puller", "wa_scam", "kit_exact",
-                 "cross_chain", "cross_chain_t1", "eip7702_operator", "kit_public", "kit_vanity", "share_grid", "kept_share"}
+                 "cross_chain", "cross_chain_t1", "eip7702_operator", "kit_public", "kit_vanity", "share_grid", "kept_share",
+                 "oneshot_spender"}
 # kit K-rules rules whose evidence type is also the label
 KIT_EVIDENCE_LABELS = ("owner_collect", "ms_deadline", "batch_approval_drain", "kit_router_swap", "kit_deposit",
                        "gen_back_transfer")
@@ -252,6 +253,11 @@ def rollup(conn, seeds, labels, now=None):
     dep = {(r["chain"], r["address"]): r for r in conn.execute("SELECT chain,address,deployer,factory FROM contract_deployer")}
     sels = {(r["chain"], r["address"]): set(json.loads(r["selectors"] or "[]"))
             for r in conn.execute("SELECT chain,address,selectors FROM codes")}
+    from .exposure import ONESHOT_MAX_NONCE, ensure_tables
+    ensure_tables(conn)
+    fresh_eoas = {(r["chain"], r["address"]) for r in conn.execute(
+        "SELECT s.chain,s.address FROM subject_info s JOIN codes k ON k.chain=s.chain AND k.address=s.address "
+        "WHERE s.nonce <= ? AND k.size = 0", (ONESHOT_MAX_NONCE,))}
     rows = []
     for (chain, addr), p in per.items():
         if is_legit_subject(chain, addr, labels, dep, sels, allow):
@@ -371,6 +377,8 @@ def rollup(conn, seeds, labels, now=None):
                     lb.add("fixed_fee_multi")
         if p["poison"]:
             lb.add("poison_zero")
+        if "approval_fingerprint" in p["types"] and (chain, addr) in fresh_eoas:
+            lb.add("oneshot_spender")             # MS Drainer Wallet Randomizer: fresh EOA spender of kit approvals
         # web-research rules W1-W11
         for t in ("nft_operator_pull", "batch7702_approve"):
             if t in p["types"]:
@@ -443,7 +451,8 @@ def rollup(conn, seeds, labels, now=None):
         ts = p["ts"] or [now]
         src = seeds.get(chain, addr)[1] if "seed" in lb else "detector"
         rows.append(dict(chain=chain, address=addr, tier=tier, score=score_of(lb, len(victims), usd, active),
-                         source=src, family=p["fam"] or p["kit"], labels=sorted(lb), first=min(ts), last=max(ts),
+                         source=src, family=p["fam"] or p["kit"] or ("ms_oneshot_spender" if "oneshot_spender" in lb else None),
+                         labels=sorted(lb), first=min(ts), last=max(ts),
                          victims=len(victims), drains=n_dr, usd=round(usd, 2),
                          code_hash=c["code_hash"] if c else None, size=c["size"] if c else None,
                          is_contract=(1 if c["size"] else 0) if c else None, skeleton=c["skeleton"] if c else None,

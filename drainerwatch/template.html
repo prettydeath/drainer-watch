@@ -525,7 +525,7 @@ const LABELS = {
   emergency_gas_self:['Gas, then self-approval','Funded a wallet that then approved the funder; also the shape of exchange deposit sweeping, so a weak lead.'],
   emergency_gas_kit:['Gas, then kit approval','Such an approval used the kit\'s hard-coded amount.'],
   kit_vanity:['Vanity kit address','The address starts with 0x000 and ends with 0000, like the kit\'s contracts; raises the score only.'],
-  oneshot_spender:['One-shot worker','A fresh wallet pulled a third party\'s tokens for this hub.'],
+  oneshot_spender:['One-shot spender','A fresh wallet (no code, at most 3 transactions) that receives kit-amount approvals or pulls for a hub: the MS Drainer wallet randomizer creates one per visitor.'],
   oneshot_hub:['One-shot hub','Its one-shot workers sent their leftover gas back here.'],
   oneshot_multi:['One-shot hub, 3+ workers','Three or more one-shot workers returned their leftover here.'],
   prefund_hub:['Prefunding hub','Funded fresh wallets shortly before they pulled victims\' tokens.'],

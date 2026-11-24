@@ -227,6 +227,8 @@ Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on 
                  "drainer": "0x…", "drainer_tier": "T1", "token": "0x…", "symbol": "USDT", "issuer": "Tether|Circle",
                  "balance": "5000.00", "usd": 5000.0, "already_frozen": false, "checked_at": 0}],
   "freezable_total": {"Tether": 5000.0},
+  "exposure_total_usd": 0.0,   // contracts[] also carry "open_allowances": [{"victim", "token", "symbol", "allowance":
+                               // "unlimited"|raw, "victim_balance", "usd_at_risk", "pulled", "checked_at"}] and "pulled"
   "clusters": [{"cluster": "op_ab12cd34ef", "chain": "eth", "members": ["0x…"], "shared_wallets": ["0x…"],
                 "max_tier": "T1", "tiers": {"T1": 1, "T3": 1}}]
 }

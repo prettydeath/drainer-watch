@@ -5,7 +5,7 @@ import sys
 import time
 from collections import Counter
 
-from . import alerts, enrich, famname, freeze, rollup, scan, seeds as seedmod
+from . import alerts, enrich, exposure, famname, freeze, rollup, scan, seeds as seedmod
 from .constants import CHAINS, DATA_DIR, DEFAULT_CHAIN_ORDER, WA_LOCAL_DEFAULT
 from .db import connect
 from .prices import Prices
@@ -89,6 +89,20 @@ def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
         freeze.refresh(conn, frpcs, time_box=max(5, min(freeze.FREEZE_TIME_BOX, left)))
     except Exception as e:  # noqa: BLE001 - best effort
         log.warning("freezable balances failed: %s", redact(e))
+    try:                                                 # code status of T1/T2, one-shot spenders, open allowances
+        xr = dict(rpcs)
+        if "tron" in chains:
+            from .tron import TronRpc
+            xr["tron"] = TronRpc()
+        exposure.resolve_codes(conn, xr)
+        exposure.resolve_nonces(conn, xr)
+        from .tokens import Tokens
+        toks = {c: Tokens(conn, xr[c], c) for c in xr}
+        left = budget_sec - (time.monotonic() - t0)
+        exposure.refresh(conn, xr, tokens_of=toks.get, prices=prices, time_box=max(5, min(exposure.EXPOSURE_TIME_BOX, left)))
+        rollup.rollup(conn, sd, labels)
+    except Exception as e:  # noqa: BLE001 - best effort
+        log.warning("exposure checks failed: %s", redact(e))
     try:
         alerts.notify(conn)
     except Exception as e:  # noqa: BLE001

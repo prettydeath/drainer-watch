@@ -10,7 +10,7 @@ import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from . import famname, freeze
+from . import exposure, famname, freeze
 from .constants import CHAINS, DATA_DIR, ROOT, SITE_DIR, TEMPLATE
 from .scan import load_gaps
 from .db import meta_get
@@ -336,6 +336,11 @@ def build_payload(conn, now=None):
         ops.append(dict(chain=r["chain"], wallet=r["wallet"], drainers=r["dr"], affiliates=r["aff"] or 0, usd=_num(u)))
     ops.sort(key=lambda o: (-o["usd"], -o["drainers"]))
 
+    allow_rows, pulled, exposure_total = exposure.payload(conn)
+    for c in contracts:
+        k = (c["chain"], c["address"])
+        c["open_allowances"] = allow_rows.get(k, [])
+        c["pulled"] = bool(pulled.get(k)) or c["drains"] > 0
     fnames = famname.names_for(conn, contracts)          # family_name / family_name_source (caches only)
     for c in contracts:
         c["family_name"], c["family_name_source"] = fnames.get(c["family"], (None, None)) if c["family"] else (None, None)
@@ -408,7 +413,7 @@ def build_payload(conn, now=None):
     frz, frz_total = freeze.payload(conn)
     return dict(generated_at=iso(now), chains=chains, totals=totals, contracts=contracts, drains=drains, operators=ops[:200],
                 families=families, deployers=deployers, vasps=vasps, daily=days, clusters=clusters,
-                freezable=frz, freezable_total=frz_total)
+                freezable=frz, freezable_total=frz_total, exposure_total_usd=exposure_total)
 
 
 def parse(s):

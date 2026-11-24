@@ -159,6 +159,17 @@ not yet frozen per issuer. Balances come from batched `eth_call` (TRON: `trigger
 per run, cached 30 min, time-boxed inside the run budget; failures never stop a run. BSC "USDT" (Binance-Peg BSC-USD)
 is not a Tether token and has no issuer freeze, so BSC is skipped.
 
+## Exposure of approval-based subjects
+
+Every run resolves the code status of each T1/T2 subject (`is_contract`, eth_getCode / TRON getcontractinfo, <= 200
+per run, cached in `codes`) and, for subjects with approval evidence (D9 kit amount, N4 dust approval, TRON approvals),
+reads the current `allowance(victim, spender)` and the victim's balance of that token (<= 200 pairs per run, cached
+30 min). data.json: `open_allowances: [{victim, token, symbol, allowance ('unlimited' above 10^36), victim_balance,
+usd_at_risk, pulled, checked_at}]` and `pulled` (the spender has executed any pull) per subject, `exposure_total_usd`
+at top level. An EOA spender with no code and at most 3 transactions that received the MS kit approval amount gets the
+label `oneshot_spender` and the family name "MS Drainer one-shot spender (wallet randomizer)" (the kit creates a fresh
+spender per visitor, funds it with gas and pulls later).
+
 ## Deployer and VASP links
 
 * Labels: [wallet-attribution](https://github.com/prettydeath/wallet-attribution) CSVs, refreshed every 24 h.
