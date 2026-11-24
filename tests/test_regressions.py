@@ -128,14 +128,16 @@ def test_positive_three_way_split_and_usdt_70_30():
     assert [(x["address"], x["tier"], x["victims"]) for x in r] == [(DRAINER, "T1", 3)]
     assert ctx.conn.execute("SELECT role FROM payouts WHERE wallet=?", (a(0xA1),)).fetchone()[0] == "affiliate"
 
-    # BSC USDT (canonical address, priced) 70/30, one victim -> T2
+    # BSC USDT (canonical address, priced) 70/30, one victim: T3 since 2026-11-24 (no source verification on BSC for us,
+    # a kit-like share alone is not enough: unverified_split_capped); was T2
     usdt = sorted(STABLES["bsc"])[0]
     usdt = "0x55d398326f99059ff775485246999027b3197955"
     h = tx_hash(9)
     ctx = make_ctx(FakeRpc(txs={h: tx_info(ATTACKER, DRAINER)}, codes={DRAINER: CODE}, symbols={usdt: ("USDT", 18)}), chain="bsc")
     scan.process_chunk(ctx, 100, 100, [transfer_log(h, usdt, V(1), a(0xB1), 70 * 10 ** 18), transfer_log(h, usdt, V(1), a(0xB2), 30 * 10 ** 18, li=1)])
     r = rollup.rollup(ctx.conn, SeedSet(), {})
-    assert [(x["chain"], x["tier"], x["usd"]) for x in r] == [("bsc", "T2", 100.0)]
+    assert [(x["chain"], x["tier"], x["usd"]) for x in r] == [("bsc", "T3", 100.0)]
+    assert {"share_grid", "unverified_split_capped"} <= set(r[0]["labels"])
 
 
 def test_spoof_token_split_is_t3_without_drains_or_payouts():

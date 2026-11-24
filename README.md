@@ -1,50 +1,113 @@
-# drainer-watch
+<p align="center"><img src="assets/social-preview.png" alt="Drainer Watch: wallet drainers caught on chain" width="100%"></p>
 
-Near-real-time monitor of crypto **drainer contracts** on Ethereum, BNB Chain, Base and TRON, published as a static
-dashboard (GitHub Actions + GitHub Pages). Every flagged address carries evidence (tx hashes), a tier and the
-rule that fired. It also links drainers, payout wallets and deployers to **VASPs** (exchanges, instant exchangers,
-bridges, mixers) so that requests can be sent to the right entity.
+<p align="center">
+  <a href="https://github.com/prettydeath/drainer-watch/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/prettydeath/drainer-watch/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/prettydeath/drainer-watch/actions/workflows/watch.yml"><img alt="watch" src="https://github.com/prettydeath/drainer-watch/actions/workflows/watch.yml/badge.svg"></a>
+  <img alt="chains" src="https://img.shields.io/badge/chains-Ethereum%20%C2%B7%20BNB%20Chain%20%C2%B7%20Base%20%C2%B7%20TRON-1A2330">
+  <img alt="python" src="https://img.shields.io/badge/python-3.11%2B-blue">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-green">
+</p>
 
-Same pattern as [usdt-freeze-watch](../usdt-freeze-watch): `requests` + `pycryptodome` only, sqlite in `data/`,
-state kept on an orphan `data` branch. The dashboard is a static web app in `web/` (Vite + React + shadcn/ui +
-Recharts + anime.js) that reads `site/data.json`; `drainerwatch/template.html` is the no-Node fallback.
+<h3 align="center">Wallet drainers caught on chain: who took the money, where it went, and what can still be frozen.</h3>
 
-## Run
+<p align="center"><b><a href="https://prettydeath.github.io/drainer-watch/">Live dashboard</a></b> · <a href="https://prettydeath.github.io/drainer-watch/#analytics">Analytics</a> · <a href="https://prettydeath.github.io/drainer-watch/data.json">data.json</a> · <a href="SPEC.md">Spec</a></p>
+
+Drainer Watch reads every new block on Ethereum, BNB Chain, Base and TRON, looks for the on-chain shapes that
+wallet-drainer kits leave behind (split pulls, kit approval amounts, bait contracts, one-shot spenders, permission
+hijacks and more), and publishes a case file for each subject it flags: the evidence transactions, a tier, the payout
+wallets, the deployer, the exchanges where the money surfaced, the stablecoins that can still be frozen and the
+approvals that are still open. It runs entirely on GitHub Actions and GitHub Pages, from public RPC endpoints, every
+few minutes.
+
+## What you get
+
+<table>
+<tr>
+<td width="50%"><a href="assets/overview-light.png"><img src="assets/overview-light.png" alt="Overview (light)"></a><br><sub><b>Overview</b>: where the money went, the kits behind the drains, case files</sub></td>
+<td width="50%"><a href="assets/overview-dark.png"><img src="assets/overview-dark.png" alt="Overview (dark)"></a><br><sub>Dark theme, same data</sub></td>
+</tr>
+<tr>
+<td><a href="assets/analytics.png"><img src="assets/analytics.png" alt="Analytics tab"></a><br><sub><b>Analytics</b>: drainers active now, freezable balances, open approvals, campaign timeline, who receives the money</sub></td>
+<td><a href="assets/case.png"><img src="assets/case.png" alt="Case file"></a><br><sub><b>Case file</b> (<code>#chain:address</code>): verdict, evidence, subjects, exchanges, deployer, still-exposed approvals</sub></td>
+</tr>
+</table>
+
+<p align="center"><img src="assets/mobile-strip.png" alt="Mobile: overview, analytics, case file" width="86%"></p>
+
+Every claim links to its transaction. Tables export to CSV, every address copies in one click and opens in the
+explorer, and both tabs and every case file are deep-linkable.
+
+## What it detects
+
+| Chain | Main shapes | Typical tier |
+|---|---|---|
+| **EVM** (Ethereum, BNB Chain, Base) | split pulls (one tx or 2+ txs, operator / affiliate shares), kit approval amounts (MS Drainer and others), bait `Claim()` / `SecurityUpdate()` contracts and generated baits, one-shot spenders funded by a hub, millisecond permit deadlines, router swaps to a foreign wallet, EIP-7702 sweepers and batch approvals, owner takeovers, vanity drainer contracts, shared collectors | T1 to T3 |
+| **TRON** | VerifyAccount / OwnerCollector kit pulls, two-tx 98/2 splits, `approve(10^46)` and ApproveAll, prefund-then-approve, Claimer baits, account-permission hijacks, fixed-fee follow-ups, zero-value USDT spoofing | T1 to T3 |
+| **All chains** | operator clusters (drainers sharing payout wallets), cross-chain twins (same address and code), deployers and their funders, exchange deposits one hop after the drainer, freezable USDT / USDC balances, open approvals still at risk | context |
+
+| Tier | Meaning |
+|---|---|
+| **T1 confirmed** | a drain is proven on chain, or the subject carries a kit fingerprint such as the kit's hard-coded approval amount |
+| **T2 strong** | strong evidence, short of proof (for example a split pull with one or two victims, or a kit signature with activity) |
+| **T3 suspect** | fits a drainer, no confirmed drain yet; leads that custodial sweepers and payment processors can also produce |
+
+A tier is an assessment, not a verdict. The full rule list with thresholds is in the
+[detector reference](#detector-reference) below.
+
+## How it works
+
+```mermaid
+flowchart LR
+  B["New blocks<br/>ETH · BSC · Base · TRON"] --> R["Rules<br/>logs · receipts · bytecode"]
+  R --> T["Tiers + evidence<br/>SQLite"]
+  T --> E["Enrichment<br/>deployer · exchanges · labels<br/>freezable · allowances"]
+  E --> J["data.json"]
+  J --> P["GitHub Pages<br/>React dashboard"]
+  T --> L["Release data-latest<br/>SQLite + CSV"]
+```
+
+1. **Scan.** `watch.yml` runs every ~9 minutes (it re-dispatches itself; the cron is only a heartbeat) and reads each
+   chain from public RPC: block receipts on Ethereum and Base, `eth_getLogs` on BNB Chain, the full-node HTTP API on TRON.
+2. **Rules.** Detectors match transfer and approval patterns, decode bait and permit calldata, and fingerprint contract
+   bytecode against known kits. Everything is evidence-backed: a rule that fires stores the transaction.
+3. **Tiers.** Evidence adds up to a documented score and a tier; caps keep known false-positive shapes (verified
+   contracts, fee-on-transfer tokens, custodial sweepers) at T3.
+4. **Publish.** `render` writes `data.json`; `pages.yml` builds the web app in `web/` and deploys it next to the data.
+   The full database and large CSVs go to the `data-latest` release; the `data` branch keeps only light files.
+
+## Data access
+
+* **`data.json`**: <https://prettydeath.github.io/drainer-watch/data.json>, the dashboard's only input (contract in
+  [SPEC.md](SPEC.md)). Contracts carry evidence, payouts, deployer, exchange links, cluster, family name, freezable
+  balances and open allowances; `drains` is the latest 500 drains.
+* **Release `data-latest`**: [drainerwatch.sqlite.gz, contracts.csv.gz, drains.csv.gz](https://github.com/prettydeath/drainer-watch/releases/tag/data-latest),
+  replaced on every run.
+
+## Honesty notes
+
+* Tiers are leads for investigation, not findings of fact. Payout roles and probable deposit addresses are inferred.
+* No traces: internal transactions and factory creations are mostly invisible, so native-coin drains are under-counted.
+* Public RPC has gaps; when a scan falls behind it jumps to the head and the skipped blocks are listed as not scanned.
+* Unpriced tokens count as zero in every total. Balances and allowances are snapshots with their check time.
+* Off-chain phishing sites and the people behind them are out of scope. A deployer is never guessed.
+
+## Run locally
 
 ```bash
 pip install requests pycryptodome
-python -m drainerwatch run --chains eth,base,bsc,tron --max-blocks 30 --budget-sec 300 --env-file keys.env
-python -m drainerwatch loop --interval 60          # for a Linux box
-python -m drainerwatch render                      # data/*.sqlite -> site/index.html + site/data.json
-python -m drainerwatch seeds                       # refresh seeds, print counts
-python -m drainerwatch backtest --chain eth --from-block 21000000 --to-block 21000200   # separate db, no cursor change
-python -m drainerwatch run --chains eth --source logs       # force eth_getLogs (default: receipts on eth/base, logs on bsc)
-python -m drainerwatch incidents --env-file ~/.claude/secrets/osint.env          # rebuild tests/backtest/incidents.csv
-python -m drainerwatch backtest --incidents tests/backtest/incidents.csv --split dev --blind   # blind incident backtest
-pytest -q
-cd web && npm ci && npm run build   # optional: build the dashboard; `render` then copies web/dist into site/
-npm test && npm run dev              # smoke test (fixture data) / dev server (put a data.json in web/public)
+python -m drainerwatch run --chains eth,base,bsc,tron --max-blocks 30 --budget-sec 300
+python -m drainerwatch render            # data/*.sqlite -> site/data.json (+ site/index.html)
+cd web && npm ci && npm run dev          # dashboard; put a data.json in web/public
+pytest -q && (cd web && npm test)        # offline tests
 ```
 
-Environment (all optional): `ETH_RPC_URL`, `BSC_RPC_URL`, `BASE_RPC_URL` (default publicnode),
-`TRONGRID_API_KEYS` (comma list, sent only to TronGrid as `TRON-PRO-API-KEY` in rotation; without keys the scanner uses
-`https://tron-rpc.publicnode.com`, which serves the same `/wallet/*` API keyless), `TRON_API_URL` (override; pointing
-it at TronGrid without a key is throttled hard, so that mode scans at most 60 blocks, never advances past a block whose
-logs could not be fetched, and the dashboard says "reduced block coverage"),
-`DRAINERWATCH_CHAINS` (default `eth,bsc,base,tron`),
-`ETHERSCAN_API_KEYS` (comma list, Etherscan V2), `WA_DATA_DIR` (local wallet-attribution CSVs),
-`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (alerts on new T1/T2; no-op without them), `DASHBOARD_URL`.
+On GitHub: fork, add the optional secrets below, enable Actions and Pages (source: GitHub Actions). See
+[Run and configuration](#run-and-configuration) for every command and variable.
 
-Operator inputs in `data/`: `seeds.csv` (`chain,address,label,source`), `allowlist.csv` (`chain,address,note`).
+## Detector reference
 
-Actions: add secrets `ETHERSCAN_API_KEYS` (and optionally `TRONGRID_API_KEYS` and the Telegram/RPC ones), enable Pages
-with source "GitHub Actions". `watch.yml` force-pushes `data/` + `site/` to the `data` branch; `pages.yml` builds `web/` (Node 22, npm cache) and
-publishes the app with the fresh `data.json` (if the build fails it publishes the template fallback). Cadence: at the end of
-each run a `next` job waits until ~9 min after the run started and dispatches the next run (`gh workflow run`, needs
-`actions: write`), unless another watch run is already queued; the `concurrency` group keeps one run at a time. The
-10-minute cron stays as a fallback heartbeat (GitHub throttles schedules on young repositories).
-
-## Detectors
+<details>
+<summary><b>EVM rules (D, R-A, S, K, N): id, rule, tier effect</b></summary>
 
 | id | rule | tier effect |
 |----|------|-------------|
@@ -86,7 +149,10 @@ each run a `next` job waits until ~9 min after the run started and dispatches th
 | N11 | generated bait (K2): the main receiver's nonce at scan time is recorded (`main_receiver_nonce`, `main_receiver_fresh`); its later split is not followed | detail only |
 | R-A4 clusters | flagged subjects sharing a payout wallet (split payout, D8 collector or MS customer) form one `operator_cluster` (`cluster` on contracts, `clusters` list in data.json). A member inherits the cluster's best own tier (`cluster_inherited`) only if both it and the better member have behavioural (non-bytecode) evidence and the link is not a single weak one (2+ shared wallets or 2+ payout txs, not customer-only) | inheritance as described |
 
-### Web-research rules (W1-W13)
+</details>
+
+<details>
+<summary><b>Web-research rules (W1-W13)</b></summary>
 
 Generic rules derived from public vendor reports and academic papers on drainer-as-a-service kits (2023-2026). None of
 them gives T1 on its own: T1 needs two different W rules on one subject, or a vanity drainer address (W2) with
@@ -109,21 +175,10 @@ independent behaviour and 2+ victims. Most need the receipts source (ETH, Base);
 | W12 `operator_wallet` | an address (not a known contract, not legitimate) recorded as payout wallet of 2+ flagged subjects; `operator_wallet_multi` when 3+ of them have their own behavioural T1/T2 | T3; multi T2 |
 | W13 `serial_deployer` | a deployer / factory of 2+ flagged contracts with behavioural evidence (top-level creations, resolved deployers, W1); `serial_deployer_multi` when 3+ have their own behavioural T1/T2 | T3; multi T2 |
 
-Not implemented: on-chain config-storage watching (intel, not drain detection), Blur bulk-order signatures, tiny-amount
-(< 10 USD) lookalike transfers (only the zero-value form, W10), Permit2 amount / expiration fingerprints (K4 covers the
-millisecond deadline). W1b, W3 and the archive checks are best effort: a public node keeps only recent state, so on
-older blocks they depend on Etherscan lookups (capped per run) or stay unknown.
+</details>
 
-Code families keep their hash in `family` and get a readable `family_name` with its `family_name_source`: kit name,
-the contract's own verified / TRON name (impersonations of well-known protocols are marked "self-named"), token name,
-the most distinctive dispatcher functions (public openchain signature database, cached), or "Unnamed code family".
-
-`data.json` per contract also carries payout wallets (operator/affiliate split is **inferred** from the shares;
-kit roles `customer`, `worker`, `collector`, `kit_fee`, `kit_wallet`, `submitter`), the deployer block, the VASP
-links and `cross_chain` twins. Kit signatures come from static study of drainer kits (MS Drainer
-variants, the TRON VerifyAccount family and others); the research notes and real-data kit regressions are kept private.
-
-## TRON
+<details>
+<summary><b>TRON rules (T-1 to T-8)</b></summary>
 
 TRON is scanned from a full node's HTTP API (TronGrid with keys, publicnode without), block by block: `getblockbylimitnext` returns every transaction with its contract type,
 signer, call data, call value, fee limit and signatures; `gettransactioninfobyblocknum` adds the TRC-20 Transfer /
@@ -148,7 +203,23 @@ CALLTOKEN / CALLTOKENVALUE are single-byte; CALLTOKEN counts as an external call
 Shared collectors (R-A4 clusters) work across TRON subjects the same way as on EVM. The VerifyAccount runtimes and the
 buytron contracts are regression fixtures in `tests/fixtures_kits/`; real-transaction regressions are kept private.
 
-## Freezable now
+</details>
+
+Not implemented: on-chain config-storage watching (intel, not drain detection), Blur bulk-order signatures, tiny-amount
+(< 10 USD) lookalike transfers (only the zero-value form, W10), Permit2 amount / expiration fingerprints (K4 covers the
+millisecond deadline). W1b, W3 and the archive checks are best effort: a public node keeps only recent state, so on
+older blocks they depend on Etherscan lookups (capped per run) or stay unknown.
+
+Code families keep their hash in `family` and get a readable `family_name` with its `family_name_source`: kit name,
+the contract's own verified / TRON name (impersonations of well-known protocols are marked "self-named"), token name,
+the most distinctive dispatcher functions (public openchain signature database, cached), or "Unnamed code family".
+
+`data.json` per contract also carries payout wallets (operator/affiliate split is **inferred** from the shares;
+kit roles `customer`, `worker`, `collector`, `kit_fee`, `kit_wallet`, `submitter`), the deployer block, the VASP
+links and `cross_chain` twins. Kit signatures come from static study of drainer kits (MS Drainer
+variants, the TRON VerifyAccount family and others); the research notes and real-data kit regressions are kept private.
+
+### Freezable now
 
 `freezable` in data.json lists issuer-freezable stablecoin balances (>= 100 USD) currently held by T1/T2 subjects and
 their payout wallets (operator, affiliate, collector, customer, worker, funder; an address linked to several subjects keeps
@@ -159,7 +230,7 @@ not yet frozen per issuer. Balances come from batched `eth_call` (TRON: `trigger
 per run, cached 30 min, time-boxed inside the run budget; failures never stop a run. BSC "USDT" (Binance-Peg BSC-USD)
 is not a Tether token and has no issuer freeze, so BSC is skipped.
 
-## Exposure of approval-based subjects
+### Exposure of approval-based subjects
 
 Every run resolves the code status of each T1/T2 subject (`is_contract`, eth_getCode / TRON getcontractinfo, <= 200
 per run, cached in `codes`) and, for subjects with approval evidence (D9 kit amount, N4 dust approval, TRON approvals),
@@ -170,7 +241,7 @@ at top level. An EOA spender with no code and at most 3 transactions that receiv
 label `oneshot_spender` and the family name "MS Drainer one-shot spender (wallet randomizer)" (the kit creates a fresh
 spender per visitor, funds it with gas and pulls later).
 
-## Deployer and VASP links
+### Deployer and VASP links
 
 * Labels: [wallet-attribution](https://github.com/prettydeath/wallet-attribution) CSVs, refreshed every 24 h.
 * Deployer: top-level creation seen on ETH (`tx.from`), else Etherscan `getcontractcreation` (`tx.from` of the creation
@@ -180,7 +251,7 @@ spender per visitor, funds it with gas and pulls later).
   payout wallet and forwarded to an exchange-labelled wallet within 72 h: probable deposit address, **medium**, both
   txs kept), `funding` (labelled funder of the deployer, high). `vasps[]` aggregates per entity for requests.
 
-## Method & limitations
+### Method and limitations
 
 * **Backtest (2026-11-23).** `tests/backtest/` holds a blind backtest on 202 real ETH incidents (74 ScamSniffer /
   wallet-attribution seeds, 2025-01 .. 2026-11) split by seed component into dev/holdout; see `report_dev_*.md`,
@@ -223,7 +294,7 @@ spender per visitor, funds it with gas and pulls later).
   (USD 0 / unknown) and no other behavioural or kit evidence is capped at T3 (`unpriced_capped`): fee-on-transfer and
   tax-router tokens split every transfer the same way. This matters most on BSC, where source verification is not
   available on our Etherscan plan. On chains without source verification for us (BSC, Base) a split with a single victim
-  stays T2 only with a kit fingerprint, a kit share (W11) or other behaviour (`unverified_split_capped`). A capped subject
+  stays T2 only with a kit fingerprint or other behaviour (a kit-like share, W11, is not enough: token taxes split the same way) (`unverified_split_capped`). A capped subject
   (`unpriced_capped`, `verified_capped`, `tron_split_capped`, `unverified_split_capped`) is never re-raised by a K14
   cross-chain twin or by cluster inheritance, and a twin without its own behavioural evidence is lifted to T2 at most.
 * **Tiers.** T1 confirmed (seed with activity; D2 with 3+ victims; D2 + family match; D9 kit approval amount; bait
@@ -239,4 +310,41 @@ spender per visitor, funds it with gas and pulls later).
   investigation, not findings of fact. Operator/affiliate roles and `deposit_sweep` links are inferences.
 * Etherscan calls are best effort (free plans may not cover BSC/Base); failures never break a run.
 
-MIT licensed.
+## Run and configuration
+
+```bash
+pip install requests pycryptodome
+python -m drainerwatch run --chains eth,base,bsc,tron --max-blocks 30 --budget-sec 300 --env-file keys.env
+python -m drainerwatch loop --interval 60          # for a Linux box
+python -m drainerwatch render                      # data/*.sqlite -> site/index.html + site/data.json
+python -m drainerwatch seeds                       # refresh seeds, print counts
+python -m drainerwatch backtest --chain eth --from-block 21000000 --to-block 21000200   # separate db, no cursor change
+python -m drainerwatch run --chains eth --source logs       # force eth_getLogs (default: receipts on eth/base, logs on bsc)
+python -m drainerwatch incidents --env-file keys.env          # rebuild tests/backtest/incidents.csv
+python -m drainerwatch backtest --incidents tests/backtest/incidents.csv --split dev --blind   # blind incident backtest
+pytest -q
+cd web && npm ci && npm run build   # optional: build the dashboard; `render` then copies web/dist into site/
+npm test && npm run dev              # smoke test (fixture data) / dev server (put a data.json in web/public)
+```
+
+Environment (all optional): `ETH_RPC_URL`, `BSC_RPC_URL`, `BASE_RPC_URL` (default publicnode),
+`TRONGRID_API_KEYS` (comma list, sent only to TronGrid as `TRON-PRO-API-KEY` in rotation; without keys the scanner uses
+`https://tron-rpc.publicnode.com`, which serves the same `/wallet/*` API keyless), `TRON_API_URL` (override; pointing
+it at TronGrid without a key is throttled hard, so that mode scans at most 60 blocks, never advances past a block whose
+logs could not be fetched, and the dashboard says "reduced block coverage"),
+`DRAINERWATCH_CHAINS` (default `eth,bsc,base,tron`),
+`ETHERSCAN_API_KEYS` (comma list, Etherscan V2), `WA_DATA_DIR` (local wallet-attribution CSVs),
+`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (alerts on new T1/T2; no-op without them), `DASHBOARD_URL`.
+
+Operator inputs in `data/`: `seeds.csv` (`chain,address,label,source`), `allowlist.csv` (`chain,address,note`).
+
+Actions: add secrets `ETHERSCAN_API_KEYS` (and optionally `TRONGRID_API_KEYS` and the Telegram/RPC ones), enable Pages
+with source "GitHub Actions". `watch.yml` force-pushes `data/` + `site/` to the `data` branch; `pages.yml` builds `web/` (Node 22, npm cache) and
+publishes the app with the fresh `data.json` (if the build fails it publishes the template fallback). Cadence: at the end of
+each run a `next` job waits until ~9 min after the run started and dispatches the next run (`gh workflow run`, needs
+`actions: write`), unless another watch run is already queued; the `concurrency` group keeps one run at a time. The
+10-minute cron stays as a fallback heartbeat (GitHub throttles schedules on young repositories).
+
+## License
+
+[MIT](LICENSE)

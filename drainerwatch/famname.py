@@ -84,7 +84,7 @@ def pick(family, members):
     if kits:
         k = kits.most_common(1)[0][0]
         return KIT_NAMES.get(k, k), "kit"
-    names = Counter(m["contract_name"] for m in members if m.get("contract_name"))
+    names = Counter(m["contract_name"].strip() for m in members if (m.get("contract_name") or "").strip())
     if names:
         nm = sorted(names.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
         return impersonation(nm, any(m.get("legit") for m in members if m.get("contract_name") == nm)) or nm, "contract_name"

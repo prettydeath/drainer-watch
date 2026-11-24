@@ -43,7 +43,7 @@ BEHAVIOUR_CAPPED = {"split_pull", "split_xtx", "multi_victim_pull", "bait_forwar
 # Matters most on chains without Etherscan source verification on our plan (BSC), where the verified cap cannot apply.
 UNPRICED_CAPPABLE = {"split_pull", "split_xtx"}
 # chains without Etherscan source verification on our plan (BSC, Base): a one-victim split keeps T2 only with one of these
-UNVERIFIED_SPLIT_KEEP = {"kit_signature", "owner_gated_puller", "family_match", "seed", "share_grid", "approval_fingerprint",
+UNVERIFIED_SPLIT_KEEP = {"kit_signature", "owner_gated_puller", "family_match", "seed", "approval_fingerprint",
                          "bait_payable", "kit_exact", "kit_public", "pays_known_operator", "ms_deadline", "vanity_drainer"}
 # own evidence that was capped: never re-raised by cross-chain twins (K14) or cluster inheritance
 CAPPED_LABELS = {"unpriced_capped", "verified_capped", "tron_split_capped", "unverified_split_capped"}

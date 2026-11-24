@@ -19,6 +19,7 @@ def test_priority_order():
     assert famname.pick("f_aaaaaa", [m(kit="verify_account"), m(contract_name="X")]) == ("VerifyAccount", "kit")
     assert famname.pick("f_aaaaaa", [m(contract_name="heyue"), m(contract_name="heyue"), m(contract_name="Other")]) == \
         ("heyue", "contract_name")
+    assert famname.pick("f_aaaaaa", [m(contract_name=" "), m(token_symbol="X")]) == ("token X", "token_name")
     assert famname.pick("f_aaaaaa", [m(contract_name="SunSwapV4")]) == \
         ('self-named "SunSwapV4" (not the real SunSwap)', "contract_name")
     assert famname.pick("f_aaaaaa", [m(token_symbol="USDT", selectors={"a9059cbb"})])[1] == "token_name"
