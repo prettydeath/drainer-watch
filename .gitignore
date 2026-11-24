@@ -18,3 +18,4 @@ __pycache__/
 /docs/kits/
 /docs/incidents/
 /tests/backtest/private/
+/site_preview/
