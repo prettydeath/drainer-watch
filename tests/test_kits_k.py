@@ -331,6 +331,10 @@ def test_k7_batch_approvals_drain():
     # recipient is a contract / only one approval
     assert r not in run_blocks({100: [t]}, logs=logs, codes={r: CODE})[1]
     assert r not in run_blocks({100: [t]}, logs=[logs[0], logs[2]])[1]
+    # gasless swap into native ETH (live FP eth tx 0xa8024b03…): most of it goes to the pool, a small fee to a collector
+    pool = a(0x9002)                                          # pool contract (not allowlisted)
+    logs3 = logs[:2] + [transfer_log(h, USDT, o, pool, 2_249_169, li=2), transfer_log(h, USDT, o, r, 307_583, li=3)]
+    assert r not in run_blocks({100: [t]}, logs=logs3, codes={pool: CODE})[1]
 
 
 def exact_input_single_r02(tin, tout, fee, rcpt, amount_in, out_min):

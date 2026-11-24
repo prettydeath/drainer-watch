@@ -549,10 +549,14 @@ def k7k8_tx(approvals, transfers, kit_amounts, is_legit):
             rec[r].append(dict(token=t["token"], value=str(t["value"]), direct=t["frm"] == owner))
         if not rec:
             continue
+        out_by_tok = defaultdict(int)                 # what left O per token: the caller checks the EOA share of it
+        for t in transfers:
+            if t["frm"] == owner:
+                out_by_tok[t["token"]] += t["value"]
         kit = sorted({kit_amounts[a["value"]] for a in aps if a["value"] in kit_amounts})
         for rule in rules:
             used = fp if rule == "batch_approval_drain" else kit_legit
-            out.append(dict(rule=rule, owner=owner, recipients=dict(rec), kit=kit,
+            out.append(dict(rule=rule, owner=owner, recipients=dict(rec), kit=kit, out_by_tok=dict(out_by_tok),
                             approvals=[dict(spender=a["spender"], token=a["token"],
                                             amount="max" if a["value"] == UINT256_MAX else str(a["value"])) for a in used]))
     return out

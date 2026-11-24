@@ -1094,6 +1094,16 @@ def k7k8(ctx, inputs):
     for h, bn, c in hits:
         if c["owner"] not in ctx.code_hex or ctx.is_contract(c["owner"]):
             continue
+        # the EOA recipients must take the bulk of what left the owner: a gasless swap (ERC-4337 / 7702 batch swapping
+        # into native ETH, so no ERC-20 comes back) sends most of it to a pool contract and a small fee to a collector
+        to_eoa = defaultdict(int)
+        for r, legs in c["recipients"].items():
+            if r in ctx.code_hex and not ctx.is_contract(r):
+                for lg in legs:
+                    if lg["direct"]:
+                        to_eoa[lg["token"]] += int(lg["value"])
+        if to_eoa and not any(to_eoa[tok] * 2 >= v for tok, v in (c.get("out_by_tok") or {}).items() if v > 0):
+            continue
         bts = (ctx.ts_of([bn]).get(bn) or 0)
         v3 = [dict(fee=s["fee"], deadline_delta=(s["deadline"] - bts) if s.get("deadline") and bts else None,
                    amount_out_min=str(s["amount_out_min"]), recipient=s["to"])
