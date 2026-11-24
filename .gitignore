@@ -19,3 +19,4 @@ __pycache__/
 /docs/incidents/
 /tests/backtest/private/
 /site_preview/
+.health_state.json
