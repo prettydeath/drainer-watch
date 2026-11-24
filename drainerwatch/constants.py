@@ -593,3 +593,14 @@ SCORE.update({"fake_call": 20, "fake_call_multi": 15, "fake_call_contract": 25, 
               "forwarder_7702": 25, "batch7702_decoy": 30, "batch7702_decoy_multi": 15, "full_balance_pull": 10,
               "increase_allowance_eoa": 15, "zero_nonce_spender": 15, "zero_nonce_multi": 15, "tron_sweeper_kit": 20,
               "cex_sweep_capped": 0})
+
+# ---- TRON generic pulls (EVM D8 / D3 analogues) ----
+TRON_PULL_MULTI = 3                  # distinct victims within 24 h: T2 (EOA signer) / T3 (contract)
+TRON_SIGNER_MAX_TXS = 150            # a signer with more contract calls than this in one run is a service (sweeper / gateway)
+TRON_SIGNER_MAX_VICTIMS_RUN = 40     # ... or pulling from more wallets than this in one run
+TRON_SAME_OWNER_FUNDINGS = 2         # the signer funded the victim this many times: the signer's own deposit wallet
+TRON_MAX_APPROVAL_MIN = 2 ** 128     # approve / increaseApproval amounts treated as "MAX"
+TRON_GENERIC_MAX_LOOKUPS = 80        # contract-info lookups per run for the generic pull rules
+TRON_GENERIC_RESERVE = 100           # ... never touching the last 100 of the run's contract lookups (kit rules)
+SCORE.update({"tron_eoa_pull": 15, "tron_eoa_pull_multi": 25, "tron_contract_pull": 10, "tron_contract_pull_multi": 15,
+              "tron_max_approval": 10})

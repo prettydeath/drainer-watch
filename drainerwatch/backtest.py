@@ -45,7 +45,8 @@ DETECTOR_LABELS = ["seed", "split_pull", "multi_victim_pull", "eoa_spender_pull"
                    "lookalike_contract", "counterfactual_forward", "counterfactual_multi", "codehash_cluster",
                    "forwarder_7702", "forwarder_7702_multi", "batch7702_decoy", "batch7702_decoy_multi",
                    "full_balance_pull", "increase_allowance_eoa", "increase_allowance_pull", "zero_nonce_spender",
-                   "zero_nonce_multi", "zero_nonce_pull", "tron_sweeper_kit", "cex_sweep_capped"]
+                   "zero_nonce_multi", "zero_nonce_pull", "tron_sweeper_kit", "cex_sweep_capped",
+                   "tron_eoa_pull", "tron_eoa_pull_multi", "tron_contract_pull", "tron_max_approval"]
 
 
 def components(rows):

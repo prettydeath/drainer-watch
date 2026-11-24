@@ -179,6 +179,12 @@ Render reads caches only; `cli run` fills them.
 - T-7 `fixed_fee`: whole-TRX transfer 5–100 from the puller (or recipient) within 60 s after a third-party pull; ≥ 2 hits
   with the same amount T3, ≥ 3 victims T2.
 - T-8 `zero_transfer_spoof`: ≥ 3 zero-value USDT legs out of other wallets in one chunk; T3 only, no victims/drains.
+- T-9 `tron_eoa_pull` (D8 analogue): transferFrom signed by an account for another account; guards: labels, contract
+  victims, service volume (TRON_SIGNER_MAX_TXS / _VICTIMS_RUN), own deposit wallets (TRON_SAME_OWNER_FUNDINGS),
+  whole-token amounts excluded from the multi count; T3, 3+ victims / 24 h T2, T1 only with `tron_max_approval` +
+  an independent signal (`detectors.TRON_PULL_T1_WITH`). T-10 `tron_contract_pull` (D3 analogue): a non-kit contract
+  pulling 3+ non-signers / 24 h, T3; T2 with owner-gated code or a split. Contract-info lookups have their own
+  budget (TRON_GENERIC_MAX_LOOKUPS) so the kit rules are never starved.
 
 ## Tiers / score
 - T1 confirmed: seed with observed activity, OR D2 with ≥3 distinct victims, OR D2 + family match.

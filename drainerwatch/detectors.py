@@ -642,6 +642,8 @@ W_T3 = {"ghost_forward", "ghost_forward_multi", "deploy_drain_weak", "bait_forwa
         "operator_wallet", "serial_deployer"}
 
 
+TRON_PULL_T1_WITH = {"kit_signature", "approval_fingerprint", "approval_kit_shape", "prefund_approve", "fixed_fee",
+                     "split_xtx", "split_pull"}
 # GitHub / paper research rules G1-G13 (see assign_tier): one G rule never gives T1
 G_T2 = {"fake_call_multi", "fake_call_contract_multi", "phish_multicall", "router_sweep_multi", "nft_bulk_multi",
         "seaport_fee_multi", "counterfactual_multi", "batch7702_decoy_multi", "zero_nonce_multi",
@@ -698,6 +700,12 @@ def assign_tier(labels, victims, active):
         return "T1"
     if "perm_hijack_drain" in labels:
         return "T1"
+    # TRON generic pulls: T1 only with a MAX / 10^46 allowance to the signer AND an independent signal
+    if "tron_eoa_pull_multi" in labels and "tron_max_approval" in labels and labels & TRON_PULL_T1_WITH:
+        return "T1"
+    if "tron_eoa_pull_multi" in labels or ("tron_contract_pull" in labels and labels & {"owner_gated_puller", "split_xtx",
+                                                                                        "split_pull"}):
+        return "T2"
     if "aml_approve_transfer" in labels and victims >= 3:
         return "T1"
     if labels & {"approval_kit_shape", "approve_all_call", "aml_approve_transfer", "prefund_approve_multi",
@@ -733,7 +741,7 @@ def assign_tier(labels, victims, active):
                  "redflag_selectors", "family_match", "pays_inferred_operator", "split_xtx", "foreign_recipient_swap",
                  "kit_signature", "owner_gated_puller", "bait_withdraw", "prefund_hub", "cross_chain",
                  "gen_back_transfer", "eip7702_operator", "emergency_gas_self", "kit_pull", "increase_max",
-                 "prefund_approve", "perm_hijack", "fixed_fee", "poison_zero"} | W_T3 | G_T3):
+                 "prefund_approve", "perm_hijack", "fixed_fee", "poison_zero", "tron_eoa_pull", "tron_contract_pull"} | W_T3 | G_T3):
         return "T3"
     return None
 

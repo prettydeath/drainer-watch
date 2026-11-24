@@ -13,7 +13,8 @@ from . import tron_detectors as td
 from .constants import (CHAINS, MIN_USD, TRON_ALLOWLIST, TRON_FEE_WINDOW, TRON_KIT_FEE_LIMIT,
                         TRON_MAX_ACCOUNT_LOOKUPS, TRON_MAX_CONTRACT_LOOKUPS, TRON_PERM_MIN_AGE_SEC, TRON_POISON_MIN,
                         TRON_HUB_MAX_FUNDED, TRON_PREFUND_KEEP, TRON_PREFUND_MAX, TRON_PREFUND_MIN, TRON_PREFUND_MIN_GAP,
-                        TRON_PREFUND_WINDOW, TRON_USDT,
+                        TRON_PREFUND_WINDOW, TRON_USDT, TRON_MAX_APPROVAL_MIN, TRON_SAME_OWNER_FUNDINGS,
+                        TRON_SIGNER_MAX_TXS, TRON_SIGNER_MAX_VICTIMS_RUN, TRON_GENERIC_MAX_LOOKUPS, TRON_GENERIC_RESERVE,
                         XSPLIT_MAX_GAP)
 from .db import meta_get, meta_set
 from .scan import Ctx, add_evidence_pending, add_payout, load_state, plan_range, update_payouts
@@ -43,6 +44,9 @@ class TronCtx(Ctx):
         self.tr_carry: list = []       # third-party pull legs of the last CARRY_SEC seconds
         self.aml_pending: list = []    # T-3 aml_exact candidates waiting for the bait transfer
         self.hijacked: dict = {}       # T-6 victim -> {controller}
+        self.signer_n = defaultdict(int)          # contract calls per signer in this run (service guard)
+        self.signer_victims = defaultdict(set)    # third-party pull victims per signer in this run
+        self.max_approved: dict = {}             # (owner, spender) -> approval tx with a MAX / 10^46 / approve-all amount
         self.tokens.cache[TRON_ZERO] = ("TRX", 6)
 
     # ---- lookups ----
@@ -176,10 +180,17 @@ def process_tron_chunk(ctx, blocks, infos):
     seeds_and_fingerprints(ctx, tr, ap)
     record_fundings(ctx, txs, last_ts)
     calls = td.approval_calls(txs)
+    for t in txs:
+        if t.get("type") == "TriggerSmartContract":
+            ctx.signer_n[t["frm"]] += 1
+    for c in calls:
+        if c["method"] == "approve_all" or (c["amount"] or 0) >= TRON_MAX_APPROVAL_MIN:
+            ctx.max_approved[(c["owner"], c["spender"])] = c["tx"]
     approvals_t3(ctx, calls)
     prefund_t4(ctx, calls)
     pulls = pulls_t1(ctx, tr)
     xsplit_t1(ctx, pulls)
+    generic_pulls(ctx, pulls)
     single_split(ctx, tr)
     bait_t5(ctx, txs)
     perms_t6(ctx, txs, tr)
@@ -356,6 +367,77 @@ def pulls_t1(ctx, tr):
             ctx.pdr.append(d)
             ctx.stats["t3_eoa_pull"] += 1
     return pulls
+
+
+def generic_pulls(ctx, pulls):
+    """Generic TRON pulls (EVM D8 / D3 analogues). (1) TRC-20 transferFrom signed by an account that is neither the
+    token owner nor the token: `tron_eoa_pull` on the signer (3+ victims in 24 h -> T2 in the roll-up), with
+    `max_approval` when the victim gave that signer a MAX / 10^46 / approve-all allowance seen by the scanner. (2) A
+    contract pulling tokens of wallets that did not sign: `tron_contract_pull` (3+ victims T3; T2 with owner-gated code
+    or a split). Guards: allowlisted / labelled (exchange, service, ...) signers, recipients and victims; contract
+    victims; services (> TRON_SIGNER_MAX_TXS contract calls or > TRON_SIGNER_MAX_VICTIMS_RUN pull victims in one run);
+    the signer's own deposit wallets (it funded the victim >= TRON_SAME_OWNER_FUNDINGS times); kit pulls (T-1) and
+    known approval spenders (T-3) already handled."""
+    done = {(e["address"], e["tx"]) for e in ctx.pev if e["type"] in ("kit_pull", "eoa_spender_pull")}
+    cands = [p for p in pulls if (p["subject"], p["tx"]) not in done][:200]   # allowlisted / labelled: removed upstream
+    for p in cands:
+        if p["via"] == "token":
+            ctx.signer_victims[p["subject"]].add(p["frm"])
+    if not cands:
+        return
+    ctx.tokens.ensure({p["token"] for p in cands})
+    for p in cands:
+        s = p["subject"]
+        if ctx.signer_n[p["caller"]] > TRON_SIGNER_MAX_TXS or len(ctx.signer_victims[p["caller"]]) > TRON_SIGNER_MAX_VICTIMS_RUN:
+            ctx.stats["tron_pull_service"] += 1
+            continue
+        vi, si = _cinfo_capped(ctx, p["frm"]), _cinfo_capped(ctx, s)
+        if vi is None or vi["is_contract"] or si is None:
+            continue
+        if p["via"] == "token":
+            if si["is_contract"]:
+                continue
+        elif not si["is_contract"] or si["kit"] in PULL_KITS:
+            continue
+        funded = ctx.conn.execute("SELECT COUNT(*) FROM tron_fund WHERE funder IN (?,?) AND recipient=?",
+                                  (p["caller"], p["to"], p["frm"])).fetchone()[0]
+        if funded >= TRON_SAME_OWNER_FUNDINGS:
+            ctx.stats["tron_pull_same_owner"] += 1
+            continue
+        d = ctx.drain_row(p, p["frm"], s)
+        if d["usd"] is not None and d["usd"] < MIN_USD:
+            continue
+        dec = ctx.tokens.get(p["token"])[1]
+        det = dict(victim=p["frm"], recipient=p["to"], token=p["token"], caller=p["caller"],
+                   whole_amount=bool(dec) and p["value"] % (10 ** dec) == 0)   # exact payment amounts: services
+        if p["via"] == "token":
+            mx = ctx.max_approved.get((p["frm"], s))
+            if mx is None:
+                r = ctx.conn.execute("SELECT tx FROM evidence WHERE chain=? AND address=? AND type IN ('tron_approval',"
+                                     "'approval_fingerprint') AND detail LIKE ? LIMIT 1", (CHAIN, s, '%' + p["frm"] + '%')).fetchone()
+                mx = r["tx"] if r else None
+            if mx:
+                det["max_approval_tx"] = mx
+            type_ = "tron_eoa_pull"
+        else:
+            det["puller"] = bool(si.get("puller"))
+            type_ = "tron_contract_pull"
+        if add_evidence_pending(ctx, type_, s, p["tx"], p["block"], det) and p["to"] not in (s, p["frm"]):
+            add_payout(ctx.conn, CHAIN, s, p["to"], "collector")
+        ctx.pdr.append(d)
+        ctx.stats["t_" + type_] += 1
+
+
+def _cinfo_capped(ctx, addr):
+    """cinfo for the generic pull rules with their own lookup budget, so they never starve the kit rules (T-1..T-8)."""
+    info = ctx.cinfo(addr, fetch=False)
+    if info is not None:
+        return info
+    if ctx.stats["generic_lookups"] >= TRON_GENERIC_MAX_LOOKUPS or             ctx.stats["contract_lookups"] >= TRON_MAX_CONTRACT_LOOKUPS - TRON_GENERIC_RESERVE:
+        ctx.stats["generic_lookups_capped"] += 1
+        return None
+    ctx.stats["generic_lookups"] += 1
+    return ctx.cinfo(addr)
 
 
 def xsplit_t1(ctx, pulls):

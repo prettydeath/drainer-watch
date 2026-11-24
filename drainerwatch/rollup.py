@@ -4,7 +4,7 @@ import json
 from collections import defaultdict
 
 from . import bytecode, wrules
-from .constants import (ALLOWLIST, CODEHASH_CLUSTER_MIN, INTEL_CSV, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, KIT_PUBLIC_CONTRACTS,
+from .constants import (ALLOWLIST, CODEHASH_CLUSTER_MIN, INTEL_CSV, TRON_PULL_MULTI, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, KIT_PUBLIC_CONTRACTS,
                         KIT_VANITY_RE, MALICIOUS_CATEGORIES, MIN_USD, ONESHOT_T1_WORKERS, POOL_SELECTORS, TRON_ALLOWLIST, TRON_FEE_MIN_HITS,
                         OPERATOR_WALLET_T2, SERIAL_DEPLOYER_T2, TRON_PERM_T2, TRON_PREFUND_T2, VANITY_MIN_APPROVERS)
 from .detectors import assign_tier, score_of, window_hit
@@ -132,7 +132,8 @@ def rollup(conn, seeds, labels, now=None):
                                    # web-research rules W1-W11
                                    vapp=set(), ghosts=set(), bfwd=set(), kept=False, tsp=set(), takeovers=set(),
                                    safe_app=set(), safe_pull=set(), sz=set(), a7702=False, a7702_c0=False, grid=False,
-                                   dd_strong=False, g=defaultdict(set), cf_children=set()))
+                                   dd_strong=False, g=defaultdict(set), cf_children=set(),
+                                   tep=[], tcp=[], tmax=False, tpuller=False))
     for r in conn.execute("SELECT chain,address,type,tx,ts,detail FROM evidence"):
         p = per[(r["chain"], r["address"])]
         d = json.loads(r["detail"] or "{}")
@@ -221,6 +222,14 @@ def rollup(conn, seeds, labels, now=None):
             p["victims"].add(d.get("victim"))
         elif t == "perm_hijack_drain":
             p["victims"].add(d.get("victim"))
+        elif t == "tron_eoa_pull":
+            p["tep_any"] = True
+            if not d.get("whole_amount"):      # whole-token amounts (1000, 2500 USDT) are payments collected by a service
+                p["tep"].append((r["ts"], d.get("victim")))
+            p["tmax"] = p["tmax"] or bool(d.get("max_approval_tx"))
+        elif t == "tron_contract_pull":
+            p["tcp"].append((r["ts"], d.get("victim")))
+            p["tpuller"] = p["tpuller"] or bool(d.get("puller"))
         elif t == "fixed_fee":
             p["fees"].append((d.get("amount_trx"), d.get("victim"), d.get("pull_tx")))
             p["victims"].add(d.get("victim"))
@@ -409,6 +418,16 @@ def rollup(conn, seeds, labels, now=None):
                     lb.add("fixed_fee_multi")
         if p["poison"]:
             lb.add("poison_zero")
+        if p.get("tep_any"):                       # TRON generic EOA-signer pulls
+            lb.add("tron_eoa_pull")
+            if window_hit(p["tep"], need=TRON_PULL_MULTI):
+                lb.add("tron_eoa_pull_multi")
+            if p["tmax"]:
+                lb.add("tron_max_approval")
+        if p["tcp"] and window_hit(p["tcp"], need=TRON_PULL_MULTI):
+            lb.add("tron_contract_pull")           # a contract pulling 3+ non-signers in 24 h
+            if p["tpuller"]:
+                lb.add("owner_gated_puller")
         if "approval_fingerprint" in p["types"] and (chain, addr) in fresh_eoas:
             lb.add("oneshot_spender")             # MS Drainer Wallet Randomizer: fresh EOA spender of kit approvals
         # web-research rules W1-W11
@@ -472,6 +491,7 @@ def rollup(conn, seeds, labels, now=None):
         if KIT_VANITY_RE.match(addr) and (p["kit"] or p["kit_public"] or p["xchain"]):
             lb.add("kit_vanity")                  # N9: score booster with a kit fingerprint / K14 twin, never alone
         victims = {v for v in p["victims"] | drain_victims.get((chain, addr), set()) | {v for _, v in p["mvp"]}
+                   | {v for _, v in p["tep"]} | {v for _, v in p["tcp"]}
                    | {v for _, v in p["esp"]} | {v for _, v in p["frs_all"]} if v}
         n_dr, usd = dr.get((chain, addr), (0, 0.0))
         active = bool(victims) or n_dr > 0 or bool(ACTIVITY_TYPES & set(p["types"]))
