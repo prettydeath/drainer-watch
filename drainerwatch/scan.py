@@ -6,7 +6,7 @@ from collections import Counter, defaultdict
 
 from . import bytecode, detectors, enrich, gscan, wrules, wscan
 from .auth7702 import authority_of
-from .constants import (ALLOWLIST, ALLOWLIST_CSV, APPROVAL_KEEP_SEC, APPROVE_SELECTORS, BAIT_CAPTURE,
+from .constants import (GAP_AFTER_SEC, ALLOWLIST, ALLOWLIST_CSV, APPROVAL_KEEP_SEC, APPROVE_SELECTORS, BAIT_CAPTURE,
                         MALICIOUS_CATEGORIES, CHAINS, CONFIRMATIONS, D8_MAX_LOOKUPS, D8_MAX_SPENDER_NONCE,
                         D8_MIN_VICTIM_NONCE, DUST_APPROVE_MAX_WEI, EMERGENCY_GAS_KEEP, EMERGENCY_GAS_MAX_USD,
                         EMERGENCY_GAS_WINDOW_SEC, GEN_BACK_WINDOW, KIT_PUBLIC_CONTRACTS, KIT_ROUTER_XTX_SEC,
@@ -1224,6 +1224,32 @@ def d10(ctx, swaps):
 
 
 # ---------- per-chain driver ----------
+def prefetch(gen):
+    """Fetch the next chunk in a background thread while the current one is processed (RPC latency, not CPU, bounds
+    the scanner). Exceptions of the producer are re-raised in the consumer."""
+    import queue
+    import threading
+    q = queue.Queue(maxsize=1)
+    end = object()
+
+    def run():
+        try:
+            for item in gen:
+                q.put(item)
+        except BaseException as e:  # noqa: BLE001 - handed over to the consumer
+            q.put(("__error__", e))
+        q.put(end)
+    th = threading.Thread(target=run, daemon=True)
+    th.start()
+    while True:
+        item = q.get()
+        if item is end:
+            return
+        if isinstance(item, tuple) and len(item) == 2 and item[0] == "__error__":
+            raise item[1]
+        yield item
+
+
 def plan_range(conn, chain, head, max_blocks, now=None):
     """Head-first block range for one run: [cursor + 1, cursor + max_blocks] while the scanner keeps up; when the lag
     exceeds one run's worth of blocks the cursor jumps to head - max_blocks and the skipped range is recorded as a gap
@@ -1235,11 +1261,12 @@ def plan_range(conn, chain, head, max_blocks, now=None):
         start = max(1, head - INITIAL_BLOCKS)
         return start, min(tip, start + max_blocks - 1)
     start = int(cur) + 1
-    if tip - start + 1 > max_blocks:
+    gap_after = max(max_blocks, int(GAP_AFTER_SEC / CHAINS[chain].get("block_sec", 12))) if chain in CHAINS else max_blocks
+    if tip - start + 1 > gap_after:
         new_start = tip - max_blocks + 1
         add_gap(conn, chain, start, new_start - 1, now)
-        log.warning("%s: lag %d blocks > %d per run; skipping %d-%d (recorded as a gap)", chain, tip - start + 1,
-                    max_blocks, start, new_start - 1)
+        log.warning("%s: lag %d blocks > %d; skipping %d-%d (recorded as a gap)", chain, tip - start + 1,
+                    gap_after, start, new_start - 1)
         start = new_start
     return start, min(tip, start + max_blocks - 1)
 
@@ -1284,10 +1311,10 @@ def scan_chain(conn, chain, seeds, labels, prices, max_blocks=None, deadline=Non
             log.warning("%s: seed code fetch failed: %s", chain, e)
         size = int(meta_get(conn, f"chunk:{chain}", cfg["chunk"]) or cfg["chunk"])
         if source == "receipts":
-            chunks = rpc.iter_receipts(start, end, deadline, size=min(size, 10))
+            chunks = rpc.iter_receipts(start, end, deadline, size=min(size, cfg.get("receipts_chunk", 10)))
         else:
             chunks = ((x, y, lg, None) for x, y, lg in rpc.iter_logs(start, end, deadline, size))
-        for a, b, logs, txmeta in chunks:
+        for a, b, logs, txmeta in prefetch(chunks):
             process_chunk(ctx, a, b, logs, txmeta=txmeta)
             if chain == "eth":
                 try:

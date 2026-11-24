@@ -605,7 +605,7 @@ def test_missing_tx_info_never_advances_past_the_block(monkeypatch):
     from drainerwatch.db import meta_set
     meta_set(conn, "cursor:tron", 900)
     st = tron_scan.scan_tron(conn, SeedSet(), {}, Prices(native={}), rpc=R(), chunk=20)
-    assert st["start"] == 1000 - 2 - 60 + 1                     # keyless window is 60 blocks (gap 901-938 recorded)
+    assert st["start"] == 901                                   # lag 98 blocks < 45 min of chain: no gap, continue
     assert meta_get(conn, "cursor:tron") == "944" and st["info_missing"] == 1
     p = render.build_payload(conn)
     assert "API key" in p["chains"]["tron"]["note"]

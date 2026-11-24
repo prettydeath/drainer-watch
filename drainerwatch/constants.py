@@ -17,14 +17,17 @@ CHAINS = {
     "eth": dict(id=1, rpc_env="ETH_RPC_URL", rpc="https://ethereum-rpc.publicnode.com",
                 explorer="https://etherscan.io", native="ETH", max_blocks=100, block_sec=12, source="receipts", chunk=20, wa="ethereum", cg="ethereum", share=0.25),
     "bsc": dict(id=56, rpc_env="BSC_RPC_URL", rpc="https://bsc-rpc.publicnode.com",
-                explorer="https://bscscan.com", native="BNB", max_blocks=2000, block_sec=0.45, source="logs", chunk=100, wa="bsc", cg="binancecoin", share=0.5),
+                explorer="https://bscscan.com", native="BNB", max_blocks=2400, block_sec=0.45, source="logs", chunk=100, wa="bsc", cg="binancecoin", share=0.5),
     "base": dict(id=8453, rpc_env="BASE_RPC_URL", rpc="https://base-rpc.publicnode.com",
-                 explorer="https://basescan.org", native="ETH", max_blocks=450, block_sec=2, source="receipts", chunk=60, wa="base", cg="ethereum", share=0.1),
+                 explorer="https://basescan.org", native="ETH", max_blocks=4500, block_sec=0.2, source="receipts", chunk=60, receipts_chunk=20, wa="base", cg="ethereum", share=0.1),
     # TRON (TronGrid HTTP API, not JSON-RPC): own ingestion in tron_scan.py; ~3 s blocks -> ~200-300 blocks per 10-15 min
     "tron": dict(id=None, kind="tron", rpc_env="TRON_API_URL", rpc="https://api.trongrid.io (keys) / tron-rpc.publicnode.com",
                  explorer="https://tronscan.org/#", tx_path="transaction", native="TRX", max_blocks=300, max_blocks_keyless=60, block_sec=3,
                  source="blocks", chunk=20, wa="tron", cg="tron", share=0.15),
 }
+# max_blocks: blocks per run (~15 min of chain; Base 0.2 s and BSC 0.45 s blocks measured 2026-11-24). A run stops at
+# its time budget and the next run continues from the cursor; a gap is recorded only when the lag exceeds
+# GAP_AFTER_SEC of chain time (the scanner fell behind for good), not merely one run's max_blocks.
 # share: fraction of the run's scan budget; slices are cumulative in run order, so time a chain leaves unused goes to the
 # chains after it. Measured 2026-11-24 (warm cache): ETH 75 blocks ~70 s, Base 411 ~27 s, TRON 300 ~35 s, BSC (getLogs +
 # D2/D3 tx lookups) ~0.44 s per block, i.e. about real time: BSC runs last, takes what is left and records gaps.
@@ -34,6 +37,7 @@ EVM_CHAINS = [c for c, cfg in CHAINS.items() if cfg.get("kind", "evm") == "evm"]
 # (enables D8 / R-A1 and removes capped tx lookups); BSC stays on getLogs (receipts + D8 lookups: ~16x wall time per
 # block, 800 blocks/run would not fit the budget). Env DRAINERWATCH_SOURCE / --source override all chains.
 INITIAL_BLOCKS = 300
+GAP_AFTER_SEC = 45 * 60
 CONFIRMATIONS = 2
 MAX_GAPS = 50                  # head-first scanning: skipped block ranges kept per chain (meta gaps:<chain>)
 

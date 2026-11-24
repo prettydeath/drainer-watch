@@ -7,10 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       max_blocks:
-        description: "Blocks per chain for this run (empty = defaults: eth 100, base 450, bsc 2000, tron 300)"
+        description: "Blocks per chain for this run (empty = per-chain defaults, about 15 min of each chain)"
         default: ""
       budget_sec:
-        description: "Time budget in seconds"
+        description: "Scan time budget per chain job in seconds"
         default: "420"
 
 permissions:
@@ -20,10 +20,69 @@ concurrency:
   group: drainerwatch
   cancel-in-progress: false
 
+env:
+  GH_REPO: ${{ github.repository }}
+
 jobs:
-  run:
+  # one job per chain, in parallel, each with its own time budget and its own database shard
+  # (drainerwatch-<chain>.sqlite.gz in the data-latest release; first run: a copy of the old single database, trimmed)
+  scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 16
+    strategy:
+      fail-fast: false
+      matrix:
+        chain: [eth, base, bsc, tron]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore the chain shard (else migrate from the single database)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          C: ${{ matrix.chain }}
+        run: |
+          mkdir -p data _rel
+          if gh release download data-latest -p "drainerwatch-$C.sqlite.gz" -D _rel 2>/dev/null; then
+            gunzip -c "_rel/drainerwatch-$C.sqlite.gz" > "data/drainerwatch-$C.sqlite" && echo "shard from release"
+          elif gh release download data-latest -p drainerwatch.sqlite.gz -D _rel 2>/dev/null; then
+            gunzip -c _rel/drainerwatch.sqlite.gz > "data/drainerwatch-$C.sqlite" && echo "shard migrated from the single database"
+          else
+            echo "no previous state"
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests pycryptodome
+
+      - name: Scan
+        env:
+          ETHERSCAN_API_KEYS: ${{ secrets.ETHERSCAN_API_KEYS }}
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+          BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
+          BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          TRONGRID_API_KEYS: ${{ secrets.TRONGRID_API_KEYS }}
+        run: |
+          MB="${{ github.event.inputs.max_blocks }}"
+          BS="${{ github.event.inputs.budget_sec }}"
+          python -m drainerwatch scan --chain "${{ matrix.chain }}" --budget-sec "${BS:-420}" ${MB:+--max-blocks "$MB"}
+
+      - name: Upload the shard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          C: ${{ matrix.chain }}
+        run: |
+          gh release view data-latest >/dev/null 2>&1 || gh release create data-latest --prerelease \
+            --title "data (rolling)" --notes "Rolling scanner state, overwritten by every watch run. Not a software release." || true
+          gzip -c "data/drainerwatch-$C.sqlite" > "drainerwatch-$C.sqlite.gz"
+          gh release upload data-latest "drainerwatch-$C.sqlite.gz" --clobber
+
+  # merge the shards into the main database, then roll-up, enrichment, exposure, alerts and render
+  merge:
+    needs: scan
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     outputs:
       changed: ${{ steps.publish.outputs.changed }}
     steps:
@@ -36,12 +95,11 @@ jobs:
           path: _data
         continue-on-error: true
 
-      - name: Restore the database from the data-latest release, else the legacy copy on the data branch
+      - name: Restore the main database and the fresh shards
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         run: |
-          mkdir -p data
+          mkdir -p data _rel _shards
           if gh release download data-latest -p drainerwatch.sqlite.gz -D _rel 2>/dev/null; then
             gunzip -c _rel/drainerwatch.sqlite.gz > data/drainerwatch.sqlite && echo "db from release"
           elif [ -f _data/data/drainerwatch.sqlite ]; then
@@ -49,6 +107,10 @@ jobs:
           else
             echo "no previous db"
           fi
+          for c in eth base bsc tron; do
+            gh release download data-latest -p "drainerwatch-$c.sqlite.gz" -D _rel --clobber 2>/dev/null \
+              && gunzip -c "_rel/drainerwatch-$c.sqlite.gz" > "_shards/drainerwatch-$c.sqlite" || echo "no shard for $c"
+          done
           cp data/drainerwatch.sqlite _db_before.sqlite 2>/dev/null || true
 
       - uses: actions/setup-python@v5
@@ -56,7 +118,7 @@ jobs:
           python-version: "3.12"
       - run: pip install requests pycryptodome
 
-      - name: Run
+      - name: Merge and finish
         env:
           ETHERSCAN_API_KEYS: ${{ secrets.ETHERSCAN_API_KEYS }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -67,14 +129,12 @@ jobs:
           TRONGRID_API_KEYS: ${{ secrets.TRONGRID_API_KEYS }}
           DASHBOARD_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
-          MB="${{ github.event.inputs.max_blocks }}"
-          BS="${{ github.event.inputs.budget_sec }}"
-          python -m drainerwatch run --budget-sec "${BS:-420}" ${MB:+--max-blocks "$MB"}
+          if ls _shards/*.sqlite >/dev/null 2>&1; then python -m drainerwatch merge _shards/*.sqlite; fi
+          python -m drainerwatch finish --budget-sec 240
 
       - name: Upload the database and large CSVs to the data-latest release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         run: |
           if cmp -s _db_before.sqlite data/drainerwatch.sqlite; then echo "db unchanged"; exit 0; fi
           gh release view data-latest >/dev/null 2>&1 || gh release create data-latest --prerelease \
@@ -104,19 +164,19 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
   pages:
-    needs: run
-    if: needs.run.outputs.changed == 'true'
+    needs: merge
+    if: needs.merge.outputs.changed == 'true'
     permissions:
       contents: read
       pages: write
       id-token: write
     uses: ./.github/workflows/pages.yml
 
-  # Self re-dispatch: keeps a ~10 min cadence without relying on cron. The next run is queued behind this one by the
+  # Self re-dispatch: keeps the cadence without relying on cron. The next run is queued behind this one by the
   # concurrency group; nothing is dispatched when another watch run is already queued (no pile-up, no tight loop).
   next:
-    needs: run
-    if: ${{ always() && needs.run.result != 'cancelled' }}
+    needs: merge
+    if: ${{ always() && needs.merge.result != 'cancelled' }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     permissions:
@@ -125,12 +185,12 @@ jobs:
       - name: Wait for the next slot and re-dispatch
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
         run: |
           started=$(gh api "repos/$GH_REPO/actions/runs/${{ github.run_id }}" --jq .run_started_at)
           elapsed=$(( $(date -u +%s) - $(date -u -d "$started" +%s) ))
           wait=$(( 540 - elapsed )); [ $wait -gt 0 ] && sleep $wait
-          queued=$(gh api "repos/$GH_REPO/actions/workflows/watch.yml/runs?per_page=20"             --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.status=="queued" or .status=="waiting" or .status=="pending" or .status=="requested")] | length')
+          queued=$(gh api "repos/$GH_REPO/actions/workflows/watch.yml/runs?per_page=20" \
+            --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.status=="queued" or .status=="waiting" or .status=="pending" or .status=="requested")] | length')
           if [ "$queued" -gt 0 ]; then echo "another watch run is already queued ($queued); not dispatching"; exit 0; fi
           gh workflow run watch.yml --ref "${{ github.ref_name }}"
           echo "dispatched the next run"

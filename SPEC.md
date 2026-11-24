@@ -206,6 +206,7 @@ tron_contracts(address,is_contract,size,kit,puller,origin,name,selectors,checked
 seeds(address,chain NULL,label,source,added) · meta(k,v)
 
 ## CLI
+`drainerwatch scan --chain C [--db shard]` (one chain into data/drainerwatch-C.sqlite + chain-local roll-up) · `drainerwatch merge SHARD...` (shards.py: scan-state tables replaced per chain, enrichment tables unioned, meta name:<chain>) · `drainerwatch finish` (roll-up, enrichment, freeze, exposure, alerts, render). CI: watch.yml matrix job per chain, then a merge job; gaps only when a chain is > GAP_AFTER_SEC (45 min) behind.
 `drainerwatch run [--chains eth,bsc,base,tron] [--max-blocks N] [--budget-sec S] [--env-file F]` (scan + detect + render)
 `drainerwatch loop --interval 60` (for a Linux box) · `drainerwatch render` · `drainerwatch seeds`
 `drainerwatch backtest --chain eth --from-block A --to-block B` (no cursor change)

@@ -303,9 +303,19 @@ spender per visitor, funds it with gas and pulls later).
   Base 0.6 vs 2.7 MB, 0.6 vs 1.2 s; BSC 4.0 vs 10.7 MB but 1.4 vs 22.9 s (856 code + 355 nonce lookups for D8), i.e.
   ~15 min for the default 800 BSC blocks per run, beyond the 300 s budget, so BSC stays on logs (no D8 / R-A1 there).
 
-* **Head-first scanning.** When a chain falls more than one run's `max_blocks` behind (for example after the schedule
-  stalled), the next run jumps to the head and records the skipped range; `data.json` `chains[c].gaps` / `gap_blocks`
-  and the dashboard top bar ("not scanned: N blocks") show it. Skipped ranges are not back-filled automatically.
+* **Parallel chains.** Each watch run scans every chain in its own GitHub Actions job (matrix, own time budget, own
+  database shard `drainerwatch-<chain>.sqlite.gz` in the `data-latest` release); a final job merges the shards into the
+  main database (scan state replaced per chain, enrichment tables kept) and does the roll-up, enrichment, exposure,
+  alerts and render. `python -m drainerwatch scan --chain C` / `merge` / `finish` are the same steps locally. Chunks are
+  fetched one ahead in a background thread (the scanner is bound by RPC latency, not CPU).
+* **Head-first scanning.** A run takes up to `max_blocks` (about 15 min of each chain: ETH 100, Base 4 500 at 0.2 s
+  blocks, BSC 2 400 at 0.45 s, TRON 300) and stops at its time budget; the next run continues from the cursor. Only when
+  a chain is more than 45 min of chain time behind does the next run jump to the head and record the skipped range
+  (`data.json` `chains[c].gaps` / `gap_blocks`, "not scanned: N blocks" in the top bar). Skipped ranges are not
+  back-filled automatically. On the free public RPC (publicnode) Base and BSC are latency-bound (measured locally
+  2026-11-24: Base 3.2-4.0 blocks/s with receipts against 5 produced per second; BSC 2.5 blocks/s with getLogs against
+  2.2); if a chain cannot keep up, set `BASE_RPC_URL` / `BSC_RPC_URL` (repository secrets, already passed to the jobs)
+  to a faster endpoint.
 * **No traces.** Everything comes from logs and top-level transactions (W3 asks Etherscan for the internal transfers of
   the few bait txs, capped per run). Factory/CREATE2 (internal) creations are not visible
   on any chain, contract creations are scanned on ETH only (none on BSC/Base), and native-coin internal splits are
@@ -352,6 +362,9 @@ spender per visitor, funds it with gas and pulls later).
 pip install requests pycryptodome
 python -m drainerwatch run --chains eth,base,bsc,tron --max-blocks 30 --budget-sec 300 --env-file keys.env
 python -m drainerwatch loop --interval 60          # for a Linux box
+python -m drainerwatch scan --chain base --budget-sec 420   # one chain into data/drainerwatch-base.sqlite (CI matrix job)
+python -m drainerwatch merge data/drainerwatch-*.sqlite     # shards -> data/drainerwatch.sqlite
+python -m drainerwatch finish --budget-sec 240              # roll-up, enrichment, exposure, alerts, render
 python -m drainerwatch render                      # data/*.sqlite -> site/index.html + site/data.json
 python -m drainerwatch seeds                       # refresh seeds, print counts
 python -m drainerwatch backtest --chain eth --from-block 21000000 --to-block 21000200   # separate db, no cursor change

@@ -363,3 +363,13 @@ def test_codehash_cluster_is_score_only():
                          (a(0x10 + i), "0xabc", 500, "sk", json.dumps([])))
     rows = rollup.rollup(ctx.conn, SeedSet(), {})
     assert all("codehash_cluster" in r["labels"] and r["tier"] == "T3" for r in rows)
+
+
+def test_gap_only_after_the_lag_exceeds_gap_after_sec():
+    from drainerwatch.db import meta_get, meta_set
+    ctx = make_ctx()
+    meta_set(ctx.conn, "cursor:eth", 1000)
+    assert scan.plan_range(ctx.conn, "eth", 1150, 100) == (1001, 1100)          # 148 behind, 45 min = 225 blocks: no gap
+    assert not meta_get(ctx.conn, "gaps:eth")
+    assert scan.plan_range(ctx.conn, "eth", 1400, 100) == (1299, 1398)          # 398 behind: gap 1001-1298
+    assert json.loads(meta_get(ctx.conn, "gaps:eth"))[0]["to"] == 1298

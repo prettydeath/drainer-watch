@@ -1,9 +1,10 @@
-"""CLI: python -m drainerwatch <run|loop|render|seeds|backtest>."""
+"""CLI: python -m drainerwatch <run|loop|scan|merge|finish|render|seeds|backtest>."""
 import argparse
 import logging
 import sys
 import time
 from collections import Counter
+from pathlib import Path
 
 from . import alerts, enrich, exposure, famname, freeze, rollup, scan, seeds as seedmod
 from .constants import CHAINS, DATA_DIR, DEFAULT_CHAIN_ORDER, WA_LOCAL_DEFAULT
@@ -45,16 +46,16 @@ def summarize(conn, stats):
     return "\n".join(lines)
 
 
-def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
-    conn = conn or connect()
-    t0 = time.monotonic()
+def scan_chains(conn, chains, max_blocks, budget_sec, source=None, t0=None, share=0.85):
+    """Scan `chains` one after another inside `share` of the budget. Returns (stats, rpcs, seeds, labels, prices)."""
+    t0 = t0 or time.monotonic()
     sd = seedmod.refresh(conn)
     enrich.refresh_labels(conn, chains)
     labels = enrich.load_labels(conn)
     prices = Prices(conn)
     prices.refresh()
     stats, rpcs = {}, {}
-    scan_budget = budget_sec * 0.85
+    scan_budget = budget_sec * share
     shares = [CHAINS[c].get("share", 1.0) for c in chains]
     for i, ch in enumerate(chains):
         deadline = t0 + scan_budget * sum(shares[:i + 1]) / sum(shares)    # cumulative: unused time rolls forward
@@ -69,6 +70,11 @@ def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
         except Exception as e:  # noqa: BLE001 - one chain failing must not stop the others
             log.error("%s: scan failed: %s", ch, redact(e))
             stats[ch] = e
+    return stats, rpcs, sd, labels, prices
+
+
+def finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=True):
+    """Everything after the scan: roll-up, enrichment, freezable balances, exposure, alerts, render."""
     rows = rollup.rollup(conn, sd, labels)
     try:
         es = enrich.Etherscan()
@@ -110,8 +116,58 @@ def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
         log.warning("alerts failed: %s", redact(e))
     if render:
         render_all(conn, web_dist=WEB_DIST)
+
+
+def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
+    conn = conn or connect()
+    t0 = time.monotonic()
+    stats, rpcs, sd, labels, prices = scan_chains(conn, chains, max_blocks, budget_sec, source=source, t0=t0)
+    finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=render)
     print(summarize(conn, stats))
     return stats
+
+
+def cmd_scan(a):
+    """One chain into its own shard database (parallel CI jobs): scan + a chain-local roll-up (feeds the next run)."""
+    import json
+    from . import shards
+    from .db import meta_set
+    chain = parse_chains(a.chain)[0]
+    conn = connect(Path(a.db) if a.db else shards.shard_path(DATA_DIR, chain))
+    if shards.init_shard(conn, chain):
+        log.info("%s: shard initialised from a full database copy", chain)
+    t0 = time.monotonic()
+    stats, rpcs, sd, labels, prices = scan_chains(conn, [chain], a.max_blocks, a.budget_sec, source=a.source, t0=t0,
+                                                  share=1.0)
+    rollup.rollup(conn, sd, labels)
+    st = stats[chain]
+    if not isinstance(st, Exception):
+        st = {k: v for k, v in st.items() if isinstance(v, (int, float, str))}
+        st["sec"] = round(time.monotonic() - t0, 1)
+        meta_set(conn, f"stats:{chain}", json.dumps(st))
+    conn.commit()
+    print(summarize(conn, stats))
+
+
+def cmd_merge(a):
+    from . import shards
+    conn = connect(Path(a.db) if a.db else None)
+    res = shards.merge(conn, [Path(x) for x in a.shards])
+    print(f"merged: {res}")
+
+
+def cmd_finish(a):
+    chains = parse_chains(a.chains)
+    conn = connect(Path(a.db) if a.db else None)
+    t0 = time.monotonic()
+    sd = seedmod.refresh(conn)
+    enrich.refresh_labels(conn, chains)
+    labels = enrich.load_labels(conn)
+    prices = Prices(conn)
+    prices.refresh()
+    rpcs = {c: Rpc(c) for c in chains if CHAINS[c].get("kind") != "tron"}
+    finish(conn, chains, sd, labels, prices, rpcs, a.budget_sec, t0)
+    print(summarize(conn, {}))
 
 
 def cmd_run(a):
@@ -203,6 +259,24 @@ def main(argv=None):
         if name == "loop":
             s.add_argument("--interval", type=int, default=60)
         s.set_defaults(fn=fn)
+    s = sub.add_parser("scan", help="scan ONE chain into its shard database (parallel jobs)")
+    s.add_argument("--chain", required=True)
+    s.add_argument("--db", default=None, help="shard path (default data/drainerwatch-<chain>.sqlite)")
+    s.add_argument("--source", choices=["logs", "receipts"], default=None)
+    s.add_argument("--max-blocks", type=int, default=None)
+    s.add_argument("--budget-sec", type=int, default=int(env("DRAINERWATCH_BUDGET_SEC", "300")))
+    s.add_argument("--env-file", default=None)
+    s.set_defaults(fn=cmd_scan)
+    s = sub.add_parser("merge", help="merge chain shards into the main database")
+    s.add_argument("shards", nargs="+")
+    s.add_argument("--db", default=None)
+    s.set_defaults(fn=cmd_merge)
+    s = sub.add_parser("finish", help="roll-up, enrichment, exposure, alerts and render on the main database")
+    s.add_argument("--chains", default=env("DRAINERWATCH_CHAINS", DEFAULT_CHAINS))
+    s.add_argument("--db", default=None)
+    s.add_argument("--budget-sec", type=int, default=240)
+    s.add_argument("--env-file", default=None)
+    s.set_defaults(fn=cmd_finish)
     sub.add_parser("render").set_defaults(fn=cmd_render)
     sub.add_parser("seeds").set_defaults(fn=cmd_seeds)
     s = sub.add_parser("backtest")
