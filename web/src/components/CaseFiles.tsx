@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { ago, fmtUSD, mid, plural } from '@/lib/format'
 import { search, type Case, type Model } from '@/lib/model'
 import type { Tier } from '@/lib/types'
-import { TIER_BLURB, TIER_NAME, TIER_ORDER, chainLong, chainShort } from '@/lib/vocab'
+import { TIER_BLURB, TIER_NAME, TIER_ORDER, chainLong, chainShort, famSourceNote } from '@/lib/vocab'
 import { Addr, tv, useMedia } from './shared'
 
 function FileCard({ c, onOpen }: { c: Case; onOpen: (c: Case) => void }) {
@@ -12,8 +12,8 @@ function FileCard({ c, onOpen }: { c: Case; onOpen: (c: Case) => void }) {
       <span className="tab"><i /><b>{c.tier}</b> {TIER_NAME[c.tier].toLowerCase()}</span>
       <div className="card ruled">
         <span className="stamp" title={'Score ' + c.score + ' of 100'}>{c.score}</span>
-        <h3>{c.title}</h3>
-        <div className="addr-line mono">{mid(c.address, 10, 6)}{c.isWallet ? <span className="kind"> wallet</span> : null}</div>
+        <h3 title={c.family ? 'Code family hash ' + c.family : undefined}>{c.title}</h3>
+        <div className="addr-line mono">{mid(c.address, 10, 6)}{c.isWallet ? <span className="kind"> wallet</span> : null}{c.famSource && c.famSource !== 'hash' ? <span className="kind"> · {famSourceNote(c.famSource)}</span> : null}</div>
         <dl>
           <dt>Chain</dt><dd>{chainLong(c.chain)}</dd>
           <dt>Victims</dt><dd>{c.victims}</dd>
@@ -61,7 +61,7 @@ export function CaseFiles({ model, onOpen, query, setQuery }: { model: Model; on
   const list = useMemo(() => {
     const keys = new Set(hits.map(h => h.key))
     return model.cases.filter(c => (chain === 'all' || c.chain === chain) &&
-      (!q || keys.has(c.key) || c.title.toLowerCase().includes(q) || (c.family || '').toLowerCase().includes(q) || c.labels.some(l => l.includes(q))))
+      (!q || keys.has(c.key) || c.title.toLowerCase().includes(q) || (c.family || '').toLowerCase().includes(q) || (c.famLabel || '').toLowerCase().includes(q) || c.labels.some(l => l.includes(q))))
   }, [model, chain, q, hits])
   const strongCount = list.filter(c => c.tier !== 'T3').length
   return (

@@ -12,4 +12,4 @@ npm test           # Vitest smoke test with ../tests/fixtures/sample_data.json
 npm run build      # dist/, copied over site/ by pages.yml (and by `drainerwatch render` when present)
 ```
 
-Deep link: `#<chain>:<address>` opens that case file. `?theme=dark|light` forces a theme, `?still` turns motion off.
+Deep links: `#<chain>:<address>` opens that case file (over either tab); `#analytics` / `#overview` pick the tab. `?theme=dark|light` forces a theme, `?still` turns motion off.

@@ -4,7 +4,7 @@ import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, RadialBa
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { DAY, H, ago, fmtUSD, plural } from '@/lib/format'
 import type { Case, Family, Model } from '@/lib/model'
-import { chainShort } from '@/lib/vocab'
+import { chainShort, famSourceNote } from '@/lib/vocab'
 import { Addr, reduceMotion, tv } from './shared'
 
 const MAX_BLIPS_PER_FAMILY = 120
@@ -58,7 +58,7 @@ function Scope({ fams, now, onOpen }: { fams: Family[]; now: number; onOpen: (c:
             <g key={f.key || '_'}>
               {fams.length > 1 ? <line className="spoke" x1={C + R0 * Math.cos(a)} y1={C + R0 * Math.sin(a)} x2={C + (R1 + 6) * Math.cos(a)} y2={C + (R1 + 6) * Math.sin(a)} /> : null}
               <text className="sector-label" x={C + lr * Math.cos(am)} y={C + lr * Math.sin(am)} dy="0.35em" textAnchor={Math.abs(Math.cos(am)) < 0.3 ? 'middle' : Math.cos(am) > 0 ? 'start' : 'end'}>
-                {f.name.replace('Code family ', 'Family ').replace(' approval kit', '').replace('MS generated bait', 'MS generated')}
+                {(n => (n.length > 24 ? n.slice(0, 23) + '…' : n))(f.name.replace('Code family ', 'Family ').replace(' approval kit', '').replace('MS generated bait', 'MS generated'))}
               </text>
             </g>
           )
@@ -100,7 +100,8 @@ function FamilyCard({ f, maxD7, onOpen }: { f: Family; maxD7: number; onOpen: (c
   const top = f.contracts.slice(0, 3)
   return (
     <article className="card fam margin">
-      <h3>{f.name}<small>{plural(f.contracts.length, 'drainer')}, {fmtUSD(f.usd)}</small></h3>
+      <h3 title={f.key ? 'Code family hash ' + f.key : undefined}>{f.name}<small>{plural(f.contracts.length, 'drainer')}, {fmtUSD(f.usd)}</small></h3>
+      {f.source && f.source !== 'kit' ? <p className="famsrc">{famSourceNote(f.source)}{f.key ? <>, code hash <span className="mono">{f.key}</span></> : null}</p> : null}
       <p className="blurb">{f.blurb}</p>
       <div className="profile">
         {f.axes >= 3 ? (

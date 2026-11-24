@@ -8,19 +8,17 @@ import { Flow } from '@/components/Flow'
 import { ThemeToggle, tv, useTheme } from '@/components/shared'
 import { ago, fmtInt, fmtStamp, fmtUSD, plural } from '@/lib/format'
 import { buildModel, type Case, type Model } from '@/lib/model'
+import { parseRoute, type Tab } from '@/lib/analytics'
 import type { DataJson } from '@/lib/types'
 import { TIERS, TIER_NAME, TIER_ORDER } from '@/lib/vocab'
 
 const Kits = lazy(() => import('@/components/Kits'))
+const Analytics = lazy(() => import('@/components/Analytics'))
 const CaseSpread = lazy(() => import('@/components/CaseSpread'))
 
 type Load = { state: 'loading' } | { state: 'error'; error: string } | { state: 'ready'; model: Model }
 
-const parseHash = () => {
-  const h = decodeURIComponent(location.hash.replace(/^#/, ''))
-  const m = /^([a-z0-9]+):(\S+)$/i.exec(h)
-  return m ? { chain: m[1].toLowerCase(), address: m[2] } : null
-}
+const parseHash = () => parseRoute(location.hash).caseRef
 
 export default function App({ data }: { data?: DataJson }) {
   const [load, setLoad] = useState<Load>(() => (data ? { state: 'ready', model: buildModel(data) } : { state: 'loading' }))
@@ -57,10 +55,13 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
   const [notice, setNotice] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [withSuspects, setWithSuspects] = useState(false)
+  const [tab, setTab] = useState<Tab>(() => parseRoute(location.hash).tab || 'overview')
 
-  // deep link #chain:address opens the case spread
+  // #analytics / #overview pick the tab; deep link #chain:address opens the case spread over either tab
   const syncHash = useCallback(() => {
-    const h = parseHash()
+    const r = parseRoute(location.hash)
+    if (r.tab) setTab(r.tab)
+    const h = r.caseRef
     if (!h) { setOpen(null); return }
     const c = model.byKey.get(h.chain + ':' + h.address) ||
       model.cases.find(x => x.chain === h.chain && x.address.toLowerCase() === h.address.toLowerCase())
@@ -68,6 +69,7 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
       setOpen(null)
       setNotice(`${h.address} on ${h.chain} has no case file in the current data. Searching every address for it instead.`)
       setQuery(h.address)
+      setTab('overview')
       requestAnimationFrame(() => document.getElementById('files')?.scrollIntoView())
     }
   }, [model])
@@ -84,7 +86,14 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
   }, [])
   const close = useCallback(() => {
     setOpen(null)
-    if (parseHash()) history.replaceState(null, '', location.pathname + location.search)
+    if (parseHash()) history.replaceState(null, '', location.pathname + location.search + (tab === 'analytics' ? '#analytics' : ''))
+  }, [tab])
+  const pickTab = useCallback((t: Tab) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    setOpen(null)
+    setTab(t)
+    if (location.hash !== '#' + t) history.pushState(null, '', '#' + t)
+    window.scrollTo(0, 0)
   }, [])
 
   const t = model.data.totals
@@ -111,10 +120,21 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
           <p className="kicker">Last 24 hours: {fmtUSD(t.usd_24h)} from {plural(t.victims_24h, 'wallet')} in {plural(t.drains_24h, 'drain')}; 7 days: {fmtUSD(t.usd_7d)}. Totals count confirmed and strong drainers only{t.drains_24h_all ? `; ${fmtInt(t.drains_24h_all)} drains by every tracked subject in 24 hours` : ''}.</p>
         </div>
         <div className="tools"><button className="btn hide-sm" onClick={() => window.print()}>Print</button><ThemeToggle theme={theme} onToggle={toggle} /></div>
+        <nav className="tabs" role="tablist" aria-label="Views">
+          {(['overview', 'analytics'] as Tab[]).map(t => (
+            <a key={t} id={'tab-' + t} href={'#' + t} role="tab" aria-selected={tab === t} aria-controls={'panel-' + t} className="tabl" onClick={pickTab(t)}>{t === 'overview' ? 'Overview' : 'Analytics'}</a>
+          ))}
+        </nav>
       </header>
       <Coverage model={model} />
-      <nav className="toc" aria-label="Sections"><a href="#flow">Where the money went</a><a href="#kits">Kits</a><a href="#files">Case files</a><a href="#drains">Drains and exchanges</a><a href="#method">Method</a></nav>
       {notice ? <p className="notice" role="status">{notice} <button className="linkbtn" onClick={() => setNotice(null)}>Dismiss</button></p> : null}
+      {tab === 'analytics' ? (
+        <main id="panel-analytics" role="tabpanel" aria-labelledby="tab-analytics">
+          <Boundary what="analytics"><Suspense fallback={<p className="sect muted">Loading the analytics…</p>}><Analytics model={model} onOpen={openCase} /></Suspense></Boundary>
+        </main>
+      ) : (
+      <main id="panel-overview" role="tabpanel" aria-labelledby="tab-overview">
+      <nav className="toc" aria-label="Sections"><a href="#flow">Where the money went</a><a href="#kits">Kits</a><a href="#files">Case files</a><a href="#drains">Drains and exchanges</a><a href="#method">Method</a></nav>
 
       <section className="sect" id="flow">
         <div className="sect-h"><h2>Where the money went</h2><p>From the victim's wallet, through the drainer and its payout wallets, to the exchange where it surfaced. Width is value in USD.</p></div>
@@ -174,6 +194,8 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
         </div>
         <CoverageNotes model={model} />
       </section>
+      </main>
+      )}
       <footer className="foot">
         Drainer Watch is an automated, public monitor. Every claim links to its transaction; a tier is an assessment, not a verdict. Data: <a href="data.json">data.json</a>. Source and method: <a href="https://github.com/prettydeath/drainer-watch">github.com/prettydeath/drainer-watch</a>.
       </footer>

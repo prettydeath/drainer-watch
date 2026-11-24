@@ -35,6 +35,15 @@ export const labelInfo = (l: string): Pair =>
 export const famName = (f: string | null | undefined) =>
   !f ? 'Unattributed' : V.FAMILIES[f] ? V.FAMILIES[f][0] : /^f_/.test(f) ? 'Code family ' + f.slice(2) : human(f)
 
+/** where a family's human name comes from (data.json family_name_source) */
+export const FAM_SOURCE: Record<string, string> = {
+  kit: 'kit', contract_name: 'self-named', token_name: 'named by its token', functions: 'named by its functions', hash: 'code hash only',
+}
+export const famSourceNote = (src: string | null | undefined) => (src ? FAM_SOURCE[src] || src.replace(/_/g, ' ') : null)
+/** primary family label: family_name when the data has it (except a bare hash), else the vocab name of the hash */
+export const famLabel = (hash: string | null | undefined, name?: string | null, src?: string | null) =>
+  name && src !== 'hash' && name !== hash ? name : famName(hash)
+
 export const famBlurb = (f: string | null | undefined) =>
   !f
     ? 'No kit fingerprint matched yet; grouped here until a family is found.'

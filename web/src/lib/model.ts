@@ -1,6 +1,6 @@
 import { DAY } from './format'
-import type { ChainInfo, Contract, DataJson, Drain, Tier } from './types'
-import { EOA_LABELS, METHOD_AXES, TIER_RANK, chainShort, famBlurb, famName } from './vocab'
+import type { ChainInfo, Contract, DataJson, Drain, Freezable, Tier } from './types'
+import { EOA_LABELS, METHOD_AXES, TIER_RANK, chainShort, famBlurb, famLabel, famName } from './vocab'
 
 export interface DrainRow extends Drain { t: number; tier: Tier | null; key: string }
 export interface Case extends Contract {
@@ -9,10 +9,14 @@ export interface Case extends Contract {
   isWallet: boolean | null
   title: string
   caseNo: string
+  /** primary family label (family_name, else the vocab name of the hash); null when no family */
+  famLabel: string | null
+  famSource: string | null
 }
 export interface Family {
   key: string
   name: string
+  source: string | null
   blurb: string
   contracts: Case[]
   usd: number
@@ -31,6 +35,10 @@ export interface Model {
   fams: Family[]
   index: { v: string; value: string; role: string; key: string }[]
   headline: { usd: number; victims: number; drainers: number; surfaced: number; suspects: number }
+  /** null when data.json has no `freezable` field (not computed yet) */
+  freezable: Freezable[] | null
+  /** per case key: freezable rows linked to that drainer and the USD not yet frozen */
+  freezeByCase: Map<string, { usd: number; rows: Freezable[] }>
 }
 
 const DEFAULT_EXPLORER: Record<string, string> = {
@@ -54,10 +62,13 @@ function walletKind(c: Contract): boolean | null {
 }
 
 export function caseTitle(c: Contract, isWallet: boolean | null) {
-  if (c.family) return famName(c.family)
+  if (c.family) return famLabel(c.family, c.family_name, c.family_name_source)
   if (c.contract_name) return c.contract_name
   return isWallet ? 'Drainer wallet' : 'Unattributed drainer'
 }
+
+// vocab families are kit fingerprints; f_<hash> without a name is a bare code-hash group
+const V_SRC = (hash: string) => (/^f_/.test(hash) ? 'hash' : 'kit')
 
 export function methodProfile(cs: Case[]) {
   const sig = cs.map(c => new Set([...c.labels, ...c.evidence.map(e => e.type)]))
@@ -80,12 +91,18 @@ export function buildModel(raw: DataJson): Model {
     vasps: raw.vasps || [],
     daily: raw.daily || [],
     clusters: raw.clusters || [],
+    freezable: Array.isArray(raw.freezable) ? raw.freezable : undefined,
+    freezable_total: raw.freezable_total,
   }
   CHAINS = data.chains
   const gen = Date.parse(data.generated_at)
   const now = Number.isFinite(gen) ? gen : Date.now()
 
-  const cases: Case[] = data.contracts.map(c => {
+  // a contract row without its own family_name borrows the one in families[]
+  const famMeta = new Map(data.families.map(f => [f.family, f]))
+  const cases: Case[] = data.contracts.map(c0 => {
+    const fm = c0.family && !c0.family_name ? famMeta.get(c0.family) : undefined
+    const c = fm?.family_name ? { ...c0, family_name: fm.family_name, family_name_source: fm.family_name_source } : c0
     const isWallet = walletKind(c)
     return {
       ...c,
@@ -100,6 +117,8 @@ export function buildModel(raw: DataJson): Model {
       drainList: [],
       isWallet,
       title: caseTitle(c, isWallet),
+      famLabel: c.family ? famLabel(c.family, c.family_name, c.family_name_source) : null,
+      famSource: c.family ? (c.family_name && c.family_name_source !== 'hash' ? c.family_name_source || null : V_SRC(c.family)) : null,
       caseNo: 'DW-' + chainShort(c.chain).toUpperCase().slice(0, 3) + '-' + c.address.slice(-4).toUpperCase(),
     }
   })
@@ -123,9 +142,13 @@ export function buildModel(raw: DataJson): Model {
   const fams: Family[] = [...groups.entries()]
     .map(([k, cs]) => {
       const profile = methodProfile(cs)
+      const meta = famMeta.get(k)
+      const named = meta?.family_name ? meta : cs.find(c => c.family_name)
+      const nm = named ? famLabel(k, named.family_name, named.family_name_source) : famName(k || null)
       return {
         key: k,
-        name: famName(k || null),
+        name: nm,
+        source: k ? (named && named.family_name_source !== 'hash' && nm !== famName(k) ? named.family_name_source || null : V_SRC(k)) : null,
         blurb: famBlurb(k || null),
         contracts: cs.slice().sort((a, b) => TIER_RANK[a.tier] - TIER_RANK[b.tier] || b.usd - a.usd),
         usd: cs.reduce((s, c) => s + c.usd, 0),
@@ -183,7 +206,21 @@ export function buildModel(raw: DataJson): Model {
   }
   const order = ['eth', 'bsc', 'base', 'tron']
   const chains = Object.entries(data.chains).sort((a, b) => (order.indexOf(a[0]) + 99) % 99 - (order.indexOf(b[0]) + 99) % 99)
-  return { data, now, cases, byKey, drains, chains, fams, index, headline }
+  const freezable = data.freezable
+    ? data.freezable.slice().sort((a, b) => (a.already_frozen ? 1 : 0) - (b.already_frozen ? 1 : 0) || (b.usd || 0) - (a.usd || 0))
+    : null
+  const freezeByCase = new Map<string, { usd: number; rows: Freezable[] }>()
+  ;(freezable || []).forEach(f => {
+    const c = byKey.get(caseKey(f.chain, f.drainer)) ||
+      cases.find(x => x.chain === f.chain && x.address.toLowerCase() === (f.drainer || '').toLowerCase())
+    const k = c ? c.key : caseKey(f.chain, f.drainer)
+    const g = freezeByCase.get(k) || { usd: 0, rows: [] }
+    g.rows.push(f)
+    if (!f.already_frozen) g.usd += f.usd || 0
+    freezeByCase.set(k, g)
+    add(f.address, 'holds freezable ' + (f.symbol || 'stablecoins'), k)
+  })
+  return { data, now, cases, byKey, drains, chains, fams, index, headline, freezable, freezeByCase }
 }
 
 export function search(m: Model, q: string): SearchHit[] {

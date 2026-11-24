@@ -5,7 +5,7 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { DAY, fmtDay, fmtStamp, fmtTime, fmtUSD, plural } from '@/lib/format'
 import type { Case, Model } from '@/lib/model'
-import { TIERS, TIER_NAME, chainLong, chainShort, kindText, labelInfo, roleInfo, viaText } from '@/lib/vocab'
+import { TIERS, TIER_NAME, chainLong, chainShort, famSourceNote, kindText, labelInfo, roleInfo, viaText } from '@/lib/vocab'
 import { Addr, FullId, Tx, reduceMotion, tv } from './shared'
 
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
@@ -59,6 +59,25 @@ function Timeline({ c, now }: { c: Case; now: number }) {
       </ChartContainer>
       <div className="meta">Solid line: value taken so far. Dotted: drains per day, right scale. Drawn from the latest published drains{rows.length >= MAX_TIMELINE_DAYS ? ', last 90 days' : ''}.</div>
     </>
+  )
+}
+
+function Freeze({ c, model }: { c: Case; model: Model }) {
+  if (!model.freezable) return <p className="muted">Not computed yet for this data.</p>
+  const g = model.freezeByCase.get(c.key)
+  if (!g || !g.rows.length) return <p className="muted">No freezable stablecoin balance found on its linked wallets at the last check.</p>
+  return (
+    <ul className="links">
+      {g.rows.map((f, i) => (
+        <li key={i}>
+          <Addr value={f.address} chain={f.chain} link />
+          <span className="muted small">{roleInfo(f.role)[0].toLowerCase()}</span>
+          <span>{f.usd == null ? <span className="muted">unpriced</span> : fmtUSD(f.usd)} {f.symbol || ''}{f.issuer ? <span className="muted small"> ({f.issuer})</span> : null}</span>
+          {f.already_frozen ? <span className="badge-frozen">already frozen</span> : null}
+          {f.checked_at ? <span className="muted small">checked {fmtStamp(f.checked_at)}</span> : null}
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -150,6 +169,7 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
                 {c.victims ? <>{plural(c.victims, 'wallet')} lost {c.usd ? fmtUSD(c.usd) : 'tokens we could not price'} to this {what} between {fmtDay(c.first_seen)} and {fmtDay(c.last_seen)}. </> : <>No victim is counted for this {what} yet; first seen {fmtDay(c.first_seen)}, last seen {fmtDay(c.last_seen)}. </>}
                 {TIERS[c.tier] ? <span className="muted">{TIER_NAME[c.tier]}: {TIERS[c.tier][1]}</span> : null}
               </p>
+              {c.family ? <p className="meta">Family {c.famLabel}{c.famSource ? ' (' + famSourceNote(c.famSource) + ')' : ''}, code hash <span className="mono">{c.family}</span>.</p> : null}
               {c.contract_name || c.verified != null ? (
                 <p className="meta">{c.verified ? 'Verified source on the explorer' : c.verified === false ? 'Source not verified on the explorer' : ''}{c.contract_name ? (c.verified != null ? ', ' : '') + 'contract name ' + c.contract_name : ''}{c.code_size ? ', ' + c.code_size.toLocaleString('en-US') + ' bytes of code' : ''}.</p>
               ) : null}
@@ -186,6 +206,8 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
                   {reached.map((v, i) => <li key={i}><b>{v.entity || 'An exchange'}</b> received {v.usd != null ? fmtUSD(v.usd) : 'an unpriced amount' + (v.symbol ? ' of ' + v.symbol : '')} from {v.role === 'drainer' ? 'the ' + what : 'a payout wallet'}. <Tx chain={c.chain} tx={v.tx}>Transaction</Tx><p>{kindText(v.kind)}{v.confidence ? ', ' + v.confidence + ' confidence' : ''}.</p></li>)}
                 </ol>
               ) : <p className="muted">No exchange deposit seen yet.</p>}
+              <h4>Funds that can still be frozen</h4>
+              <Freeze c={c} model={model} />
               <h4>Deployer</h4>
               <Deployer c={c} />
               <h4>Same {what} on other chains</h4>

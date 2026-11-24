@@ -65,6 +65,9 @@ export interface Contract {
   code_size: number | null
   verified: boolean | null
   contract_name?: string | null
+  /** human family label (backend >= family naming); `family` stays the code hash */
+  family_name?: string | null
+  family_name_source?: FamilyNameSource | null
   is_contract?: boolean | null
   payouts: Payout[]
   deployer: Deployer
@@ -73,6 +76,8 @@ export interface Contract {
   cluster?: string | null
   cross_chain?: { chain: string; tier: Tier }[]
 }
+
+export type FamilyNameSource = 'kit' | 'contract_name' | 'token_name' | 'functions' | 'hash'
 
 export interface Drain {
   chain: string
@@ -115,6 +120,22 @@ export interface Totals {
   drains_24h_all?: number
 }
 
+/** stablecoin balance on a drainer-linked address that the issuer can freeze (backend `freezable`) */
+export interface Freezable {
+  chain: string
+  address: string
+  role: string
+  drainer: string
+  drainer_tier: Tier | null
+  token: string | null
+  symbol: string | null
+  issuer: string | null
+  balance: string | number | null
+  usd: number | null
+  already_frozen: boolean | null
+  checked_at: string | null
+}
+
 export interface DataJson {
   generated_at: string
   chains: Record<string, ChainInfo>
@@ -122,9 +143,12 @@ export interface DataJson {
   contracts: Contract[]
   drains: Drain[]
   operators: { chain: string; wallet: string; drainers: number; affiliates: number; usd: number }[]
-  families: { family: string; members: number; seed_members: number; chains: string[] }[]
+  families: { family: string; members: number; seed_members: number; chains: string[]; family_name?: string | null; family_name_source?: FamilyNameSource | null }[]
   deployers: { chain: string; address: string; contracts: number; funder_entity: string | null }[]
   vasps: Vasp[]
   daily: { date: string; usd: number; victims: number; new_contracts: number }[]
   clusters: Cluster[]
+  /** absent in data.json produced before the freezable check existed */
+  freezable?: Freezable[]
+  freezable_total?: Record<string, number>
 }
