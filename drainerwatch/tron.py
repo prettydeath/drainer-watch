@@ -140,7 +140,7 @@ class TronRpc:
                 self.calls += 1
             try:
                 r = self._session.post(self.url + path, json=body, headers=headers, timeout=timeout)
-                if r.status_code in (403, 429) or "suspended" in r.text[:300]:
+                if r.status_code in (401, 403, 429) or "suspended" in r.text[:300]:
                     with self._lock:
                         self.limit_hits += 1
                     m = re.search(r"suspended for (\d+) s", r.text[:400])
@@ -148,6 +148,13 @@ class TronRpc:
                     if key:
                         self.pool.mark_bad(key, wait + 1)
                     last = f"HTTP {r.status_code} credit limit"
+                    self._credit_hits = getattr(self, "_credit_hits", 0) + 1
+                    if self.trongrid and len(self.pool) and self._credit_hits >= max(3, 2 * len(self.pool)):
+                        # every TronGrid key is out of credits: finish the run on the keyless publicnode endpoint
+                        log.warning("tron: TronGrid keys hit the credit limit, switching to %s for this run", TRON_API_KEYLESS)
+                        self.url, self.trongrid, self.keyless = TRON_API_KEYLESS, False, False
+                        self.pool = key_pool("_NO_KEYS_")
+                        continue
                     if self.keyless or len(self.pool) <= 1:
                         time.sleep(wait + 0.5)
                     continue
@@ -157,6 +164,7 @@ class TronRpc:
                     raise HttpError(f"HTTP {r.status_code} {path}: {redact(r.text[:200])}")
                 else:
                     self.bytes += len(r.content)
+                    self._credit_hits = 0
                     return r.json()
             except (requests.RequestException, ValueError) as e:
                 last = redact(repr(e))
