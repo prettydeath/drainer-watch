@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drainer Watch</title>
+    <meta name="description" content="Wallet-drainer contracts and wallets detected on Ethereum, BNB Chain, Base and TRON: where the money went, the kits behind them and a case file for each, with on-chain proof." />
+    <script>
+      // theme before first paint (no flash): ?theme= > saved choice > system preference
+      (function () {
+        try {
+          var q = new URLSearchParams(location.search).get('theme');
+          var s = q === 'dark' || q === 'light' ? q : localStorage.getItem('dw-theme');
+          var d = s ? s === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+          if (d) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>Drainer Watch needs JavaScript. The raw data is in <a href="data.json">data.json</a>.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

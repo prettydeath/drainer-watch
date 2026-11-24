@@ -168,7 +168,7 @@ seeds(address,chain NULL,label,source,added) · meta(k,v)
 `drainerwatch backtest --chain eth --from-block A --to-block B` (no cursor change)
 Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on new T1/T2 only; else no-op.
 
-## Data contract: `site/data.json` (also embedded into index.html at `/*__DATA__*/null`)
+## Data contract: `site/data.json` (fetched by the web app; embedded into the template fallback at `/*__DATA__*/null`)
 ```json
 {
   "generated_at": "2026-11-23T10:00:00Z",
@@ -178,7 +178,8 @@ Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on 
   "totals": {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0},
   "contracts": [{"chain": "eth", "address": "0x…", "tier": "T1", "score": 90, "source": "detector|scamsniffer|local",
                  "family": "f_ab12cd or null", "labels": ["split_pull", "seed"], "first_seen": "", "last_seen": "",
-                 "victims": 0, "drains": 0, "usd": 0, "code_size": 0, "verified": null,
+                 "victims": 0, "drains": 0, "usd": 0, "code_size": 0, "verified": null, "contract_name": null,
+                 "is_contract": "true|false|null (null = code not looked up)",
                  "payouts": [{"wallet": "0x…", "role": "operator|affiliate", "share": 0.2, "txs": 0}],
                  "deployer": {"address": "0x… or null", "tx": "0x…", "via": "toplevel|etherscan|unknown",
                               "factory": "0x… or null", "funder": "0x… or null", "funder_entity": "FixedFloat or null",
@@ -204,7 +205,19 @@ Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on 
 ```
 Limits: contracts ≤ 2000 (sorted tier, last_seen desc), drains last 500, evidence ≤ 20 per contract.
 
-## Dashboard (template.html, single file, no external JS/CSS CDNs, English)
+## Dashboard: web app (`web/`, the published site)
+Vite + React + TypeScript + Tailwind + shadcn/ui, Recharts v3 through the shadcn Chart component, anime.js v4; the
+Source Serif 4 font is self-hosted (no runtime CDN). Built in CI (`pages.yml`: `npm ci && npm run build` in `web/`)
+and copied over `site/` next to `data.json`, which the app fetches at runtime (`base: './'`). Layout (approved
+design V7): money flow hero, kit radar, case files (Confirmed and Strong open, Suspect collapsed, paged), latest
+drains and exchanges, method and scan coverage (lag and "not scanned" gaps per chain). `#chain:address` opens a
+case spread; the search covers every address and transaction in data.json. Label names and explanations come from
+`template.html` (`web/scripts/vocab.mjs` at build time), so new labels are named in one place.
+Motion is limited to flow particles, radar sweep, page turn and a one-time address scramble; all off under
+prefers-reduced-motion. `drainerwatch render` copies `web/dist` into `site/` when it was built locally.
+
+## Dashboard fallback (template.html, single file, no external JS/CSS CDNs, English)
+Used by `drainerwatch render` when `web/dist` is absent (no Node) and kept on the `data` branch until Pages overlays the app.
 Analyst-console style like freezewatch: KPI strip (T1/T2/T3, victims 24h, USD 24h/7d, chain lag),
 filterable/sortable contracts table (chain, tier, labels, search by address), detail drawer per contract
 (evidence txs with explorer links, payout split bar, family, first/last seen, DEPLOYER block: address,

@@ -1,6 +1,7 @@
 # Optional: publish site/ from the `data` branch to GitHub Pages.
 # Pages on private repositories needs a paid plan; the repo is public, so it is free.
 # Called by watch.yml only when the data changed; can also be run manually.
+# site/ = the web app built from web/ (this commit) + the fresh data.json from the `data` branch.
 name: pages
 
 on:
@@ -26,6 +27,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: data
+      - name: Checkout the app source
+        uses: actions/checkout@v4
+        with:
+          path: _app
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: _app/web/package-lock.json
+      # a failed build keeps the template fallback (site/index.html rendered by drainerwatch) instead of no deploy
+      - name: Build the web app
+        id: build
+        continue-on-error: true
+        working-directory: _app/web
+        run: npm ci --no-audit --no-fund && npm run build
+      - name: Put the app next to data.json
+        if: steps.build.outcome == 'success'
+        run: |
+          test -f site/data.json
+          find _app/web/dist -name data.json -delete
+          cp -r _app/web/dist/. site/
+          ls -la site site/assets | head -40
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

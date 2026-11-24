@@ -1,18 +1,23 @@
-"""site/data.json + site/index.html (template with the data embedded) and CSV exports."""
+"""site/data.json + site/index.html and CSV exports.
+
+site/index.html is the built web app (web/dist, it fetches data.json) when it is present, else
+drainerwatch/template.html with the data embedded (fallback for a local render without Node)."""
 import csv
 import json
 import logging
 import re
+import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from .constants import CHAINS, DATA_DIR, SITE_DIR, TEMPLATE
+from .constants import CHAINS, DATA_DIR, ROOT, SITE_DIR, TEMPLATE
 from .scan import load_gaps
 from .db import meta_get
 from .util import iso, now_ts
 
 log = logging.getLogger("drainerwatch.render")
 PLACEHOLDER = "/*__DATA__*/null"
+WEB_DIST = ROOT / "web" / "dist"
 TIER_ORDER = {"T1": 0, "T2": 1, "T3": 2}
 MAX_CONTRACTS, MAX_DRAINS, MAX_EVIDENCE, MAX_LINKS = 2000, 500, 20, 50
 
@@ -257,6 +262,7 @@ def build_payload(conn, now=None):
                               code_size=r["code_size"], verified=None if r["verified"] is None else bool(r["verified"]),
                               contract_name=r["contract_name"] if "contract_name" in r.keys() else None,
                               payouts=pay.get(k, []), deployer=deployer, vasp_links=vl, evidence=ev.get(k, []),
+                              is_contract=None if r["is_contract"] is None else bool(r["is_contract"]),
                               cluster=r["cluster"] if "cluster" in r.keys() else None,
                               cross_chain=twins.get(k, [])))
 
@@ -377,12 +383,23 @@ def export_csv(conn, data_dir=DATA_DIR):
             w.writerows([tuple(r) for r in rows])
 
 
-def render_all(conn, template_path=TEMPLATE, site_dir=SITE_DIR, data_dir=DATA_DIR, now=None):
+def copy_app(dist: Path, site_dir: Path):
+    """Copy the built web app (web/dist) into site/; it loads data.json at runtime. data.json itself is never copied."""
+    for f in dist.rglob("*"):
+        if f.is_file() and f.name != "data.json":
+            out = site_dir / f.relative_to(dist)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(f, out)
+
+
+def render_all(conn, template_path=TEMPLATE, site_dir=SITE_DIR, data_dir=DATA_DIR, now=None, web_dist=None):
     payload = build_payload(conn, now)
     site_dir.mkdir(parents=True, exist_ok=True)
     write_if_changed(site_dir / "data.json", json.dumps(payload, ensure_ascii=False, indent=1))
     template_path = Path(template_path)
-    if template_path.exists():
+    if web_dist and (Path(web_dist) / "index.html").exists():
+        copy_app(Path(web_dist), site_dir)
+    elif template_path.exists():
         html = embed(template_path.read_text(encoding="utf-8"), payload)
         write_if_changed(site_dir / "index.html", html)
     else:

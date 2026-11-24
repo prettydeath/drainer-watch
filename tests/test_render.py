@@ -53,6 +53,22 @@ def test_missing_template_writes_data_json_only(tmp_path, caplog):
     assert any("template.html missing" in r.message for r in caplog.records)
 
 
+def test_built_app_replaces_template(tmp_path):
+    ctx = make_ctx()
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<div id=root></div>", encoding="utf-8")
+    (dist / "assets" / "app.js").write_text("fetch('data.json')", encoding="utf-8")
+    (dist / "data.json").write_text("{}", encoding="utf-8")          # a dev copy in dist never overwrites real data
+    tpl = tmp_path / "t.html"
+    tpl.write_text("<script>window.D=/*__DATA__*/null;</script>", encoding="utf-8")
+    site = tmp_path / "site"
+    render.render_all(ctx.conn, tpl, site, tmp_path / "data", web_dist=dist)
+    assert (site / "index.html").read_text(encoding="utf-8") == "<div id=root></div>"
+    assert (site / "assets" / "app.js").exists()
+    assert set(json.loads((site / "data.json").read_text(encoding="utf-8"))) == TOP_KEYS
+
+
 def test_write_if_changed_ignores_generated_at(tmp_path):
     f = tmp_path / "d.json"
     assert render.write_if_changed(f, '{"generated_at": "a", "x": 1}')

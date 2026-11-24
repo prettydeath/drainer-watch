@@ -1,0 +1,504 @@
+{
+ "TIERS": {
+  "T1": [
+   "Confirmed",
+   "Seed with activity, a split pull hitting 3+ victims, a kit approval amount, a bait contract with 3+ paying victims, or another kit-confirmed drain."
+  ],
+  "T2": [
+   "Strong",
+   "A split pull with 1-2 victims, payments to a known operator, a kit fingerprint with activity, or a twin of a T1 on another chain."
+  ],
+  "T3": [
+   "Suspect",
+   "Code or behaviour that fits a drainer without a confirmed drain: red-flag selectors, multi-victim pulls alone, 7702 sweepers, single EOA pulls."
+  ]
+ },
+ "LABELS": {
+  "deploy_drain": [
+   "Deploy and drain in one tx",
+   "The contract was created in the same transaction that moved a victim's tokens."
+  ],
+  "ghost_forward": [
+   "Ghost forwarder",
+   "Tokens left an address with no code and no transactions of its own: code that existed only inside the transaction."
+  ],
+  "ghost_forward_multi": [
+   "Ghost forwarder, 2+ addresses",
+   "Such a one-transaction contract moved tokens of two or more addresses."
+  ],
+  "bait_forward": [
+   "Payable bait that forwards",
+   "A victim paid a function and most of the value left to third addresses in the same transaction."
+  ],
+  "bait_forward_multi": [
+   "Forwarding bait, 2+ victims",
+   "Two or more victims paid it and the value was forwarded on."
+  ],
+  "kept_share": [
+   "Kept a share",
+   "The contract kept a share of the forwarded value, like a fee."
+  ],
+  "token_spender_pull": [
+   "Token-shaped spender",
+   "An ERC-20-like contract with DELEGATECALL pulled tokens from the wallets that approved it."
+  ],
+  "token_spender_multi": [
+   "Token-shaped spender, 2+ victims",
+   "It pulled tokens from two or more approving wallets."
+  ],
+  "owner_takeover": [
+   "Owner takeover",
+   "Became the owner of a contract and then moved tokens out of it."
+  ],
+  "owner_takeover_multi": [
+   "Owner takeover, 2+ contracts",
+   "Took over and emptied two or more contracts."
+  ],
+  "safe_spender": [
+   "Safe proxy spender",
+   "A Safe proxy that three or more wallets approved as a spender."
+  ],
+  "safe_spender_pull": [
+   "Safe proxy pulled tokens",
+   "That Safe proxy also pulled tokens from wallets that approved it."
+  ],
+  "safe_approval": [
+   "Approval to a Safe proxy",
+   "A wallet approved this Safe proxy as a spender."
+  ],
+  "safe_pull": [
+   "Pull by a Safe proxy",
+   "This Safe proxy pulled a wallet's approved tokens."
+  ],
+  "seaport_zero": [
+   "Zero-price NFT listing",
+   "Filled a Seaport order where the victim gave NFTs and received nothing."
+  ],
+  "seaport_zero_multi": [
+   "Zero-price listings, 2+ victims",
+   "Filled such orders for two or more victims."
+  ],
+  "nft_operator_pull": [
+   "NFT operator pull",
+   "A wallet set this address as operator for all its NFTs, and it then moved them."
+  ],
+  "batch7702_approve": [
+   "7702 batch approval",
+   "A victim's EIP-7702 account sent itself a batch that approved this wallet and moved tokens out."
+  ],
+  "eip7702_batch": [
+   "Mass 7702 delegation",
+   "Many EIP-7702 authorizations to this delegate in one transaction."
+  ],
+  "eip7702_chain0": [
+   "7702 delegation on every chain",
+   "Authorizations signed with chainId 0, valid on every EVM chain."
+  ],
+  "share_grid": [
+   "Fee-grid split",
+   "The split shares sit on the documented drainer-as-a-service grid (70, 80, 85 or 90 %)."
+  ],
+  "vanity_drainer": [
+   "Vanity-address drainer",
+   "A look-alike vanity address that wallets approved or that drained them."
+  ],
+  "vanity_approval": [
+   "Approval to a vanity address",
+   "A wallet approved this vanity-address spender."
+  ],
+  "operator_wallet": [
+   "Operator wallet",
+   "Payout wallet of two or more flagged drainers."
+  ],
+  "operator_wallet_multi": [
+   "Operator wallet, strong",
+   "Payout wallet of several drainers that have their own strong evidence."
+  ],
+  "serial_deployer": [
+   "Serial deployer",
+   "Deployed two or more flagged contracts."
+  ],
+  "serial_deployer_multi": [
+   "Serial deployer, strong",
+   "Deployed several flagged contracts that have their own strong evidence."
+  ],
+  "tron_split_capped": [
+   "TRON split without kit code, capped at T3",
+   "A split pull on TRON with fewer than three victims and no drainer-kit or puller code: payment splitters and forwarders look the same."
+  ],
+  "zero_transfer_spoof": [
+   "Zero-value spoof",
+   "Zero-value transferFrom legs out of other people's wallets (address poisoning)."
+  ],
+  "contract_lookups_capped": [
+   "Code lookups capped",
+   "The per-run limit of code lookups was reached; some code was not checked."
+  ],
+  "seed": [
+   "Known drainer (seed)",
+   "Listed by ScamSniffer or the operator seed file, and seen active here."
+  ],
+  "seed_activity": [
+   "Seed activity",
+   "A victim approved or sent tokens to a known drainer address."
+  ],
+  "split_pull": [
+   "Split pull",
+   "One transaction pulled a victim's token and split it between two or more wallets, the drainer-as-a-service fee pattern."
+  ],
+  "spoof_split": [
+   "Split-shaped spoof",
+   "Looks like a split pull but behaves like address poisoning, not a real drain."
+  ],
+  "multi_victim_pull": [
+   "Multi-victim pull",
+   "Pulled tokens from three or more approving wallets within 24 hours."
+  ],
+  "eoa_spender_pull": [
+   "Wallet-to-wallet pull",
+   "A plain wallet pulled another wallet's tokens straight to a third wallet."
+  ],
+  "eoa_spender_multi": [
+   "Wallet pull, 3+ victims",
+   "The same pulling wallet hit three or more victims within 24 hours."
+  ],
+  "pays_known_operator": [
+   "Pays a known operator",
+   "Sent tokens to a known drainer payout wallet in two or more transactions."
+  ],
+  "pays_inferred_operator": [
+   "Pays an inferred operator",
+   "Sent tokens to payout wallets we only inferred; capped at suspect."
+  ],
+  "redflag_selectors": [
+   "Red-flag functions",
+   "The code exposes kit function names such as Claim() or SecurityUpdate()."
+  ],
+  "family_match": [
+   "Code family match",
+   "The code skeleton or function set matches a known drainer contract."
+  ],
+  "bytecode": [
+   "Code analysis",
+   "Opcode skeleton, function selectors and family comparison of the contract code."
+  ],
+  "eip7702_sweeper": [
+   "7702 sweeper",
+   "An EIP-7702 delegate that forwards whatever value arrives; delegating wallets are potential victims."
+  ],
+  "redflag_payable": [
+   "Paid red-flag function",
+   "A victim sent coins to a red-flag function such as Claim()."
+  ],
+  "approval_fingerprint": [
+   "Kit approval amount",
+   "A victim approved exactly the amount hard-coded in a drainer kit."
+  ],
+  "bait_payable": [
+   "Paid bait function",
+   "A victim paid a bait function; its argument is the kit customer's payout wallet."
+  ],
+  "bait_withdraw": [
+   "Bait withdrawal",
+   "A kit customer withdrew from the bait contract."
+  ],
+  "kit_signature": [
+   "Kit fingerprint",
+   "The contract's function set matches a known drainer kit."
+  ],
+  "owner_gated_puller": [
+   "Owner-gated puller",
+   "A small contract that only its owner can use to pull approved tokens to any address."
+  ],
+  "split_xtx": [
+   "Split across transactions",
+   "Same caller, victim and token split over two or more transactions within 60 seconds."
+  ],
+  "foreign_recipient_swap": [
+   "Swap paying a stranger",
+   "A victim-signed swap with zero minimum output that paid this wallet instead of the signer."
+  ],
+  "foreign_swap_multi": [
+   "Stranger swaps, 3+ victims",
+   "Such swaps for three or more victims within 24 hours."
+  ],
+  "foreign_swap_kit": [
+   "Kit swap deadline",
+   "The swap deadline is block time plus about 99 990 seconds, the MS Drainer kit value."
+  ],
+  "owner_collect": [
+   "Owner collect",
+   "An owner-collector contract pulled a victim's tokens to its caller."
+  ],
+  "ms_deadline": [
+   "Millisecond deadline",
+   "A permit whose deadline is in milliseconds, a drainer-kit tell."
+  ],
+  "ms_deadline_pull": [
+   "Deadline permit, then a pull",
+   "Tokens left the owner right after the millisecond-deadline permit."
+  ],
+  "batch_approval_drain": [
+   "Batch approval drain",
+   "A batch of kit-amount or unlimited approvals drained to this wallet in one transaction."
+  ],
+  "kit_router_swap": [
+   "Kit router swap",
+   "A kit-amount approval to a real router, followed by the same drain."
+  ],
+  "kit_deposit": [
+   "Kit deposit",
+   "A fresh wallet sent nearly its whole balance to the kit Deposit function."
+  ],
+  "gen_back_transfer": [
+   "Generator leftover",
+   "The deployer sent its leftover coins to a kit wallet after deploying a generated bait."
+  ],
+  "kit_exact": [
+   "Exact kit code",
+   "The code is byte-for-byte one of the known MS Contract Generator baits."
+  ],
+  "kit_public": [
+   "Kit public contract",
+   "The code is byte-for-byte one of the drainer kit's shared public contracts."
+  ],
+  "kit_confirmed": [
+   "Kit public contract, paid",
+   "A victim paid a bait function of one of the kit's shared public contracts."
+  ],
+  "ms_cashback": [
+   "Cashback flag",
+   "An MS_NEW bait call asked to send 1 wei back to the victim, a kit tell."
+  ],
+  "ms_cashback_shape": [
+   "Cashback calldata",
+   "A payable call carried the MS_NEW cashback flag, but the code is not the kit's."
+  ],
+  "dust_approve": [
+   "Approval with dust",
+   "An approval sent with a few wei attached, a kit quirk."
+  ],
+  "dust_approve_kit": [
+   "Dust approval, kit amount",
+   "Such an approval also used the kit's hard-coded amount."
+  ],
+  "emergency_gas": [
+   "Gas, then approval",
+   "Sent a small amount of gas to a wallet that approved it, or a flagged spender, within 30 minutes."
+  ],
+  "emergency_gas_self": [
+   "Gas, then self-approval",
+   "Funded a wallet that then approved the funder; also the shape of exchange deposit sweeping, so a weak lead."
+  ],
+  "emergency_gas_kit": [
+   "Gas, then kit approval",
+   "Such an approval used the kit's hard-coded amount."
+  ],
+  "kit_vanity": [
+   "Vanity kit address",
+   "The address starts with 0x000 and ends with 0000, like the kit's contracts; raises the score only."
+  ],
+  "oneshot_spender": [
+   "One-shot worker",
+   "A fresh wallet pulled a third party's tokens for this hub."
+  ],
+  "oneshot_hub": [
+   "One-shot hub",
+   "Its one-shot workers sent their leftover gas back here."
+  ],
+  "oneshot_multi": [
+   "One-shot hub, 3+ workers",
+   "Three or more one-shot workers returned their leftover here."
+  ],
+  "prefund_hub": [
+   "Prefunding hub",
+   "Funded fresh wallets shortly before they pulled victims' tokens."
+  ],
+  "prefund_multi": [
+   "Prefunding hub, 3+ workers",
+   "Prefunded three or more such workers."
+  ],
+  "eip7702_operator": [
+   "7702 operator",
+   "The hub or collector is an EIP-7702-delegated wallet; raises the score only."
+  ],
+  "cross_chain": [
+   "Same code on another chain",
+   "The same address with the same code is flagged on another chain."
+  ],
+  "cross_chain_t1": [
+   "Twin of a confirmed drainer",
+   "The same address and code is confirmed (T1) on another chain."
+  ],
+  "cluster_inherited": [
+   "Tier from its cluster",
+   "Tier raised because it shares payout wallets with a better-evidenced cluster member."
+  ],
+  "wa_scam": [
+   "Labelled scam",
+   "The wallet-attribution dataset labels this address scam or hack."
+  ],
+  "unpriced_capped": [
+   "Unpriced single split, capped at T3",
+   "One victim, an unpriced token and no other evidence: token fee/tax routers split the same way."
+  ],
+  "kit_pull": [
+   "Kit pull",
+   "Tokens of a third party were pulled through a contract whose dispatcher matches a drainer kit or an owner-gated parametric puller."
+  ],
+  "approval_kit_shape": [
+   "TRON kit approval amount",
+   "An approval of exactly 10^46 units, the amount hard-coded by a TRON approval kit (with its 35 TRX fee limit it is a T1 fingerprint)."
+  ],
+  "approve_all_call": [
+   "ApproveAll call",
+   "The victim called the unidentified token method daea85c5(address) for this spender, an approval trick used by a TRON kit."
+  ],
+  "aml_approve_transfer": [
+   "Fake AML check approval",
+   "Approve of the exact balance with a 300 TRX fee limit followed by a transfer of 0 or of the whole balance to the same spender."
+  ],
+  "increase_max": [
+   "increaseApproval to a fresh spender",
+   "Unlimited increaseApproval to a spender less than 30 days old or to a puller contract."
+  ],
+  "prefund_approve": [
+   "Gas pre-funding",
+   "Sent a small whole amount of TRX to a wallet that then approved this wallet or a contract it created."
+  ],
+  "prefund_approve_multi": [
+   "Gas pre-funding, repeated",
+   "Three or more wallets got the same TRX amount and then approved a spender of this wallet."
+  ],
+  "claimer_split": [
+   "Claimer amount",
+   "A payable bait call that took min(balance - 50 TRX, 80% of balance), the native-coin rule of a TRON kit."
+  ],
+  "perm_hijack": [
+   "Permission takeover",
+   "An account at least 30 days old changed its permissions so its own key is no longer enough and this key alone (or this key together with the key of the account) can sign; several foreign keys that must co-sign (organisation multisig) are not counted."
+  ],
+  "perm_hijack_multi": [
+   "Permission takeover, many accounts",
+   "The same controller key took over three or more accounts (T2; T1 needs a drain signed by the key)."
+  ],
+  "perm_hijack_drain": [
+   "Drain by a takeover key",
+   "Funds left a taken-over account in a transaction signed by this controller key."
+  ],
+  "fixed_fee": [
+   "Fixed fee per pull",
+   "Received the same whole TRX amount right after pulls of tokens of other people, two or more times."
+  ],
+  "fixed_fee_multi": [
+   "Fixed fee, three or more victims",
+   "The same fixed TRX fee followed pulls from three or more victims."
+  ],
+  "poison_zero": [
+   "Zero-value poisoning",
+   "Moved 0 USDT out of wallets of other people to look-alike addresses (address poisoning). Never above T3."
+  ],
+  "verified_capped": [
+   "Verified source, capped at T3",
+   "Etherscan shows verified source code and the only evidence is a split or multi-victim pull; drainers are almost never verified."
+  ]
+ },
+ "FAMILIES": {
+  "ms_drainer": [
+   "MS Drainer",
+   "Bait function taking the customer wallet, plus the kit's companion functions."
+  ],
+  "verify_account": [
+   "VerifyAccount",
+   "Puller with Verify20, Verify10 and withdrawAllTrxTo functions."
+  ],
+  "ms_new": [
+   "MS_NEW",
+   "Public MS_NEW contract: five-argument bait functions plus salary and receiver controls."
+  ],
+  "ms_generated": [
+   "MS generated bait",
+   "Bait produced by the MS Contract Generator."
+  ],
+  "trusty_v1": [
+   "Trusty v1",
+   "The kit's 2023 public pass-through contract: bait functions taking the customer wallet, plus fee controls."
+  ],
+  "owner_collector": [
+   "Owner collector",
+   "Five or more owner-collect functions such as collectToOwner and rescueToken."
+  ],
+  "buytron_swap_trx": [
+   "buytron SwapTRX",
+   "TRON fake TRX-purchase kit: pullFunds, admin and token functions only."
+  ],
+  "buytron_swap_proxy": [
+   "buytron SwapProxy",
+   "TRON fake TRX-purchase kit, older contract: transferFrom, usdt and owner functions only."
+  ],
+  "tron_1e46": [
+   "TRON 10^46 approval kit",
+   "Approval of exactly 10^46 token units, the hard-coded amount of a TRON approval kit."
+  ]
+ },
+ "ROLES": {
+  "affiliate": [
+   "Affiliate",
+   "The larger share of a split pull, usually the customer who ran the phishing site. Inferred from share size."
+  ],
+  "operator": [
+   "Operator",
+   "The smaller share of a split pull, usually the kit operator's fee. Inferred from share size."
+  ],
+  "customer": [
+   "Customer",
+   "Kit customer payout wallet: the bait function argument or the withdraw caller. No share observed."
+  ],
+  "collector": [
+   "Collector",
+   "Received tokens pulled by a wallet-to-wallet pull or an owner-collector. No share observed."
+  ],
+  "worker": [
+   "Worker",
+   "One-shot wallet or MS_NEW keeper doing pulls for this hub."
+  ],
+  "kit_fee": [
+   "Kit fee",
+   "Fee receiver configured in a generated bait."
+  ],
+  "kit_wallet": [
+   "Kit wallet",
+   "Received the generator deployer's leftover coins."
+  ],
+  "submitter": [
+   "Submitter",
+   "Submitted a millisecond-deadline permit."
+  ],
+  "funder": [
+   "Funder",
+   "Sent the victim a small amount of TRX for fees shortly before the victim approved this spender."
+  ]
+ },
+ "VIA": {
+  "toplevel": "Creation transaction seen by the scanner",
+  "etherscan": "Etherscan contract-creation lookup",
+  "getcontract": "TronGrid getcontractinfo (origin address)",
+  "unknown": "Unknown: not visible and never guessed"
+ },
+ "KIND": {
+  "direct": "Direct transfer",
+  "deposit_sweep": "Probable deposit address",
+  "funding": "Funded the deployer"
+ },
+ "SUBJ": {
+  "drainer": "the contract",
+  "payout": "a payout wallet",
+  "deployer": "the deployer"
+ },
+ "NATIVE": {
+  "eth": "ETH",
+  "bsc": "BNB",
+  "base": "ETH",
+  "tron": "TRX"
+ }
+}

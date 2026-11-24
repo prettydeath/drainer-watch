@@ -9,7 +9,7 @@ from . import alerts, enrich, rollup, scan, seeds as seedmod
 from .constants import CHAINS, DATA_DIR, DEFAULT_CHAIN_ORDER, WA_LOCAL_DEFAULT
 from .db import connect
 from .prices import Prices
-from .render import render_all
+from .render import WEB_DIST, render_all
 from .rpc import Rpc
 from .util import env, key_pool, load_env_file, redact
 
@@ -84,7 +84,7 @@ def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
     except Exception as e:  # noqa: BLE001
         log.warning("alerts failed: %s", redact(e))
     if render:
-        render_all(conn)
+        render_all(conn, web_dist=WEB_DIST)
     print(summarize(conn, stats))
     return stats
 
@@ -105,7 +105,7 @@ def cmd_loop(a):
 
 def cmd_render(a):
     conn = connect()
-    render_all(conn)
+    render_all(conn, web_dist=WEB_DIST)
     print("rendered site/index.html + site/data.json")
 
 

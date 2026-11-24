@@ -6,7 +6,8 @@ rule that fired. It also links drainers, payout wallets and deployers to **VASPs
 bridges, mixers) so that requests can be sent to the right entity.
 
 Same pattern as [usdt-freeze-watch](../usdt-freeze-watch): `requests` + `pycryptodome` only, sqlite in `data/`,
-state kept on an orphan `data` branch, dashboard rendered from `drainerwatch/template.html`.
+state kept on an orphan `data` branch. The dashboard is a static web app in `web/` (Vite + React + shadcn/ui +
+Recharts + anime.js) that reads `site/data.json`; `drainerwatch/template.html` is the no-Node fallback.
 
 ## Run
 
@@ -21,6 +22,8 @@ python -m drainerwatch run --chains eth --source logs       # force eth_getLogs 
 python -m drainerwatch incidents --env-file ~/.claude/secrets/osint.env          # rebuild tests/backtest/incidents.csv
 python -m drainerwatch backtest --incidents tests/backtest/incidents.csv --split dev --blind   # blind incident backtest
 pytest -q
+cd web && npm ci && npm run build   # optional: build the dashboard; `render` then copies web/dist into site/
+npm test && npm run dev              # smoke test (fixture data) / dev server (put a data.json in web/public)
 ```
 
 Environment (all optional): `ETH_RPC_URL`, `BSC_RPC_URL`, `BASE_RPC_URL` (default publicnode),
@@ -35,7 +38,8 @@ logs could not be fetched, and the dashboard says "reduced block coverage"),
 Operator inputs in `data/`: `seeds.csv` (`chain,address,label,source`), `allowlist.csv` (`chain,address,note`).
 
 Actions: add secrets `ETHERSCAN_API_KEYS` (and optionally `TRONGRID_API_KEYS` and the Telegram/RPC ones), enable Pages
-with source "GitHub Actions". `watch.yml` force-pushes `data/` + `site/` to the `data` branch. Cadence: at the end of
+with source "GitHub Actions". `watch.yml` force-pushes `data/` + `site/` to the `data` branch; `pages.yml` builds `web/` (Node 22, npm cache) and
+publishes the app with the fresh `data.json` (if the build fails it publishes the template fallback). Cadence: at the end of
 each run a `next` job waits until ~9 min after the run started and dispatches the next run (`gh workflow run`, needs
 `actions: write`), unless another watch run is already queued; the `concurrency` group keeps one run at a time. The
 10-minute cron stays as a fallback heartbeat (GitHub throttles schedules on young repositories).
