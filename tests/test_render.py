@@ -6,7 +6,7 @@ from drainerwatch.util import KeyPool, redact
 from tests.helpers import a, make_ctx
 
 TOP_KEYS = {"generated_at", "chains", "totals", "contracts", "drains", "operators", "families", "deployers", "vasps", "daily",
-            "clusters", "freezable", "freezable_total", "exposure_total_usd"}
+            "clusters", "freezable", "freezable_total", "exposure_total_usd", "wallets"}
 
 
 def test_embed_escapes_script_terminators():

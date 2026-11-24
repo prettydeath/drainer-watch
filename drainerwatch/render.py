@@ -10,7 +10,7 @@ import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from . import exposure, famname, freeze
+from . import exposure, famname, freeze, wallets
 from .constants import CHAINS, DATA_DIR, ROOT, SITE_DIR, TEMPLATE
 from .scan import load_gaps
 from .db import meta_get
@@ -411,9 +411,10 @@ def build_payload(conn, now=None):
                 for cid, g in sorted(cl.items(), key=lambda kv: -len(kv[1]["members"]))]
 
     frz, frz_total = freeze.payload(conn)
+    wl = wallets.payload(conn, contracts, frz, ops[:200])
     return dict(generated_at=iso(now), chains=chains, totals=totals, contracts=contracts, drains=drains, operators=ops[:200],
                 families=families, deployers=deployers, vasps=vasps, daily=days, clusters=clusters,
-                freezable=frz, freezable_total=frz_total, exposure_total_usd=exposure_total)
+                freezable=frz, freezable_total=frz_total, exposure_total_usd=exposure_total, wallets=wl)
 
 
 def parse(s):

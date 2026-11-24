@@ -230,10 +230,22 @@ Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on 
   "exposure_total_usd": 0.0,   // contracts[] also carry "open_allowances": [{"victim", "token", "symbol", "allowance":
                                // "unlimited"|raw, "victim_balance", "usd_at_risk", "pulled", "checked_at"}] and "pulled"
   "clusters": [{"cluster": "op_ab12cd34ef", "chain": "eth", "members": ["0x…"], "shared_wallets": ["0x…"],
-                "max_tier": "T1", "tiers": {"T1": 1, "T3": 1}}]
+                "max_tier": "T1", "tiers": {"T1": 1, "T3": 1}}],
+  "wallets": {"eth:0x…": {"roles": ["collector"],           // wallet case files (wallets.py), from the FULL drains table
+              "drainers": [{"drainer": "0x…", "tier": "T1", "role": "collector", "share": 0.0, "usd": 0.0, "txs": 0,
+                            "first": "2026-…Z", "last": "2026-…Z"}],
+              "inflows": [{"tx": "0x…", "ts": "2026-…Z", "victim": "0x…", "drainer": "0x…", "token": "0x…",
+                           "symbol": "USDT", "amount": "1", "usd": 1.0}],          // drains with recipient = wallet, newest first
+              "outflows_known": [{"counterparty": "0x…", "kind": "direct|deposit_sweep", "entity": "Binance", "category": "cex",
+                                  "tx": "0x…", "tx_in": null, "ts": "2026-…Z", "amount": "1", "symbol": "USDT",
+                                  "usd": 1.0, "confidence": "high"}],          // vasp_links with the wallet as subject
+              "first_in": "2026-…Z", "last_in": "2026-…Z", "total_in_usd": 0.0, "n_in": 0}}
 }
 ```
-Limits: contracts ≤ 2000 (sorted tier, last_seen desc), drains last 500, evidence ≤ 20 per contract.
+Limits: contracts ≤ 2000 (sorted tier, last_seen desc), drains last 500, evidence ≤ 20 per contract. `wallets`: addresses
+in `freezable`, then payout wallets of T1/T2 subjects (by subject usd), then `operators`; ≤ 400 wallets, ≤ 50 inflows and
+≤ 50 known outflows each (`n_in` / `total_in_usd` count every inflow). The web app opens a wallet case at
+`#wallet:<chain>:<address>`.
 
 ## Dashboard: web app (`web/`, the published site)
 Vite + React + TypeScript + Tailwind + shadcn/ui, Recharts v3 through the shadcn Chart component, anime.js v4; the
