@@ -29,7 +29,9 @@ DETECTOR_LABELS = ["seed", "split_pull", "multi_victim_pull", "eoa_spender_pull"
                    "owner_gated_puller", "split_xtx", "foreign_recipient_swap", "foreign_swap_multi", "foreign_swap_kit",
                    "cluster_inherited", "owner_collect", "ms_deadline", "ms_deadline_pull", "oneshot_hub", "oneshot_multi",
                    "prefund_hub", "prefund_multi", "batch_approval_drain", "kit_router_swap", "kit_exact", "kit_deposit",
-                   "gen_back_transfer", "eip7702_operator", "cross_chain", "cross_chain_t1"]
+                   "gen_back_transfer", "eip7702_operator", "cross_chain", "cross_chain_t1", "kit_public",
+                   "kit_confirmed", "ms_cashback", "ms_cashback_shape", "dust_approve", "dust_approve_kit", "emergency_gas",
+                   "emergency_gas_kit", "emergency_gas_self", "kit_vanity", "unpriced_capped"]
 
 
 def components(rows):
@@ -152,7 +154,8 @@ def run(incidents_path, split, blind=True, window=1, budget_sec=7200, cache_path
             stats["blocks"] += st["blocks"]
             for k in ("d2_candidates", "d2_confirmed", "d3_candidates", "d3_confirmed", "d8_candidates", "d8_confirmed", "d8_truncated", "d9_confirmed", "d7_bait", "d10_confirmed", "xsplit_groups", "xsplit_confirmed",
                       "k4_ms_deadline", "k5_oneshot", "k6_kit_deposit", "k9_owner_collect", "k7k8_batch_approval_drain",
-                      "k7k8_kit_router_swap", "d7_ms_new", "d7_ms_generated",
+                      "k7k8_kit_router_swap", "d7_ms_new", "d7_ms_generated", "n4_dust_approve", "n5_emergency_gas",
+                      "n7_kit_router_xtx",
                       "tx_lookups", "code_lookups", "nonce_lookups"):
                 stats[k] += st.get(k, 0)
         rows0 = rollup.rollup(conn, det_seeds, labels)

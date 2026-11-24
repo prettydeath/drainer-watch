@@ -41,6 +41,7 @@ def test_split_pull_end_to_end_t1():
 def test_single_victim_is_t2_and_allowlisted_is_nothing():
     logs, txs = drain_chunk([a(0xABC000)])
     ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}))
+    ctx.prices.usd = lambda chain, token, value, dec: 1000.0           # priced token
     scan.process_chunk(ctx, 100, 100, logs)
     assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["tier"] == "T2"
 

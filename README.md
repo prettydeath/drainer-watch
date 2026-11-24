@@ -61,6 +61,17 @@ Actions: add secrets `ETHERSCAN_API_KEYS` (and optionally the Telegram/RPC ones)
 | K9 `owner_collect` + family `owner_collector` (receipts source) | dispatcher with 5+ of `collectToOwner` 0xd253abea, `collectAllFrom` 0x130cbae0, `permitAndCollect` 0x889d79b0, `rescueToken` 0xe5711e8b, `setOwner` 0x13af4035, `owner` 0x8da5cb5b; behaviour: caller pulls a third party's tokens through it to itself (also for R-A2 pullers); payout `collector` | T2; 3+ victims T1 |
 | K13 `eip7702_operator` | K5 hub or K9 caller is an EIP-7702-delegated EOA | score boost only |
 | K14 `cross_chain` | same address + same skeleton flagged on 2+ chains (and `enrich.cross_chain_check` for T1/T2 contracts on the other chains, <= 40 code lookups per run); `cross_chain` list in data.json | twin of a T1 = T2 (`cross_chain_t1`), else T3 |
+| N1 `ms_cashback` | MS_NEW bait call with `is_cashback = 1` (last calldata word; the kit sends 1 wei back to the sender, an internal transfer that is not visible without traces) | T1 with a kit `ms_new` dispatcher; calldata shape only (`ms_cashback_shape`) T2 |
+| N2 `kit_signature` family `trusty_v1` / `kit_public` | dispatcher with `Fee(address)` 0x32b80676 + `getFee()` 0xced72f87 + `changePercentage(uint8)` 0xd285660d + 3+ bait(address): the kit's 2023 public pass-through contract ("Trusty"; forwards `msg.value` minus a 5-10 % owner fee to the argument). `kit_public` = exact runtime keccak of one of the kit's two public contracts | `kit_public` alone T2; with a bait victim T1 (`kit_confirmed`) |
+| N3 `kit_confirmed` | watchlist `KIT_PUBLIC_CONTRACTS`: `0x0007039b77d22042afc1a9c3b3da11837b730000` (Trusty v1) and `0x0000366a6afea972e4353b070ad904744a530000` (MS_NEW), same address and code on ETH/BSC/Polygon/Arbitrum/Base. A successful value > 0 bait call records the victim; `sender` (v1) or `handler` + `keeper` (MS_NEW) become payouts `customer` / `worker`. ETH: full-block pass; Base (receipts source): only txs to these addresses are looked up; BSC on the getLogs source cannot see them (no event is emitted) | T1 |
+| N4 `dust_approve` (ETH) | `approve` 0x095ea7b3 / `increaseAllowance` 0x39509351 / `increaseApproval` 0xd73dd623 sent with 1-8 wei of native value (a kit quirk, usually reverts); subject = spender, victim = sender; allowlisted / labelled spenders ignored | T2; with the D9 kit amount T1 (`dust_approve_kit`) |
+| N5 `emergency_gas` (ETH) | an EOA sends a wallet <= 50 USD of native coin and within 30 min that wallet approves (Approval log: approve or an executed permit) a seed / T1 / T2 spender, or the funder itself; subject = funder. The self-approval case is also the custodial deposit-sweep shape (29 of 29 hits in a 120-block live window were exchange sweepers), so it needs funder nonce < 2000 and victim nonce >= 3 and stays a lead (`emergency_gas_self`) | flagged spender T2; kit amount T1 (`emergency_gas_kit`); self-approval T3 |
+| N6 (D10, ETH) | `swapExactETHForTokens` 0x7ff36ab5 / `...SupportingFeeOnTransferTokens` 0xb6f9de95 on any V2 router (incl. Pancake V2 on Ethereum `0xEfF92A263d31888d860bD50809A8D171709b7b1c`), amountIn = tx value, `amountOutMin = 0`, `to != tx.from`; kit deadline as D10 | as D10 |
+| N7 `kit_router_swap` (separate txs, ETH) | kit-amount `approve` / `increaseAllowance` / `increaseApproval` to a legitimate router, then <= 300 s later a D10 swap by the same owner to a foreign EOA in another tx. State is kept within one scan run only: a pair split across two runs is not linked | T1 |
+| N8 gas constants | K5 accepts a leftover return with gasLimit 30 000 as well as 25 200; K6 accepts Deposit gasLimit 150 000 | as K5 / K6 |
+| N9 `kit_vanity` | address matches `^0x000[0-9a-f]{33}0000$` (vanity style of the kit contracts) AND carries a kit fingerprint or a K14 twin | score +5 only, never a tier |
+| N10 | two consecutive pulls by one spender from one victim split 90/10 are caught by R-A1 `split_xtx` (tested) | as R-A1 |
+| N11 | generated bait (K2): the main receiver's nonce at scan time is recorded (`main_receiver_nonce`, `main_receiver_fresh`); its later split is not followed | detail only |
 | R-A4 clusters | flagged subjects sharing a payout wallet (split payout, D8 collector or MS customer) form one `operator_cluster` (`cluster` on contracts, `clusters` list in data.json). A member inherits the cluster's best own tier (`cluster_inherited`) only if both it and the better member have behavioural (non-bytecode) evidence and the link is not a single weak one (2+ shared wallets or 2+ payout txs, not customer-only) | inheritance as described |
 
 `data.json` per contract also carries payout wallets (operator/affiliate split is **inferred** from the shares;
@@ -113,13 +124,17 @@ variants, the TRON VerifyAccount family and others); the research notes and real
   each) is a vault redemption, not a split; D2 needs 2-3 recipients. Verified-source cap: an Etherscan-verified contract
   (a proxy counts via its implementation; `getsourcecode`, cached, <= 30 calls per run, ETH only) whose only behavioural
   evidence is split_pull / split_xtx / multi_victim_pull is capped at T3 (`verified_capped`); the contract name is shown
-  in the case file.
+  in the case file. Unpriced single-victim cap: a split_pull / split_xtx subject with exactly one victim, no priced amount
+  (USD 0 / unknown) and no other behavioural or kit evidence is capped at T3 (`unpriced_capped`): fee-on-transfer and
+  tax-router tokens split every transfer the same way. This matters most on BSC, where source verification is not
+  available on our Etherscan plan.
 * **Tiers.** T1 confirmed (seed with activity; D2 with 3+ victims; D2 + family match; D9 kit approval amount; bait
   contract with 3+ victims; R-A1 with 3+ victims; D10 multi-victim + kit deadline; K7/K8 batch or kit-router drain;
-  K5 hub with 3+ one-shot workers; K4 ms-deadline + pull; K9 owner-collector with 3+ victims). T2 strong (D2 with 1-2 victims;
+  K5 hub with 3+ one-shot workers; K4 ms-deadline + pull; K9 owner-collector with 3+ victims; N3 victim of a kit public
+  contract; N1 cashback flag with a kit dispatcher; N4 / N5 with the kit amount; N7 router allowance + swap). T2 strong (D2 with 1-2 victims;
   D4; D8 3+ victims; bait contract 1-2 victims; R-A1 2 victims; D10 multi-victim or kit deadline; family / kit
   signature / owner-gated puller with activity; K4 alone; K5 hub; K12 3+ funded workers; K9; K2 exact runtime; K6;
-  K14 twin of a T1). T3 suspect (D3 alone; D6; D7 no-arg; D8 1-2 victims; R-A1 1 victim;
+  K14 twin of a T1; N2 exact public runtime; N1 calldata only; N4 dust approval; N5 emergency gas). T3 suspect (D3 alone; D6; D7 no-arg; D8 1-2 victims; R-A1 1 victim;
   D10 single; red-flag selectors; family / kit signature / puller without activity). The
   score is an additive documented weight (`constants.SCORE`); the tier is the published field. Tiers are leads for
   investigation, not findings of fact. Operator/affiliate roles and `deposit_sweep` links are inferences.

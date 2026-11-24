@@ -4,8 +4,8 @@ import json
 from collections import defaultdict
 
 from . import bytecode
-from .constants import (ALLOWLIST, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, MALICIOUS_CATEGORIES, MIN_USD,
-                        ONESHOT_T1_WORKERS, POOL_SELECTORS)
+from .constants import (ALLOWLIST, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, KIT_PUBLIC_CONTRACTS,
+                        KIT_VANITY_RE, MALICIOUS_CATEGORIES, MIN_USD, ONESHOT_T1_WORKERS, POOL_SELECTORS)
 from .detectors import assign_tier, score_of, window_hit
 from .seeds import load_allowlist
 from .util import iso, now_ts
@@ -13,10 +13,10 @@ from .util import iso, now_ts
 ACTIVITY_TYPES = {"seed_activity", "split_pull", "pays_known_operator", "redflag_payable", "multi_victim_pull",
                   "eoa_spender_pull", "approval_fingerprint", "bait_payable", "bait_withdraw", "split_xtx",
                   "foreign_recipient_swap", "owner_collect", "oneshot_spender", "ms_deadline", "batch_approval_drain",
-                  "kit_router_swap", "kit_deposit", "gen_back_transfer"}
+                  "kit_router_swap", "kit_deposit", "gen_back_transfer", "dust_approve", "emergency_gas"}
 # labels that come from code alone (no on-chain behaviour): never enough for cluster tier inheritance
 STATIC_LABELS = {"redflag_selectors", "family_match", "kit_signature", "owner_gated_puller", "wa_scam", "kit_exact",
-                 "cross_chain", "cross_chain_t1", "eip7702_operator"}
+                 "cross_chain", "cross_chain_t1", "eip7702_operator", "kit_public", "kit_vanity"}
 # kit K-rules rules whose evidence type is also the label
 KIT_EVIDENCE_LABELS = ("owner_collect", "ms_deadline", "batch_approval_drain", "kit_router_swap", "kit_deposit",
                        "gen_back_transfer")
@@ -26,6 +26,11 @@ TIER_RANK = {"T1": 1, "T2": 2, "T3": 3}
 VERIFIED_CAPPABLE = {"split_pull", "split_xtx", "multi_victim_pull", "cross_chain", "redflag_selectors",
                      "pays_inferred_operator"}
 BEHAVIOUR_CAPPED = {"split_pull", "split_xtx", "multi_victim_pull"}
+# a split (D2 / R-A1) of ONE victim with no priced amount (unpriced token, usd 0) and no other behavioural or kit
+# evidence is capped at T3: fee-on-transfer / tax-router tokens split every transfer 85/10/5 exactly like a drainer.
+# Matters most on chains without Etherscan source verification on our plan (BSC), where the verified cap cannot apply.
+UNPRICED_CAPPABLE = {"split_pull", "split_xtx"}
+UNPRICED_NEUTRAL = {"redflag_selectors", "cross_chain", "spoof_split"}
 
 
 def allow_sets():
@@ -84,7 +89,8 @@ def rollup(conn, seeds, labels, now=None):
     verified = load_verified(conn)
     per = defaultdict(lambda: dict(types=defaultdict(list), victims=set(), mvp=[], esp=[], tx_d4=set(), tx_d4w=set(), spoof=False, real_split=False, fam=None,
                                    redflags=False, ts=[], kit=None, puller=False, frs=[], frs_all=[], frs_kit=False,
-                                   osp=[], msd_pulled=False, op7702=False, kit_exact=None, xchain=[]))
+                                   osp=[], msd_pulled=False, op7702=False, kit_exact=None, xchain=[], kit_public=None,
+                                   bait_public=False, cashback=False, cashback_shape=False, dust=[], egas=[]))
     for r in conn.execute("SELECT chain,address,type,tx,ts,detail FROM evidence"):
         p = per[(r["chain"], r["address"])]
         d = json.loads(r["detail"] or "{}")
@@ -117,7 +123,24 @@ def rollup(conn, seeds, labels, now=None):
                 p["puller"] = True
             if d.get("kit_exact"):
                 p["kit_exact"] = d["kit_exact"]
+            if d.get("kit_public"):
+                p["kit_public"] = d["kit_public"]
         elif t in ("approval_fingerprint", "bait_payable"):
+            p["victims"].add(d.get("victim"))
+            if t == "bait_payable":
+                p["bait_public"] = p["bait_public"] or bool(d.get("public"))
+                if d.get("cashback") and d.get("kit") == "ms_new":
+                    if d.get("kit_code") == "ms_new" or d.get("public"):
+                        p["cashback"] = True          # N1 with K1: MS_NEW dispatcher + is_cashback = 1
+                    else:
+                        p["cashback_shape"] = True
+        elif t == "redflag_payable":
+            p["cashback_shape"] = p["cashback_shape"] or bool(d.get("cashback"))
+        elif t == "dust_approve":
+            p["dust"].append(d)
+            p["victims"].add(d.get("victim"))
+        elif t == "emergency_gas":
+            p["egas"].append(d)
             p["victims"].add(d.get("victim"))
         elif t == "split_xtx":
             p["victims"].update(d.get("victims", []))
@@ -195,6 +218,26 @@ def rollup(conn, seeds, labels, now=None):
             lb.add("ms_deadline_pull")
         if p["kit_exact"]:
             lb.add("kit_exact")
+        # kit notes N1-N11
+        if p["kit_public"] or addr in KIT_PUBLIC_CONTRACTS:
+            lb.add("kit_public")                  # N2: exact runtime of a kit public contract (or its address)
+        if "bait_payable" in p["types"] and (p["bait_public"] or "kit_public" in lb):
+            lb.add("kit_confirmed")               # N3: a bait victim of a kit public contract
+        if p["cashback"]:
+            lb.add("ms_cashback")
+        elif p["cashback_shape"]:
+            lb.add("ms_cashback_shape")
+        if p["dust"]:
+            lb.add("dust_approve")
+            if any(d.get("kit") for d in p["dust"]):
+                lb.add("dust_approve_kit")
+        if any(not d.get("self_approval") for d in p["egas"]):
+            lb.add("emergency_gas")
+        elif p["egas"]:
+            lb.add("emergency_gas_self")          # self-approval only: T3 lead (custodial sweep shape)
+        if p["egas"]:
+            if any(d.get("kit") for d in p["egas"]):
+                lb.add("emergency_gas_kit")
         if p["osp"]:                               # K5 / K12 hub aggregation
             workers = {d.get("worker") for d in p["osp"]}
             ret = {d.get("worker") for d in p["osp"] if d.get("return_tx")}
@@ -220,6 +263,8 @@ def rollup(conn, seeds, labels, now=None):
                 lb.add("foreign_swap_multi")
             if p["frs_kit"]:
                 lb.add("foreign_swap_kit")
+        if KIT_VANITY_RE.match(addr) and (p["kit"] or p["kit_public"] or p["xchain"]):
+            lb.add("kit_vanity")                  # N9: score booster with a kit fingerprint / K14 twin, never alone
         victims = {v for v in p["victims"] | drain_victims.get((chain, addr), set()) | {v for _, v in p["mvp"]}
                    | {v for _, v in p["esp"]} | {v for _, v in p["frs_all"]} if v}
         n_dr, usd = dr.get((chain, addr), (0, 0.0))
@@ -234,6 +279,10 @@ def rollup(conn, seeds, labels, now=None):
         if vf and vf["verified"] and tier in ("T1", "T2") and lb & BEHAVIOUR_CAPPED and lb <= VERIFIED_CAPPABLE:
             tier = "T3"
             lb.add("verified_capped")
+        if tier in ("T1", "T2") and lb & UNPRICED_CAPPABLE and len(victims) == 1 and not usd \
+                and not lb - UNPRICED_CAPPABLE - UNPRICED_NEUTRAL:
+            tier = "T3"                    # one victim, nothing priced, no other evidence: token fee/tax router shape
+            lb.add("unpriced_capped")
         c = codes.get((chain, addr))
         ts = p["ts"] or [now]
         src = seeds.get(chain, addr)[1] if "seed" in lb else "detector"

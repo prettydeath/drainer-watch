@@ -82,6 +82,10 @@ Deps: `requests`, `pycryptodome` (keccak for selectors/topics). Python >=3.11.
   K4 `ms_deadline` (permit/Permit2 deadline in [1e12, 1e13]); K5/K12 `oneshot_spender` (nonce <= 3 pull, hub fund /
   25 200-gas return); K6 `kit_deposit`; K7 `batch_approval_drain`; K8 `kit_router_swap` + V3 exactInputSingle decode;
   K9 `owner_collect` / `owner_collector`; K13 `eip7702_operator` (boost); K14 `cross_chain` (+ `enrich.cross_chain_check`).
+  kit notes N1-N11: N1 `ms_cashback`; N2 family `trusty_v1` + `kit_public` (exact runtime); N3 `kit_confirmed`
+  (watchlist `KIT_PUBLIC_CONTRACTS`; Base via per-tx lookup of txs to those addresses); N4 `dust_approve`; N5
+  `emergency_gas`; N6 ETH-in V2 swaps in D10; N7 `kit_router_swap` across txs (<= 300 s, same run); N8 gas 30 000 (K5) /
+  150 000 (K6); N9 `kit_vanity` (boost); N10 covered by R-A1; N11 detail only.
   TRON K10/K11 pending. Tiers in `detectors.assign_tier`. Calldata/gas/nonce rules (K1-K8) run in the ETH full-block
   pass only; K9 needs the receipts source.
 
@@ -116,7 +120,7 @@ Deps: `requests`, `pycryptodome` (keccak for selectors/topics). Python >=3.11.
 - T3 suspect: D3 alone, D6 heuristic, D7 alone, red-flag selectors alone.
 - score 0–100 = documented additive weights in constants; tier is the published field.
 - False-positive guards: ALLOWLIST, ignore victims that are contracts (except 7702-delegated EOAs),
-  min transfer usd 1 where price known.
+  min transfer usd 1 where price known; verified-source cap and unpriced single-victim split cap (`unpriced_capped`).
 
 ## DB (sqlite)
 contracts(chain,address,tier,score,source,family,labels JSON,first_seen,last_seen,victims,drains,usd,

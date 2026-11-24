@@ -1,5 +1,6 @@
 """Constants: chains, topics, selectors, allowlist, score weights."""
 import os
+import re
 from pathlib import Path
 
 from .util import selector, topic
@@ -83,7 +84,7 @@ MS_NEW_MIN_BAIT, MS_NEW_MIN_COMPANION, MS_NEW_MAX_PERCENT = 3, 2, 99
 SEL_MS_NEW_DEPOSIT = selector("Deposit(address,address,address,uint8,bool)")       # 0x38928522
 REDFLAG_SELECTORS.update(MS_NEW_SELECTORS)
 # K6: Wallet-Randomizer native leg: fresh EOA (nonce <= 2) calls Deposit with ~ its whole balance and a fixed gasLimit
-KIT_DEPOSIT_GAS = {100_000, 5_000_000, 900_000}      # default / Arbitrum+Avalanche / Pulse
+KIT_DEPOSIT_GAS = {100_000, 150_000, 5_000_000, 900_000}   # default / secondary (N8) / Arbitrum+Avalanche / Pulse
 KIT_DEPOSIT_MAX_NONCE, KIT_DEPOSIT_MIN_SHARE = 2, 0.90
 # K2 Contract Generator bait: one no-arg payable selector, runtime 894 B, storage-held receivers (slot 1 main_receiver,
 # slot 2 = fee_receiver | uint8 fee_percent << 160 | bool fee_state << 168), 2 x transfer() (2300 gas stipend 0x08fc)
@@ -119,6 +120,38 @@ GEN_BACK_WINDOW = 50            # blocks after the creation in which the deploye
 # capture set of the ETH block pass for value > 0 calls (names for every selector)
 BAIT_CAPTURE = dict(REDFLAG_SELECTORS)
 BAIT_CAPTURE.update(GEN_BAIT_SELECTORS)
+# ---- kit notes N1-N11 (MS Drainer public contracts "Trusty", 2023-2026) ----
+# N2 `trusty_v1`: the kit's 2023 public pass-through contract (bait(address) forwards msg.value minus a 5-10 % owner fee)
+TRUSTY_V1_NAMES = ["Fee(address)", "getFee()", "changePercentage(uint8)"]
+TRUSTY_V1_SELECTORS = {selector(n): n for n in TRUSTY_V1_NAMES}        # 32b80676 / ced72f87 / d285660d
+TRUSTY_V1_MIN_BAIT = 3
+# N3 the kit's two PUBLIC shared contracts (Etherscan-verified ContractName "Trusty"); same address and runtime on
+# Ethereum, BSC, Polygon, Arbitrum and Base. Every successful bait call to them is a kit victim.
+KIT_PUBLIC_CONTRACTS = {
+    "0x0007039b77d22042afc1a9c3b3da11837b730000": "trusty_v1",     # bait(address): sender = kit customer
+    "0x0000366a6afea972e4353b070ad904744a530000": "ms_new",        # 5-arg bait: handler = customer, keeper = worker
+}
+# keccak256 of their exact runtime (identical on all five chains; no immutables)
+KIT_PUBLIC_RUNTIME_KECCAK = {
+    "0x470ec6767359f7d4c64f8fd23415c5ff5132dbd7cd244a1a46935237e84ee0b0": "trusty_v1",   # 2 936 B
+    "0xd4f77d9e0803ce4a4ae809615b5896f2b86e792d8ee924b71c556015356a4e6e": "ms_new",      # 5 436 B
+}
+# N4 dust-value approvals: approve / increaseAllowance / increaseApproval sent with 1..8 wei (kit bug; usually reverts)
+SEL_APPROVE = selector("approve(address,uint256)")                    # 095ea7b3
+SEL_INCREASE_ALLOWANCE = selector("increaseAllowance(address,uint256)")  # 39509351
+SEL_INCREASE_APPROVAL = selector("increaseApproval(address,uint256)")    # d73dd623
+APPROVE_SELECTORS = {SEL_APPROVE: "approve", SEL_INCREASE_ALLOWANCE: "increaseAllowance",
+                     SEL_INCREASE_APPROVAL: "increaseApproval"}
+DUST_APPROVE_MAX_WEI = 8
+# N5 emergency gas: a small native transfer to the victim followed within 30 min by the victim's approval to the funder
+EMERGENCY_GAS_WINDOW_SEC = 30 * 60
+EMERGENCY_GAS_MAX_USD = 50.0
+EMERGENCY_GAS_KEEP = 160             # blocks of plain native transfers kept for the N5 lookup (ETH, 30 min + margin)
+# N7 kit-amount allowance increase to a legitimate router, then a foreign-recipient swap by the same owner in another tx
+KIT_ROUTER_XTX_SEC = 300
+# N9 vanity kit addresses (0x000... prefix, ...0000 suffix): score booster only, never a tier on its own
+KIT_VANITY_RE = re.compile(r"^0x000[0-9a-f]{33}0000$")
+
 # K9 OwnerCollector (owner-gated puller, EVM analogue of R-A2): dispatcher must carry >= 5 of these 6, incl. a collect fn
 OWNER_COLLECTOR_NAMES = ["collectToOwner(address,address,uint256)", "collectAllFrom(address,address)",
                          "permitAndCollect(address,address,uint256,uint256,uint8,bytes32,bytes32)",
@@ -138,6 +171,7 @@ MS_DEADLINE_MIN, MS_DEADLINE_MAX = 10 ** 12, 10 ** 13
 SEL_P2_TRANSFER_FROM = selector("transferFrom(address,address,uint160,address)")            # 36c78516
 SEL_P2_TRANSFER_FROM_BATCH = selector("transferFrom((address,address,uint160,address)[])")  # 0d58b1db
 ONESHOT_RETURN_GAS = 25_200          # 21 000 x 1.2 (ethers gas multiplier of the kit)
+ONESHOT_RETURN_GASES = {ONESHOT_RETURN_GAS, 30_000}   # N8: older kit builds forward with a fixed gasLimit of 30 000
 ONESHOT_MAX_NONCE = 3
 ONESHOT_FUND_WINDOW = 30             # blocks between the hub's gas transfer and the worker's pull
 ONESHOT_RETURN_WINDOW = 50           # blocks between the pull and the leftover return
@@ -163,6 +197,10 @@ SWAP_V2_NAMES = ["swapExactTokensForETH(uint256,uint256,address[],address,uint25
                  "swapExactTokensForETHSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256)",
                  "swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256)"]
 SWAP_V2_SELECTORS = {selector(n): n for n in SWAP_V2_NAMES}
+# N6: ETH-in V2 swaps (swapExactETHForTokens[SupportingFeeOnTransferTokens]): amountIn = tx.value
+SWAP_V2_ETH_IN_NAMES = ["swapExactETHForTokens(uint256,address[],address,uint256)",
+                        "swapExactETHForTokensSupportingFeeOnTransferTokens(uint256,address[],address,uint256)"]
+SWAP_V2_ETH_IN_SELECTORS = {selector(n): n for n in SWAP_V2_ETH_IN_NAMES}     # 7ff36ab5 / b6f9de95
 SWAP_R02_SELECTORS = {selector("swapExactTokensForTokens(uint256,uint256,address[],address)"):
                       "swapExactTokensForTokens(uint256,uint256,address[],address)"}   # SwapRouter02 (no deadline)
 SEL_MULTICALL_DEADLINE = selector("multicall(uint256,bytes[])")
@@ -303,4 +341,7 @@ SCORE = {"seed": 50, "approval_fingerprint": 50, "bait_payable": 35, "kit_signat
          # kit notes K1-K14 rules
          "kit_exact": 40, "kit_deposit": 30, "gen_back_transfer": 5, "ms_deadline": 40, "oneshot_hub": 35,
          "oneshot_multi": 20, "prefund_hub": 10, "prefund_multi": 15, "batch_approval_drain": 50,
-         "kit_router_swap": 50, "owner_collect": 30, "eip7702_operator": 10, "cross_chain": 10}
+         "kit_router_swap": 50, "owner_collect": 30, "eip7702_operator": 10, "cross_chain": 10,
+         # kit notes N1-N11 rules
+         "kit_confirmed": 50, "ms_cashback": 15, "dust_approve": 25, "dust_approve_kit": 50, "emergency_gas": 25,
+         "emergency_gas_kit": 50, "emergency_gas_self": 10, "kit_vanity": 5}

@@ -6,14 +6,16 @@ from collections import Counter, defaultdict
 
 from . import bytecode, detectors, enrich
 from .auth7702 import authority_of
-from .constants import (ALLOWLIST, ALLOWLIST_CSV, APPROVAL_KEEP_SEC, BAIT_CAPTURE, MALICIOUS_CATEGORIES, CHAINS,
-                        CONFIRMATIONS, D8_MAX_LOOKUPS, D8_MAX_SPENDER_NONCE, D8_MIN_VICTIM_NONCE, GEN_BACK_WINDOW,
+from .constants import (ALLOWLIST, ALLOWLIST_CSV, APPROVAL_KEEP_SEC, APPROVE_SELECTORS, BAIT_CAPTURE,
+                        MALICIOUS_CATEGORIES, CHAINS, CONFIRMATIONS, D8_MAX_LOOKUPS, D8_MAX_SPENDER_NONCE,
+                        D8_MIN_VICTIM_NONCE, DUST_APPROVE_MAX_WEI, EMERGENCY_GAS_KEEP, EMERGENCY_GAS_MAX_USD,
+                        EMERGENCY_GAS_WINDOW_SEC, GEN_BACK_WINDOW, KIT_PUBLIC_CONTRACTS, KIT_ROUTER_XTX_SEC,
                         GEN_FRESH_SEC, GEN_MAX_USES, INITIAL_BLOCKS, KIT_APPROVAL_AMOUNTS, KIT_DEPOSIT_GAS,
                         KIT_DEPOSIT_MAX_NONCE, KIT_DEPOSIT_MIN_SHARE, MIN_USD, MS_NEW_SELECTORS, MS_WITHDRAW_SELECTORS,
-                        ONESHOT_FUND_WINDOW, ONESHOT_KEEP, ONESHOT_MAX_NONCE, ONESHOT_RETURN_GAS, ONESHOT_RETURN_WINDOW,
+                        ONESHOT_FUND_WINDOW, ONESHOT_MAX_NONCE, ONESHOT_RETURN_GASES, ONESHOT_RETURN_WINDOW,
                         PERMIT2, PERMIT_SELECTORS, REDFLAG_SELECTORS, SEL_MS_NEW_DEPOSIT, SEL_MULTICALL_DEADLINE,
                         SEL_P2_TRANSFER_FROM, SEL_P2_TRANSFER_FROM_BATCH, SEL_R02_EXACT_INPUT_SINGLE, SEL_TRANSFER_FROM,
-                        SEL_V3_EXACT_INPUT_SINGLE, SWAP_V2_SELECTORS, XSPLIT_MAX_GAP, ZERO)
+                        SEL_V3_EXACT_INPUT_SINGLE, SWAP_V2_ETH_IN_SELECTORS, SWAP_V2_SELECTORS, XSPLIT_MAX_GAP, ZERO)
 from .db import add_evidence, meta_get, meta_set
 from .seeds import load_allowlist
 from .rpc import Rpc, parse_logs
@@ -63,6 +65,8 @@ class Ctx:
         self.gen_created: dict = {}       # K2: generated bait contract -> (creation block, deployer)
         self.kit_info: dict = {}          # address -> bytecode.analyze() result (cache)
         self.gen_receivers: dict = {}     # K2: generated bait -> receivers read from storage
+        self.kit_router_owners: dict = defaultdict(list)   # N7: owner -> [(ts, tx, spender, amount)] kit-amount router approvals
+        self.flagged_spenders: set = set()  # N5: seeds + T1/T2 subjects (refresh_known)
 
     # ---- predicates ----
     def is_allowed(self, addr):
@@ -184,6 +188,8 @@ class Ctx:
             found["owner_gated_puller"] = True
         if info.get("kit_exact"):
             found["kit_exact"] = info["kit_exact"]
+        if info.get("kit_public"):
+            found["kit_public"] = info["kit_public"]
         if info.get("ms_variant"):
             found["ms_variant"] = info["ms_variant"]
         m = bytecode.match_family(info["skeleton"], info["selectors"], info["size"], self.seed_family_index())
@@ -241,6 +247,8 @@ def refresh_known(ctx):
     if t1:
         ctx.ensure_codes(t1, cap=100)
     ctx.strong_wallets = set(ctx.seeds.addresses(chain)) | {w for w in t1 if w in ctx.code_hex and not ctx.is_contract(w)}
+    ctx.flagged_spenders = set(ctx.seeds.addresses(chain)) | {r["address"] for r in conn.execute(
+        "SELECT address FROM contracts WHERE chain=? AND tier IN ('T1','T2')", (chain,))}
 
 
 def update_payouts(conn, chain, drainer, recipients):
@@ -434,6 +442,10 @@ def process_chunk(ctx, a, b, logs, txmeta=None):
         # K9 owner-collector pulls (needs tx.from/to of every tx)
         owner_collect(ctx, tr)
 
+    # N3 kit public contracts on chains without the full-block pass (receipts source: tx.to of every tx is known)
+    if txmeta is not None and chain != "eth":
+        kit_public_calls(ctx, txmeta)
+
     # D4
     for t in c4:
         if ctx.is_contract(t["frm"]):
@@ -560,6 +572,30 @@ def owner_collect(ctx, tr):
         ctx.stats["k9_owner_collect"] += 1
 
 
+def kit_public_calls(ctx, txmeta):
+    """N3 on BSC / Base: successful txs to a kit public contract (KIT_PUBLIC_CONTRACTS) are looked up (calldata and
+    value are not in receipts) and run through the D7 bait logic. Only those few txs are fetched. Chains scanned with the
+    getLogs source never see them: the contracts emit no event on a bait call."""
+    hs = [h for h, m in txmeta.items() if m.get("to") in KIT_PUBLIC_CONTRACTS and m.get("status") == 1]
+    if not hs:
+        return
+    ctx.stats["kit_public_lookups"] += len(hs)
+    got = ctx.rpc.txs_by_hash(hs)
+    rows = []
+    for h in hs:
+        t = got.get(h)
+        if not t:
+            continue
+        inp, val = t.get("input") or "0x", hx(t.get("value"))
+        sel = inp[2:10].lower()
+        if val <= 0 or sel not in BAIT_CAPTURE:
+            continue
+        rows.append((h, txmeta[h]["to"], sel, val, txmeta[h]["from"], txmeta[h]["block"], inp,
+                     dict(nonce=hx(t.get("nonce")), gas=hx(t.get("gas")), bts=None)))
+    if rows:
+        d7(ctx, rows)
+
+
 def add_payout(conn, chain, drainer, wallet, role):
     """Payout wallet with a fixed role (customer: MS Drainer bait argument / withdraw caller; collector: D8 recipient).
     These roles are never re-ranked by update_payouts and carry no share."""
@@ -582,7 +618,7 @@ def eth_block_pass(ctx, a, b, txmeta=None):
     rpc, conn = ctx.rpc, ctx.conn
     chain_id = CHAINS[ctx.chain]["id"]
     delegates = defaultdict(lambda: dict(n=0, delegators=[], tx=None, block=None))
-    creations, redflag, withdraws, swaps, permits, pulls = [], [], [], [], [], []
+    creations, redflag, withdraws, swaps, permits, pulls, approves = [], [], [], [], [], [], []
     ap_txs = {a["tx"] for a in ctx.chunk_ap if a["kind"] == "approval"}
     inputs = {}                       # tx -> input for txs with Approval logs (K8 detail)
     bait_set = load_bait_set(ctx)
@@ -627,6 +663,11 @@ def eth_block_pass(ctx, a, b, txmeta=None):
                         redflag.append((t["hash"], to, sel, hx(t["value"]), frm, bn, inp, meta))
                     elif sel in MS_WITHDRAW_SELECTORS:      # kept only if `to` is a bait contract (checked after D7)
                         withdraws.append((t["hash"], to, sel, frm, bn, inp))
+                    elif sel in APPROVE_SELECTORS:          # N4 dust-value approvals / N7 kit-amount router approvals
+                        ap = detectors.decode_approve(inp)
+                        v = hx(t.get("value"))
+                        if ap and (0 < v <= DUST_APPROVE_MAX_WEI or ap["amount"] in KIT_APPROVAL_AMOUNTS):
+                            approves.append(dict(ap, tx=t["hash"], frm=frm, token=to, block=bn, bts=bts, value=v))
                     elif sel in PERMIT_SELECTORS:           # K4
                         pm = detectors.decode_permit(inp)
                         fields = detectors.ms_deadline_fields(pm)
@@ -635,12 +676,12 @@ def eth_block_pass(ctx, a, b, txmeta=None):
                     elif sel in (SEL_TRANSFER_FROM, SEL_P2_TRANSFER_FROM, SEL_P2_TRANSFER_FROM_BATCH):   # K5
                         if meta["nonce"] <= ONESHOT_MAX_NONCE:
                             pulls.append((t["hash"], frm, to, bn, meta["nonce"], inp))
-                    elif sel in SWAP_V2_SELECTORS or sel == SEL_MULTICALL_DEADLINE or \
+                    elif sel in SWAP_V2_SELECTORS or sel in SWAP_V2_ETH_IN_SELECTORS or sel == SEL_MULTICALL_DEADLINE or \
                             SEL_V3_EXACT_INPUT_SINGLE in inp or SEL_R02_EXACT_INPUT_SINGLE in inp:
-                        for sw in detectors.decode_swaps(inp):
+                        for sw in detectors.decode_swaps(inp, hx(t.get("value"))):
                             c = detectors.d10_candidate(sw, frm, bts)
                             if c:
-                                swaps.append(dict(c, tx=t["hash"], router=to, block=bn))
+                                swaps.append(dict(c, tx=t["hash"], router=to, block=bn, bts=bts))
                 elif to and hx(t.get("value")) > 0 and t.get("input", "0x") in ("0x", ""):
                     # plain native transfer: K5 fund / leftover return, K12 prefunding, K2 deployer "back" transfer
                     ctx.plain.append((t["from"].lower(), to, t["hash"], bn, hx(t.get("gas")), hx(t.get("value"))))
@@ -686,7 +727,7 @@ def eth_block_pass(ctx, a, b, txmeta=None):
 
     # D7 red-flag payable + bait(address) customers, withdraw callers; D10 foreign-recipient swaps
     ok = tx_status(ctx, [r[0] for r in redflag] + [x["tx"] for x in swaps] + [x["tx"] for x in permits]
-                   + [x[0] for x in pulls], txmeta)
+                   + [x[0] for x in pulls] + [x["tx"] for x in approves], txmeta)
     if redflag:
         d7(ctx, [r for r in redflag if ok.get(r[0], True)])
     withdraws = [x for x in withdraws if x[1] in bait_set]
@@ -698,6 +739,9 @@ def eth_block_pass(ctx, a, b, txmeta=None):
         if add_evidence_pending(ctx, "bait_withdraw", to, h, bn, dict(customer=frm, name=MS_WITHDRAW_SELECTORS[sel],
                                                                      withdraw_to=arg)):
             add_payout(conn, ctx.chain, to, frm, "customer")
+    if approves:
+        n4(ctx, approves, ok)
+        n7_record(ctx, [x for x in approves if ok.get(x["tx"], True)])
     if swaps:
         d10(ctx, [x for x in swaps if ok.get(x["tx"], True)])
     if permits:
@@ -705,6 +749,7 @@ def eth_block_pass(ctx, a, b, txmeta=None):
     k5(ctx, [x for x in pulls if ok.get(x[0], True)], b)
     k7k8(ctx, inputs)
     gen_back(ctx, b)
+    n5(ctx)
     ctx.flush()
 
 
@@ -767,9 +812,11 @@ def d7(ctx, redflag):
         k6 = None
         if msn and sel == SEL_MS_NEW_DEPOSIT and meta["nonce"] <= KIT_DEPOSIT_MAX_NONCE and meta["gas"] in KIT_DEPOSIT_GAS:
             k6 = kit_deposit_share(ctx, frm, bn, val)
+        public = KIT_PUBLIC_CONTRACTS.get(to) or (info or {}).get("kit_public")    # N3 kit public contract
         if msn and in_dispatch and msn["handler"] not in (frm, to, ZERO) and int(msn["handler"], 16) > 0xFFFF:
             det = dict(selector=sel, name=msn["name"], value_wei=str(val), victim=frm, customer=msn["handler"],
-                       worker=msn["keeper"], depositer=msn["depositer"], percent=msn["percent"], kit="ms_new")
+                       worker=msn["keeper"], depositer=msn["depositer"], percent=msn["percent"], kit="ms_new",
+                       cashback=msn["cashback"], kit_code=kit, public=public)
             if add_evidence_pending(ctx, "bait_payable", to, h, bn, det):
                 add_payout(ctx.conn, chain, to, msn["handler"], "customer")
                 if msn["keeper"] not in (ZERO, msn["handler"]):
@@ -781,14 +828,18 @@ def d7(ctx, redflag):
         elif dec and in_dispatch and dec[2] not in (frm, to, ZERO) and int(dec[2], 16) > 0xFFFF:
             customer = dec[2]
             det = dict(selector=sel, name=dec[1], value_wei=str(val), victim=frm, customer=customer)
+            if kit == "trusty_v1" or public:      # N2 / N3: Trusty v1 pass-through, argument = `sender` (customer)
+                det.update(kit=kit or public, public=public)
             if (info or {}).get("ms_variant") == "passthrough":
                 det.update(passthrough=True, balance_neutral=balance_neutral(ctx, to, bn))
             if add_evidence_pending(ctx, "bait_payable", to, h, bn, det):
                 add_payout(ctx.conn, chain, to, customer, "customer")
             drain(customer, "bait_address")
         elif sel in REDFLAG_SELECTORS:
-            ctx.emit("redflag_payable", to, h, bn, dict(selector=sel, name=REDFLAG_SELECTORS[sel],
-                                                        value_wei=str(val), sender=frm))
+            det = dict(selector=sel, name=REDFLAG_SELECTORS[sel], value_wei=str(val), sender=frm)
+            if msn and msn["cashback"]:
+                det["cashback"] = True            # N1 calldata shape (MS_NEW is_cashback = 1) without a kit dispatcher
+            ctx.emit("redflag_payable", to, h, bn, det)
         if k6 is not None:
             ctx.emit("kit_deposit", to, h, bn, dict(depositer=frm, nonce=meta["nonce"], gas_limit=meta["gas"],
                                                     value_wei=str(val), balance_share=k6.get("share"),
@@ -858,7 +909,17 @@ def gen_bait(ctx, h, to, sel, val, frm, bn, meta, info):
     uses = 1 + ctx.conn.execute("SELECT COUNT(*) FROM evidence WHERE chain=? AND address=? AND type='bait_payable'",
                                 (chain, to)).fetchone()[0] + sum(1 for e in ctx.pev if e["address"] == to
                                                                 and e["type"] == "bait_payable")
+    main_nonce = None
+    if rc.get("main") and rc["main"] != ZERO and getattr(ctx.rpc, "nonces", None) is not None:
+        main_nonce = ctx.nonce.get(rc["main"])      # N11: a fresh one-time main_receiver (nonce 0) splits later
+        if main_nonce is None:
+            try:
+                main_nonce = ctx.rpc.nonces([rc["main"]]).get(rc["main"])
+                ctx.nonce[rc["main"]] = main_nonce
+            except Exception:  # noqa: BLE001 - best effort
+                main_nonce = None
     det = dict(selector=sel, name=BAIT_CAPTURE.get(sel), value_wei=str(val), victim=frm, kit="ms_generated",
+               main_receiver_nonce=main_nonce, main_receiver_fresh=main_nonce == 0 if main_nonce is not None else None,
                kit_exact=info.get("kit_exact"), customer=rc.get("main"), fee_receiver=rc.get("fee") if rc.get("percent") else None,
                fee_percent=rc.get("percent"), created_sec_before=fresh_sec,
                fresh=fresh_sec is not None and fresh_sec <= GEN_FRESH_SEC, uses=uses, over_reuse=uses > GEN_MAX_USES)
@@ -910,7 +971,7 @@ def k5(ctx, pulls, last_block):
     """K5 / K12 one-shot EOA spenders. A pull (token.transferFrom / Permit2 transferFrom) sent by an EOA with tx nonce
     <= 3 for a third party, whose Transfer log really moved value (non-spoof token, >= 1 USD where priced), is kept as
     pending for ONESHOT_RETURN_WINDOW blocks. It is linked to a hub that sent the worker gas within ONESHOT_FUND_WINDOW
-    blocks before (K12 `prefund`) and/or received the worker's leftover with gasLimit exactly 25 200 afterwards (K5
+    blocks before (K12 `prefund`) and/or received the worker's leftover with gasLimit exactly 25 200 (N8: or 30 000) afterwards (K5
     `return`). Evidence `oneshot_spender` on the hub (worker, victim, token, pull/fund/return txs); payout role
     `worker` for the spender. Needs gas / nonce of every tx: ETH full-block pass only (both block sources)."""
     chain = ctx.chain
@@ -938,14 +999,14 @@ def k5(ctx, pulls, last_block):
             continue
         x["drain"] = d
         ctx.k5_pulls[x["worker"]].append(x)
-    ctx.plain = [p for p in ctx.plain if p[3] >= last_block - ONESHOT_KEEP]
+    ctx.plain = [p for p in ctx.plain if p[3] >= last_block - EMERGENCY_GAS_KEEP]   # K5 needs 60 blocks, N5 30 min
     if not ctx.k5_pulls:
         return
     funds, rets = defaultdict(list), defaultdict(list)
     for frm, to, h, bn, gas, val in ctx.plain:
         if to in ctx.k5_pulls:
             funds[to].append((frm, h, bn))
-        if frm in ctx.k5_pulls and gas == ONESHOT_RETURN_GAS:
+        if frm in ctx.k5_pulls and gas in ONESHOT_RETURN_GASES:
             rets[frm].append((to, h, bn))
     links = detectors.oneshot_links(ctx.k5_pulls, funds, rets, ONESHOT_FUND_WINDOW, ONESHOT_RETURN_WINDOW)
     links = [ln for ln in links if not ctx.is_allowed(ln["hub"])]
@@ -1011,6 +1072,86 @@ def k7k8(ctx, inputs):
             ctx.stats["k7k8_" + c["rule"]] += 1
 
 
+def n4(ctx, approves, ok):
+    """N4 dust-value approvals: approve / increaseAllowance / increaseApproval sent with 1..8 wei of native value (a kit
+    quirk; non-payable tokens revert, so the tx status is only recorded). Subject = the spender in the calldata (T2 lead;
+    T1 when the amount is the kit fingerprint S3); victim = tx.from."""
+    for x in approves:
+        if not 0 < x["value"] <= DUST_APPROVE_MAX_WEI:
+            continue
+        sp, victim = x["spender"], x["frm"]
+        if sp in (ZERO, victim) or int(sp, 16) <= 0xFFFF or ctx.is_allowed(sp) or ctx.is_allowed(victim):
+            continue
+        kit = KIT_APPROVAL_AMOUNTS.get(x["amount"])
+        ctx.emit("dust_approve", sp, x["tx"], x["block"], dict(
+            victim=victim, token=x["token"], fn=x["fn"], value_wei=x["value"], kit=kit,
+            amount="max" if x["amount"] == 2 ** 256 - 1 else str(x["amount"]), success=ok.get(x["tx"])))
+        ctx.stats["n4_dust_approve"] += 1
+
+
+def n7_record(ctx, approves):
+    """N7: remember kit-amount (S3) approve / increaseAllowance / increaseApproval calls to a LEGITIMATE spender
+    (router) per owner for KIT_ROUTER_XTX_SEC; d10 links a later foreign-recipient swap of the same owner. State lives
+    within one scan run only (a pair split across two runs is not linked)."""
+    last = max((x["bts"] or 0 for x in approves), default=0)
+    for x in approves:
+        if x["amount"] in KIT_APPROVAL_AMOUNTS and ctx.is_allowed(x["spender"]) and x["bts"]:
+            ctx.kit_router_owners[x["frm"]].append((x["bts"], x["tx"], x["spender"], x["amount"], x["token"]))
+    for o in list(ctx.kit_router_owners):
+        ctx.kit_router_owners[o] = [e for e in ctx.kit_router_owners[o] if e[0] >= last - 2 * KIT_ROUTER_XTX_SEC]
+        if not ctx.kit_router_owners[o]:
+            del ctx.kit_router_owners[o]
+
+
+def n5(ctx):
+    """N5 emergency gas: an EOA X sends a small native amount (<= 50 USD; <= 0.02 ETH unpriced) to wallet V and within
+    30 min V approves (Approval log: approve or an executed permit) X itself or a flagged spender (seed / T1 / T2).
+    Evidence `emergency_gas` on X. Measured 2026-11-23 (120-block live window): "X funds V, V approves X" is mostly the
+    custodial deposit-sweep pattern (exchange sweeper funds a deposit address, which approves the sweeper: 29 of 29
+    hits, sweeper nonces 591 - 1.9M), so the self-approval case needs funder nonce < 2000 and victim nonce >= 3 and is
+    only a T3 lead (`self_approval`); a flagged spender gives T2, the kit amount T1. Uses the plain native transfers kept
+    by the block pass (same run only) and this chunk's Approval logs."""
+    aps = [x for x in ctx.chunk_ap if x["kind"] == "approval" and x["value"] > 0]
+    if not aps or not ctx.plain:
+        return
+    window = int(EMERGENCY_GAS_WINDOW_SEC / CHAINS[ctx.chain].get("block_sec", 12))
+    price = ctx.prices.native.get(CHAINS[ctx.chain]["native"])
+    gifts = defaultdict(list)                 # V -> [(X, tx, block, value)]
+    for frm, to, h, bn, gas, val in ctx.plain:
+        small = (val / 1e18 * price <= EMERGENCY_GAS_MAX_USD) if price else val <= 2 * 10 ** 16
+        if small and frm != to:
+            gifts[to].append((frm, h, bn, val))
+    hits = []
+    for x in aps:
+        for funder, h, bn, val in gifts.get(x["owner"], ()):
+            if not bn <= x["block"] <= bn + window:
+                continue
+            if x["spender"] != funder and x["spender"] not in ctx.flagged_spenders:
+                continue
+            if ctx.is_allowed(funder) or ctx.is_allowed(x["owner"]) or ctx.is_allowed(x["spender"]):
+                continue
+            hits.append((funder, h, val, x))
+    if not hits:
+        return
+    ctx.ensure_codes([y for f, _, _, x in hits for y in (f, x["owner"])])
+    need = list(dict.fromkeys(y for f, _, _, x in hits for y in (f, x["owner"]) if y not in ctx.nonce))
+    if need:
+        ctx.stats["nonce_lookups"] += len(need)
+        ctx.nonce.update(ctx.rpc.nonces(need))
+    for funder, h, val, x in hits:
+        if funder not in ctx.code_hex or ctx.is_contract(funder) or ctx.is_contract(x["owner"]):
+            continue
+        kit = KIT_APPROVAL_AMOUNTS.get(x["value"])
+        self_ap = x["spender"] == funder and x["spender"] not in ctx.flagged_spenders and not kit
+        if self_ap and ((ctx.nonce.get(funder) is None or ctx.nonce[funder] >= D8_MAX_SPENDER_NONCE)
+                        or (ctx.nonce.get(x["owner"]) or 0) < D8_MIN_VICTIM_NONCE):
+            continue              # custodial sweeper / deposit address
+        ctx.emit("emergency_gas", funder, x["tx"], x["block"], dict(
+            victim=x["owner"], spender=x["spender"], spender_is_funder=x["spender"] == funder, token=x["token"],
+            fund_tx=h, value_wei=str(val), kit=kit, self_approval=self_ap))
+        ctx.stats["n5_emergency_gas"] += 1
+
+
 def d10(ctx, swaps):
     """Victim-signed swap paying a foreign EOA with amountOutMin = 0 (MS Drainer kit notes S4). The recipient is the
     subject ("drainer receiver"); victim = tx.from; the token sold is recorded as a drain."""
@@ -1032,6 +1173,13 @@ def d10(ctx, swaps):
         det = {k: x[k] for k in ("victim", "token", "token_out", "amount_in", "fn", "deadline_delta", "kit", "router")}
         det["usd"] = usd          # multi-victim rule counts only priced sales (meme-token wallet farms are unpriced)
         ctx.emit("foreign_recipient_swap", r, x["tx"], x["block"], det)
+        ap = detectors.kit_router_xtx(x.get("bts"), x["tx"], ctx.kit_router_owners.get(x["victim"]), KIT_ROUTER_XTX_SEC)
+        if ap:                    # N7: kit-amount allowance to a legitimate router, then this swap in a separate tx
+            ctx.emit("kit_router_swap", r, x["tx"], x["block"], dict(
+                victim=x["victim"], xtx=True, approval_tx=ap[1], approval_sec_before=x["bts"] - ap[0],
+                approvals=[dict(spender=ap[2], token=ap[4], amount=str(ap[3]))], kit=["ms_drainer"],
+                legs=[dict(token=x["token"], value=x["amount_in"], direct=False)], v3=[]))
+            ctx.stats["n7_kit_router_xtx"] += 1
         ctx.pdr.append(dict(tx=x["tx"], li=-2, block=x["block"], victim=x["victim"], drainer=r, token=x["token"],
                             symbol=sym, decimals=dec, amount=fmt_amount(v, dec), usd=usd, recipient=r))
         ctx.stats["d10_confirmed"] += 1

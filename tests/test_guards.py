@@ -28,6 +28,7 @@ def redemption_logs(h, n_recipients, burner, block=100):
 def run_chunk(logs, txs):
     ctx = make_ctx(FakeRpc(txs=txs, codes={VAULT: CODE}, symbols={USDC: ("WXYZ", 6)}),
                    native={"ETH": 2000.0})
+    ctx.prices.usd = lambda chain, token, value, dec: value / 10 ** dec if token == USDC else None   # USDC priced 1.0
     scan.process_chunk(ctx, 100, 100, logs)
     return ctx
 
@@ -223,3 +224,24 @@ def test_lookup_verified_caches_resolves_proxy_and_respects_cap():
     assert enrich.lookup_verified(make_ctx().conn, cap_es, many, cap=30) == 30
     assert len(cap_es.asked) == 30 and cap_es.asked[0] == a(0x100 + 49)      # best score first
     assert enrich.lookup_verified(conn, type("E", (), {"enabled": False})(), [cand(a(0x200))]) == 0
+
+
+# ---------- unpriced single-victim split cap ----------
+def test_unpriced_single_victim_split_is_capped_at_t3():
+    from tests.test_pipeline import DRAINER, drain_chunk
+    from tests.test_kits_k import MS_NEW_CODE
+    logs, txs = drain_chunk([a(0xABC000)])                    # unpriced token, one victim, 80/20 split
+    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}))
+    scan.process_chunk(ctx, 100, 100, logs)
+    (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
+    assert r["tier"] == "T3" and "unpriced_capped" in r["labels"]
+    logs, txs = drain_chunk([a(0xABC000 + i) for i in range(2)])   # two victims: not capped
+    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}))
+    scan.process_chunk(ctx, 100, 100, logs)
+    (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
+    assert r["tier"] == "T2" and "unpriced_capped" not in r["labels"]
+    logs, txs = drain_chunk([a(0xABC000)])                    # kit code (other evidence): not capped
+    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: MS_NEW_CODE}))
+    scan.process_chunk(ctx, 100, 100, logs)
+    (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
+    assert r["tier"] == "T2" and "kit_signature" in r["labels"] and "unpriced_capped" not in r["labels"]

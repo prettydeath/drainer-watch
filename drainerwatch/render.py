@@ -53,6 +53,8 @@ def describe(type_, d):
             bits.append(f"exact runtime of the MS Contract Generator bait {d['kit_exact']}")
         if d.get("ms_variant"):
             bits.append(f"MS bait variant {d['ms_variant']}")
+        if d.get("kit_public"):
+            bits.append(f"exact runtime of the kit public contract {d['kit_public']}")
         return "; ".join(bits) or "bytecode analysis"
     if type_ == "eip7702_sweeper":
         return f"EIP-7702 delegate: {d.get('authorizations')} authorization(s); {d.get('reason')}"
@@ -68,7 +70,8 @@ def describe(type_, d):
         if d.get("kit") == "ms_new":
             return (f"victim {d.get('victim')} paid {d.get('value_wei')} wei to MS_NEW {d.get('name')}: handler (customer) "
                     f"{d.get('customer')}, keeper (worker) {d.get('worker')}, depositer {d.get('depositer')}, "
-                    f"percent {d.get('percent')}")
+                    f"percent {d.get('percent')}" + ("; is_cashback = 1 (1 wei back to the sender)" if d.get("cashback") else "")
+                    + ("; kit public contract" if d.get("public") else ""))
         if d.get("kit") == "ms_generated":
             fee = (f", {d.get('fee_percent')}% to {d.get('fee_receiver')}" if d.get("fee_percent") else "")
             fresh = (f"; created {d.get('created_sec_before')} s before" if d.get("created_sec_before") is not None else "")
@@ -77,8 +80,10 @@ def describe(type_, d):
         pt = ("; pass-through variant: the argument received msg.value in the same tx"
               + {True: " (contract balance unchanged)", False: " (contract balance changed)"}.get(d.get("balance_neutral"), "")
               if d.get("passthrough") else "")
+        tv = ("; Trusty v1 pass-through (the argument receives msg.value minus a 5-10 % owner fee)"
+              + ("; kit public contract" if d.get("public") else "") if d.get("kit") == "trusty_v1" else "")
         return (f"victim {d.get('victim')} paid {d.get('value_wei')} wei to bait function {d.get('name')}; "
-                f"argument = customer payout wallet {d.get('customer')}{pt}")
+                f"argument = customer payout wallet {d.get('customer')}{pt}{tv}")
     if type_ == "kit_deposit":
         share = f"{d['balance_share']:.0%} of its balance" if d.get("balance_share") else "balance not checked"
         return (f"fresh EOA {d.get('depositer')} (nonce {d.get('nonce')}) called MS_NEW Deposit with gasLimit "
@@ -93,9 +98,19 @@ def describe(type_, d):
                 f"deadline ({vals}){pulled}")
     if type_ == "oneshot_spender":
         how = " and ".join(x for x in ("funded it" if d.get("fund_tx") else "",
-                                        "received its leftover with gas 25 200" if d.get("return_tx") else "") if x)
+                                        "received its leftover with gas 25 200 / 30 000" if d.get("return_tx") else "") if x)
         return (f"one-shot EOA {d.get('worker')} (nonce {d.get('worker_nonce')}) pulled {d.get('token')} from "
                 f"{d.get('victim')} to {d.get('recipient')}; this hub {how}")
+    if type_ == "kit_router_swap" and d.get("xtx"):
+        return (f"victim {d.get('victim')} gave a legitimate router the kit allowance (tx {d.get('approval_tx')}) and "
+                f"{d.get('approval_sec_before')} s later signed a zero-minimum swap paying this EOA")
+    if type_ == "dust_approve":
+        return (f"{d.get('victim')} sent {d.get('fn')} for this spender with {d.get('value_wei')} wei attached"
+                + (f" and the {d.get('kit')} kit amount" if d.get("kit") else "") + " (kit quirk)")
+    if type_ == "emergency_gas":
+        who = "this wallet" if d.get("spender_is_funder") else f"flagged spender {d.get('spender')}"
+        return (f"sent {d.get('value_wei')} wei of gas to {d.get('victim')} (tx {d.get('fund_tx')}), which then approved "
+                f"{who} within 30 min" + (f" with the {d.get('kit')} kit amount" if d.get("kit") else ""))
     if type_ in ("batch_approval_drain", "kit_router_swap"):
         what = ("batch of approvals (kit amount / max)" if type_ == "batch_approval_drain"
                 else "kit-amount approval to a legitimate router")

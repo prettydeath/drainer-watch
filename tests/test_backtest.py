@@ -35,6 +35,7 @@ def test_process_chunk_with_txmeta_needs_no_tx_lookups():
             raise AssertionError("tx lookup in receipts mode")
 
     ctx = make_ctx(NoLookups(codes={DRAINER: CODE}))
+    ctx.prices.usd = lambda chain, token, value, dec: 1000.0           # priced (an unpriced 1-victim split is T3)
     _, meta = split_receipts([receipt(h, ATTACKER, DRAINER, logs)])
     scan.process_chunk(ctx, 100, 100, logs, txmeta=meta)
     rows = rollup.rollup(ctx.conn, SeedSet(), {})

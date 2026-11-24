@@ -2,10 +2,11 @@
 import hashlib
 
 from .constants import (BAIT_ADDR_SELECTORS, FAMILY_JACCARD, FAMILY_MIN_CODE, FAMILY_MIN_SELECTORS, GEN_BAIT_RUNTIME_KECCAK,
-                        GEN_BAIT_SELECTORS, GEN_BAIT_SIZE, MS_COMPANION_SELECTORS, MS_MIN_BAIT, MS_MIN_COMPANION,
+                        GEN_BAIT_SELECTORS, GEN_BAIT_SIZE, KIT_PUBLIC_RUNTIME_KECCAK, MS_COMPANION_SELECTORS, MS_MIN_BAIT, MS_MIN_COMPANION,
                         MS_NEW_COMPANION_SELECTORS, MS_NEW_MIN_BAIT, MS_NEW_MIN_COMPANION, MS_NEW_SELECTORS,
                         OWNER_COLLECTOR_MIN, OWNER_COLLECTOR_SELECTORS, REDFLAG_SELECTORS, SEL_TRANSFER_FROM,
-                        SWEEPER_MAX_CODE, VERIFY_ACCOUNT_MIN, VERIFY_ACCOUNT_SELECTORS)
+                        SWEEPER_MAX_CODE, TRUSTY_V1_MIN_BAIT, TRUSTY_V1_SELECTORS, VERIFY_ACCOUNT_MIN,
+                        VERIFY_ACCOUNT_SELECTORS)
 from .util import keccak
 
 OP_PUSH1, OP_PUSH4, OP_PUSH20, OP_PUSH32 = 0x60, 0x63, 0x73, 0x7F
@@ -82,19 +83,22 @@ def analyze(code_hex) -> dict:
     kit = "ms_generated" if (exact or generated_bait(code, sels)) else kit_family(sels)
     return dict(size=len(code), code_hash=code_hash, skeleton=skeleton_hash(code), selectors=sels,
                 redflags=[REDFLAG_SELECTORS[s] for s in sels if s in REDFLAG_SELECTORS], kit=kit,
-                kit_exact=exact, ms_variant=ms_variant(code, kit, sels),
+                kit_exact=exact, kit_public=KIT_PUBLIC_RUNTIME_KECCAK.get(code_hash), ms_variant=ms_variant(code, kit, sels),
                 owner_gated_puller=owner_gated_puller(code, sels))
 
 
 def kit_family(selectors):
-    """Kit fingerprint from the dispatcher selector set (kit notes): `ms_drainer` = >=1 bait(address) + >=2 companion
-    selectors; `verify_account` = >=2 of Verify20 / Verify10 / withdrawAllTrxTo; `ms_new` (K1) = >=3 MS_NEW 5-arg baits
+    """Kit fingerprint from the dispatcher selector set (kit notes): `trusty_v1` (N2, the kit's 2023 public pass-through
+    contract) = Fee(address) + getFee() + changePercentage(uint8) + >=3 bait(address); `ms_drainer` = >=1 bait(address)
+    + >=2 companion selectors; `verify_account` = >=2 of Verify20 / Verify10 / withdrawAllTrxTo; `ms_new` (K1) = >=3 MS_NEW 5-arg baits
     + >=2 of its companions (changePercentage, claimSalary, disableSalary, enableSalary, salaryStatus, setReceiver);
     `owner_collector` (K9) = >=5 of the 6 OwnerCollector selectors incl. collectToOwner or collectAllFrom. None
     otherwise. The code-trait family `ms_generated` (K2) is decided in analyze()."""
     s = set(selectors)
     if len(s & set(MS_NEW_SELECTORS)) >= MS_NEW_MIN_BAIT and len(s & set(MS_NEW_COMPANION_SELECTORS)) >= MS_NEW_MIN_COMPANION:
         return "ms_new"
+    if set(TRUSTY_V1_SELECTORS) <= s and len(s & set(BAIT_ADDR_SELECTORS)) >= TRUSTY_V1_MIN_BAIT:
+        return "trusty_v1"
     if len(s & set(BAIT_ADDR_SELECTORS)) >= MS_MIN_BAIT and len(s & set(MS_COMPANION_SELECTORS)) >= MS_MIN_COMPANION:
         return "ms_drainer"
     if len(s & set(VERIFY_ACCOUNT_SELECTORS)) >= VERIFY_ACCOUNT_MIN:

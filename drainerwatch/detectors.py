@@ -4,13 +4,13 @@ Parsed transfer: dict(tx, li, block, token, frm, to, value); approval: dict(tx, 
 Evidence rows are dicts: type, address, tx, block, detail."""
 from collections import defaultdict
 
-from .constants import (BAIT_ADDR_SELECTORS, BATCH_APPROVAL_MIN, D2_MAX_SHARE, D2_MIN_SHARE, D3_MIN_VICTIMS, D3_WINDOW,
+from .constants import (APPROVE_SELECTORS, BAIT_ADDR_SELECTORS, BATCH_APPROVAL_MIN, D2_MAX_SHARE, D2_MIN_SHARE, D3_MIN_VICTIMS, D3_WINDOW,
                         D4_MIN_TXS, D7_T1_VICTIMS, D8_MAX_SPENDER_NONCE, D8_MIN_VICTIM_NONCE, D10_KIT_DEADLINE,
                         D10_KIT_TOLERANCE, KIT_APPROVAL_AMOUNTS, MS_DEADLINE_MAX, MS_DEADLINE_MIN, MS_NEW_MAX_PERCENT,
                         MS_NEW_SELECTORS, OWNER_COLLECTOR_T1_VICTIMS, PERMIT2, SCORE, SEL_MULTICALL_DEADLINE,
                         SEL_P2_TRANSFER_FROM, SEL_P2_TRANSFER_FROM_BATCH, SEL_PERMIT2_BATCH, SEL_PERMIT2_SINGLE,
                         SEL_PERMIT_2612, SEL_PERMIT_DAI, SEL_R02_EXACT_INPUT_SINGLE, SEL_TRANSFER_FROM,
-                        SEL_V3_EXACT_INPUT_SINGLE, SWAP_R02_SELECTORS, SWAP_V2_SELECTORS, UINT256_MAX, V3_KIT_DEADLINE,
+                        SEL_V3_EXACT_INPUT_SINGLE, SWAP_R02_SELECTORS, SWAP_V2_ETH_IN_SELECTORS, SWAP_V2_SELECTORS, UINT256_MAX, V3_KIT_DEADLINE,
                         V3_KIT_FEE, V3_KIT_TOLERANCE, XSPLIT_MAX_GAP, XSPLIT_MAX_SHARE, XSPLIT_MIN_SHARE, ZERO)
 
 
@@ -259,9 +259,28 @@ def _decode_path_swap(b: bytes, with_deadline: bool):
                 deadline=w(4) if with_deadline else None)
 
 
-def decode_swaps(inp):
-    """V2-router swapExactTokensFor{ETH,Tokens}[SupportingFeeOnTransferTokens] and SwapRouter02
-    multicall(uint256 deadline, bytes[]) with inner swapExactTokensForTokens(amountIn, amountOutMin, path, to).
+def _eth_in(b: bytes, value: int):
+    """ABI body of swapExactETHForTokens[SupportingFeeOnTransferTokens](amountOutMin, address[] path, to, deadline);
+    amountIn = tx.value."""
+    if len(b) < 32 * 4:
+        return None
+    w = _words(b)
+    off = w(1)
+    if off + 32 > len(b):
+        return None
+    n = int.from_bytes(b[off:off + 32], "big")
+    if n < 2 or n > 8 or off + 32 + 32 * n > len(b):
+        return None
+    path = [_addr(int.from_bytes(b[off + 32 + 32 * i: off + 64 + 32 * i], "big")) for i in range(n)]
+    if w(2) >> 160:
+        return None
+    return dict(amount_in=value, amount_out_min=w(0), path=path, to=_addr(w(2)), deadline=w(3))
+
+
+def decode_swaps(inp, value=0):
+    """V2-router swapExactTokensFor{ETH,Tokens}[SupportingFeeOnTransferTokens], swapExactETHForTokens[...] (N6:
+    amountIn = tx.value) and SwapRouter02 multicall(uint256 deadline, bytes[]) with inner
+    swapExactTokensForTokens(amountIn, amountOutMin, path, to).
     Returns [dict(fn, amount_in, amount_out_min, path, to, deadline)] (empty when not a recognised swap)."""
     b = _hexbytes(inp)
     if len(b) < 4:
@@ -273,6 +292,10 @@ def decode_swaps(inp):
             d = _decode_path_swap(body, True)
             if d:
                 out.append(dict(d, fn=SWAP_V2_SELECTORS[sel]))
+        elif sel in SWAP_V2_ETH_IN_SELECTORS:
+            d = _eth_in(body, value or 0)
+            if d:
+                out.append(dict(d, fn=SWAP_V2_ETH_IN_SELECTORS[sel]))
         elif sel == SEL_MULTICALL_DEADLINE and len(body) >= 64:
             w = _words(body)
             deadline, off = w(0), w(1)
@@ -357,6 +380,31 @@ def decode_ms_new(inp):
     sel = b[:4].hex()
     return dict(selector=sel, name=MS_NEW_SELECTORS[sel], depositer=_addr(dep), handler=_addr(han), keeper=_addr(kee),
                 percent=pct, cashback=bool(cb))
+
+
+# ---------- N4 / N7 approve-family calldata ----------
+def decode_approve(inp):
+    """approve / increaseAllowance / increaseApproval(address spender, uint256 amount) calldata -> dict(fn, spender,
+    amount) or None."""
+    b = _hexbytes(inp)
+    if len(b) < 4 + 64 or b[:4].hex() not in APPROVE_SELECTORS:
+        return None
+    w = _words(b, 4)
+    if w(0) >> 160:
+        return None
+    return dict(fn=APPROVE_SELECTORS[b[:4].hex()], spender=_addr(w(0)), amount=w(1))
+
+
+def kit_router_xtx(swap_ts, swap_tx, owner_events, max_sec):
+    """N7: owner_events = [(ts, tx, spender, amount)] kit-amount allowance increases of the swap signer to legitimate
+    routers. Returns the latest event in [swap_ts - max_sec, swap_ts] from ANOTHER tx, or None."""
+    best = None
+    for ev in owner_events or ():
+        ts, tx = ev[0], ev[1]
+        if tx != swap_tx and ts is not None and swap_ts is not None and 0 <= swap_ts - ts <= max_sec:
+            if best is None or ts > best[0]:
+                best = ev
+    return best
 
 
 # ---------- K4 millisecond deadlines ----------
@@ -599,8 +647,15 @@ def assign_tier(labels, victims, active):
     >= 1 leftover return with gas 25 200) = T1; ms_deadline (K4) T1 with any pull label on the same subject, else T2;
     owner_collect (K9) T1 with >= 3 victims, else T2; oneshot_hub (K5), prefund_multi (K12, >= 3 funded workers),
     kit_exact (K2 exact runtime), kit_deposit (K6), cross_chain_t1 (K14 twin of a T1) = T2; prefund_hub, cross_chain,
-    gen_back_transfer, eip7702_operator (K13, score boost) = T3."""
+    gen_back_transfer, eip7702_operator (K13, score boost) = T3.
+    kit notes N1-N11: kit_confirmed (N3: a bait victim of a kit public contract, by address or exact runtime),
+    ms_cashback (N1: MS_NEW bait in a kit dispatcher with is_cashback = 1), dust_approve_kit (N4 with the kit amount),
+    emergency_gas_kit (N5 with the kit amount) = T1; kit_public (N2 exact runtime, no victim seen), ms_cashback_shape
+    (N1 calldata only), dust_approve (N4), emergency_gas (N5, flagged spender) = T2; emergency_gas_self (N5, the
+    funder approved itself) = T3; kit_vanity (N9) never sets a tier (score only)."""
     if "seed" in labels or "approval_fingerprint" in labels:
+        return "T1"
+    if labels & {"kit_confirmed", "ms_cashback", "dust_approve_kit", "emergency_gas_kit"}:
         return "T1"
     if labels & {"batch_approval_drain", "kit_router_swap", "oneshot_multi"}:
         return "T1"
@@ -618,7 +673,7 @@ def assign_tier(labels, victims, active):
         return "T1"
     if labels & {"split_pull", "pays_known_operator", "eoa_spender_multi", "bait_payable", "foreign_swap_multi",
                  "foreign_swap_kit", "ms_deadline", "oneshot_hub", "prefund_multi", "owner_collect", "kit_exact",
-                 "kit_deposit", "cross_chain_t1"}:
+                 "kit_deposit", "cross_chain_t1", "kit_public", "ms_cashback_shape", "dust_approve", "emergency_gas"}:
         return "T2"
     if "split_xtx" in labels and victims >= 2:
         return "T2"
@@ -627,7 +682,7 @@ def assign_tier(labels, victims, active):
     if labels & {"multi_victim_pull", "eoa_spender_pull", "spoof_split", "eip7702_sweeper", "redflag_payable",
                  "redflag_selectors", "family_match", "pays_inferred_operator", "split_xtx", "foreign_recipient_swap",
                  "kit_signature", "owner_gated_puller", "bait_withdraw", "prefund_hub", "cross_chain",
-                 "gen_back_transfer", "eip7702_operator"}:
+                 "gen_back_transfer", "eip7702_operator", "emergency_gas_self"}:
         return "T3"
     return None
 
