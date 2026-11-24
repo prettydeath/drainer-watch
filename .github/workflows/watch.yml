@@ -36,9 +36,20 @@ jobs:
           path: _data
         continue-on-error: true
 
-      - run: |
+      - name: Restore the database from the data-latest release, else the legacy copy on the data branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
           mkdir -p data
-          if [ -f _data/data/drainerwatch.sqlite ]; then cp _data/data/drainerwatch.sqlite data/; fi
+          if gh release download data-latest -p drainerwatch.sqlite.gz -D _rel 2>/dev/null; then
+            gunzip -c _rel/drainerwatch.sqlite.gz > data/drainerwatch.sqlite && echo "db from release"
+          elif [ -f _data/data/drainerwatch.sqlite ]; then
+            cp _data/data/drainerwatch.sqlite data/ && echo "db from data branch (migration)"
+          else
+            echo "no previous db"
+          fi
+          cp data/drainerwatch.sqlite _db_before.sqlite 2>/dev/null || true
 
       - uses: actions/setup-python@v5
         with:
@@ -60,13 +71,29 @@ jobs:
           BS="${{ github.event.inputs.budget_sec }}"
           python -m drainerwatch run --budget-sec "${BS:-420}" ${MB:+--max-blocks "$MB"}
 
-      - name: Publish to the data branch (single orphan commit)
+      - name: Upload the database and large CSVs to the data-latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if cmp -s _db_before.sqlite data/drainerwatch.sqlite; then echo "db unchanged"; exit 0; fi
+          gh release view data-latest >/dev/null 2>&1 || gh release create data-latest --prerelease \
+            --title "data (rolling)" --notes "Rolling scanner state, overwritten by every watch run. Not a software release."
+          mkdir -p _up
+          gzip -c data/drainerwatch.sqlite > _up/drainerwatch.sqlite.gz
+          for f in contracts.csv drains.csv; do [ -f "data/$f" ] && gzip -c "data/$f" > "_up/$f.gz"; done
+          gh release upload data-latest _up/* --clobber
+          ls -la _up
+
+      - name: Publish light files to the data branch (single orphan commit)
         id: publish
         run: |
-          if [ -d _data ] && cmp -s _data/data/drainerwatch.sqlite data/drainerwatch.sqlite && diff -q _data/site/data.json site/data.json >/dev/null 2>&1; then
+          if [ -d _data ] && [ ! -f _data/data/drainerwatch.sqlite ] && diff -q _data/site/data.json site/data.json >/dev/null 2>&1; then
             echo "changed=false" >> "$GITHUB_OUTPUT"; echo "no changes"; exit 0
           fi
-          rm -rf _pub && mkdir _pub && cp -r data site _pub/
+          rm -rf _pub && mkdir -p _pub/data && cp -r site _pub/
+          # light files only: the database and large CSVs live in the data-latest release
+          find data -maxdepth 1 -type f ! -name '*.sqlite*' ! -name 'contracts.csv' ! -name 'drains.csv' -size -5M -exec cp {} _pub/data/ \;
           cd _pub
           git init -q -b data
           git config user.name "drainerwatch-bot"
