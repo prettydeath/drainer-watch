@@ -240,6 +240,9 @@ ALLOWLIST = {
     # Tangem wallet gasless EIP-7702 entry point (Etherscan verified ContractName Tangem7702GaslessEntryPoint):
     # relays delegated-EOA batches, so third-party pulls/splits are normal there
     "0xf67e35af6a18a01702e6c2f1e18a63c2fc3a528c": "Tangem 7702 Gasless EntryPoint",
+    # MetaMask Delegation Framework DelegationManager (Etherscan verified ContractName DelegationManager on eth and base,
+    # same address on every chain): redeems ERC-7710 delegations of smart accounts, so third-party pulls are normal there
+    "0xdb9b1e94b5b69df7e401ddbede43491141047db3": "MetaMask DelegationManager",
     # CoW Protocol GPv2Settlement (docs.cow.fi)
     "0x9008d19f58aabd9ed0d60971565aa8510560ab41": "CoW GPv2Settlement",
     # UniswapX reactors (github.com/Uniswap/UniswapX deployments)
