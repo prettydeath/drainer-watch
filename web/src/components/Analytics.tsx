@@ -43,7 +43,7 @@ function AtRiskNow({ model, onOpen }: { model: Model; onOpen: (c: Case) => void 
   const [n, setN] = useState(8)
   const head = <div className="sect-h"><h2>At risk now</h2><p>Approvals to drainer spenders that are still open: the tokens can be pulled at any moment.</p></div>
   if (!rows) return <section className="sect" id="at-risk">{head}<div className="card card-pad margin"><p className="empty">Not computed yet: this data.json predates the open-allowance check.</p></div></section>
-  const usd = rows.reduce((s, r) => s + (r.usd || 0), 0)
+  const usd = model.data.exposure_total_usd ?? rows.reduce((s, r) => s + (r.usd || 0), 0)
   const victims = new Set(rows.map(r => r.victim.toLowerCase())).size
   return (
     <section className="sect" id="at-risk">

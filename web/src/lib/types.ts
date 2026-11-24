@@ -77,7 +77,8 @@ export interface Contract {
   cross_chain?: { chain: string; tier: Tier }[]
   /** approvals to this spender that are still open (backend >= allowance check) */
   open_allowances?: OpenAllowance[]
-  exposure_total_usd?: number | null
+  /** the spender has executed any pull */
+  pulled?: boolean | null
 }
 
 export interface OpenAllowance {
@@ -166,4 +167,6 @@ export interface DataJson {
   /** absent in data.json produced before the freezable check existed */
   freezable?: Freezable[]
   freezable_total?: Record<string, number>
+  /** USD still pullable through open approvals, all subjects */
+  exposure_total_usd?: number | null
 }

@@ -77,7 +77,7 @@ function StillExposed({ c }: { c: Case }) {
   return (
     <>
       <h4>Still exposed</h4>
-      {c.exposure_total_usd ? <p><b>{fmtUSD(c.exposure_total_usd)}</b> can still be pulled through open approvals.</p> : null}
+      {(() => { const u = rows.filter(a => !a.pulled).reduce((s, a) => s + (a.usd_at_risk || 0), 0); return u ? <p><b>{fmtUSD(u)}</b> can still be pulled through open approvals.</p> : null })()}
       <ul className="links">
         {rows.map((a, i) => (
           <li key={i}>

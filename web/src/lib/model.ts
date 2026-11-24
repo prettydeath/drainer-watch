@@ -117,6 +117,7 @@ export function buildModel(raw: DataJson): Model {
     clusters: raw.clusters || [],
     freezable: Array.isArray(raw.freezable) ? raw.freezable : undefined,
     freezable_total: raw.freezable_total,
+    exposure_total_usd: raw.exposure_total_usd,
   }
   CHAINS = data.chains
   const gen = Date.parse(data.generated_at)
