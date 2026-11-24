@@ -4,6 +4,7 @@
 // caps at the latest MAX_DRAINS rows.
 import { DAY, H, toMs } from './format'
 import { tokenSymbol, type Case, type DrainRow, type Model } from './model'
+import type { Freezable } from './types'
 import type { Payout, Tier } from './types'
 import { TIER_RANK } from './vocab'
 
@@ -267,7 +268,39 @@ export function atRisk(model: Model): AtRisk[] | null {
 }
 
 /* ---- freezable stablecoins ---- */
-export interface FreezeSummary { usd: number; frozen: number; byIssuer: [string, number][]; symbols: string[]; n: number; checked: number }
+/** Above this ratio of balance to known drained value, most of a balance is not traced to drains. */
+export const UNTRACED_RATIO = 3
+export interface FreezeRow {
+  f: Freezable
+  c: Case | null
+  /** USD the linked drainer is known to have taken (its case total) */
+  known: number
+  /** the part of the balance that the linked drainer's known take can explain, shared across its wallets */
+  traceable: number
+  /** balance > UNTRACED_RATIO x known drained */
+  untraced: boolean
+}
+/** Freezable rows with the linked case and the traceable amount; default order: traceable, then balance. */
+export function freezeRows(model: Model, by: 'traceable' | 'balance' = 'traceable'): FreezeRow[] {
+  const rows: FreezeRow[] = (model.freezable || []).map(f => {
+    const c = model.byKey.get(f.chain + ':' + f.drainer) ||
+      model.cases.find(x => x.chain === f.chain && x.address.toLowerCase() === (f.drainer || '').toLowerCase()) || null
+    const known = c ? c.usd || 0 : 0
+    return { f, c, known, traceable: 0, untraced: (f.usd || 0) > UNTRACED_RATIO * known }
+  })
+  // one drainer's known take is shared out across its wallets (largest balance first), never counted twice
+  const left = new Map<string, number>()
+  rows.slice().filter(r => !r.f.already_frozen).sort((a, b) => (b.f.usd || 0) - (a.f.usd || 0)).forEach(r => {
+    const k = r.f.chain + ':' + (r.f.drainer || '').toLowerCase()
+    const rem = left.has(k) ? left.get(k)! : r.known
+    r.traceable = Math.max(0, Math.min(r.f.usd || 0, rem))
+    left.set(k, rem - r.traceable)
+  })
+  return rows.sort((a, b) => (a.f.already_frozen ? 1 : 0) - (b.f.already_frozen ? 1 : 0) ||
+    (by === 'traceable' ? b.traceable - a.traceable : 0) || (b.f.usd || 0) - (a.f.usd || 0))
+}
+
+export interface FreezeSummary { traceable: number; usd: number; frozen: number; byIssuer: [string, number][]; symbols: string[]; n: number; checked: number }
 /** Sentence numbers for "Freezable now". Issuer totals come from freezable_total when the backend sends it. */
 export function freezeSummary(model: Model): FreezeSummary | null {
   const rows = model.freezable
@@ -280,6 +313,7 @@ export function freezeSummary(model: Model): FreezeSummary | null {
   const byIssuer = [...by.entries()].filter(e => e[1] > 0).sort((a, b) => b[1] - a[1])
   const checked = rows.map(f => toMs(f.checked_at)).filter(Number.isFinite)
   return {
+    traceable: freezeRows(model).filter(r => !r.f.already_frozen).reduce((s, r) => s + r.traceable, 0),
     usd: byIssuer.reduce((s, e) => s + e[1], 0),
     frozen: rows.filter(f => f.already_frozen).reduce((s, f) => s + (f.usd || 0), 0),
     byIssuer,

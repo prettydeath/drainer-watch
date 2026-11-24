@@ -399,7 +399,8 @@ svg.gantt { display: block; font-size: 11px; }
 .frz { padding: 14px 18px 10px; }
 .frz-lead { margin: 0 0 10px; font-size: 17px; line-height: 1.5; max-width: 92ch; }
 .frz-lead b { font-weight: 700; }
-.frz-two { display: grid; grid-template-columns: minmax(0, 2.6fr) minmax(240px, 1fr); gap: 22px; align-items: start; }
+.frz-two { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
+.frz-chart { max-width: 640px; }
 .frz-chart h3 { font-size: 16px; line-height: 24px; margin-bottom: 4px; }
 .frz .hint { font-size: 13px; color: var(--muted-foreground); min-width: 120px; max-width: 18ch; }
 .iss { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
@@ -416,3 +417,15 @@ svg.gantt { display: block; font-size: 11px; }
 }
 .frz tr.row { cursor: default; }
 .frz .ledger.rank .who { min-width: 0; }
+
+.ledger tr.has-warn td { border-bottom: 0; }
+.ledger tr.warnrow td { padding: 0 8px 6px; line-height: 1.4; white-space: normal; border-bottom: 1px solid var(--rule); }
+.frz-warn { display: block; font-size: 12.5px; color: var(--t2); font-style: italic; border-left: 2px solid var(--t2); padding-left: 8px; }
+.frz-warn-n { margin-left: auto; color: var(--t2); font-style: italic; }
+.ledger.rank .ev { font-style: italic; max-width: 24ch; white-space: normal; }
+@media (max-width: 640px) {
+  .ledger.rank tr.warnrow { display: block; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  .ledger.rank tr.warnrow td::before { content: none; }
+  .ledger.rank tr.row.has-warn { border-bottom: 0; }
+  .frz-warn-n { margin-left: 0; flex-basis: 100%; }
+}

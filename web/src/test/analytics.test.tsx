@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it } from 'vitest'
 import App from '@/App'
 import {
-  DEFAULT_FILTER, atRisk, drainWindow, fmtAllowance, freezeHint, freezeSummary, drainerRows, fmtDuration, parseRoute, perChainSeries, recipients, sortRows, summarize, toCSV,
+  DEFAULT_FILTER, atRisk, drainWindow, fmtAllowance, freezeHint, freezeRows, freezeSummary, drainerRows, fmtDuration, parseRoute, perChainSeries, recipients, sortRows, summarize, toCSV,
 } from '@/lib/analytics'
 import { ago, toMs } from '@/lib/format'
 import { buildModel } from '@/lib/model'
@@ -173,6 +173,16 @@ describe('freezable', () => {
     expect(t.byIssuer).toEqual([['Tether', 900]])
     expect(freezeHint('Tether')).toMatch(/law enforcement/)
     expect(freezeHint(null, 'USDC')).toMatch(/Circle/)
+  })
+  it('orders by the part of a balance that drains can explain, and flags untraced balances', () => {
+    const m = buildModel({ ...base, contracts: [C({ address: '0xa', usd: 801 }), C({ address: '0xb', usd: 5000 })], freezable: [
+      F({ address: '0xbig', drainer: '0xa', usd: 39141 }), F({ address: '0xmid', drainer: '0xb', usd: 4000 }), F({ address: '0xsmall', drainer: '0xa', usd: 500 }),
+    ] as never })
+    const r = freezeRows(m)
+    // 0xa took 801 in total: the largest wallet absorbs it, the second wallet of the same drainer gets nothing traceable
+    expect(r.map(x => [x.f.address, x.traceable, x.untraced])).toEqual([['0xmid', 4000, false], ['0xbig', 801, true], ['0xsmall', 0, false]])
+    expect(freezeRows(m, 'balance')[0].f.address).toBe('0xbig')
+    expect(freezeSummary(m)!.traceable).toBe(4801)
   })
   it('shows "Not computed yet" without the field and the table with it', async () => {
     history.replaceState(null, '', '#analytics')

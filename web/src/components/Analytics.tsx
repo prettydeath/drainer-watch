@@ -2,13 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import {
-  DEFAULT_FILTER, WINDOWS, atRisk, drainWindow, fmtAllowance, freezeHint, freezeHintShort, freezeSummary, drainerRows, fmtDuration, perChainSeries, recipients, sortRows, summarize, toCSV, windowOf,
-  type DrainerRow, type Filter, type Recipient, type SortKey,
+  DEFAULT_FILTER, WINDOWS, atRisk, drainWindow, fmtAllowance, freezeHint, freezeHintShort, freezeRows, freezeSummary, drainerRows, fmtDuration, perChainSeries, recipients, sortRows, summarize, toCSV, windowOf,
+  type DrainerRow, type Filter, type FreezeRow, type Recipient, type SortKey,
 } from '@/lib/analytics'
 import { DAY, ago, fmtDay, fmtInt, fmtStamp, fmtTime, fmtUSD, mid, plural } from '@/lib/format'
 import type { Case, Model } from '@/lib/model'
 import type { Freezable, Tier } from '@/lib/types'
-import { TIER_NAME, TIER_ORDER, chainLong, chainShort, famSourceNote, roleInfo } from '@/lib/vocab'
+import { TIER_NAME, TIER_ORDER, chainLong, chainShort, famSourceNote, labelInfo, roleInfo } from '@/lib/vocab'
 import { Addr, tv, useMedia } from './shared'
 
 const PAGE = 25
@@ -90,77 +90,97 @@ const frzConfig = { usd: { label: 'Freezable', color: 'var(--chart-1)' } } satis
 function FreezableNow({ model, onOpen }: { model: Model; onOpen: (c: Case) => void }) {
   const s = useMemo(() => freezeSummary(model), [model])
   const [n, setN] = useState(10)
+  const [by, setBy] = useState<'traceable' | 'balance'>('traceable')
   const small = useMedia('(max-width: 640px)')
-  const rows = model.freezable
-  const head = <div className="sect-h"><h2>Freezable now</h2><p>Stablecoins on drainer-linked wallets that the issuer can still freeze.</p></div>
-  if (!rows || !s)
+  const rows = useMemo(() => freezeRows(model, by), [model, by])
+  const head = <div className="sect-h"><h2>Freezable now</h2><p>Stablecoins on drainer-linked wallets that the issuer can still freeze, with how much of each balance drains can explain.</p></div>
+  if (!model.freezable || !s)
     return <section className="sect" id="freezable">{head}<div className="card card-pad margin"><p className="empty">Not computed yet: this data.json predates the freezable-balance check. It will appear here once the scanner publishes it.</p></div></section>
   const issuerText = s.byIssuer.map(([i, u]) => fmtUSD(u) + ' on ' + i + '-freezable ' + (/tether/i.test(i) ? 'USDT' : /circle/i.test(i) ? 'USDC' : 'tokens')).join(', ')
-  const data = rows.filter(f => !f.already_frozen && (f.usd || 0) > 0).slice(0, TOP_RECIPIENTS)
-    .map(f => ({ id: f.chain + ':' + f.address + ':' + (f.token || f.symbol), usd: Math.round(f.usd || 0), f }))
-  const ticks = new Map(data.map(d => [d.id, { addr: d.f.address, chain: d.f.chain }]))
+  const val = (r: FreezeRow) => Math.round(by === 'traceable' ? r.traceable : r.f.usd || 0)
+  const data = rows.filter(r => !r.f.already_frozen && val(r) > 0).slice(0, TOP_RECIPIENTS)
+    .map(r => ({ id: r.f.chain + ':' + r.f.address + ':' + (r.f.token || r.f.symbol), usd: val(r), r }))
+  const ticks = new Map(data.map(d => [d.id, { addr: d.r.f.address, chain: d.r.f.chain }]))
   const h = 30 + data.length * 28
+  const untraced = rows.filter(r => !r.f.already_frozen && r.untraced).length
   return (
     <section className="sect" id="freezable">
       {head}
       <div className="card card-pad frz">
         {s.usd > 0 ? (
-          <p className="frz-lead"><b className="num">{fmtUSD(s.usd)}</b> in {s.symbols.join('/') || 'stablecoins'} sits on drainer-linked wallets right now{issuerText ? <>; {issuerText}</> : null}.
+          <p className="frz-lead"><b className="num">{fmtUSD(s.traceable)}</b> traceable to drains sits on drainer-linked wallets right now, in {s.symbols.join('/') || 'stablecoins'} the issuer can freeze. Their total balance is {fmtUSD(s.usd)}{issuerText ? <> ({issuerText})</> : null}; the rest is not traced to drains.
             {s.frozen > 0 ? <> A further {fmtUSD(s.frozen)} is already frozen.</> : null}
             {Number.isFinite(s.checked) ? <span className="muted small"> Balances checked {ago(s.checked, model.now)}.</span> : null}</p>
         ) : <p className="frz-lead">{rows.length ? <>No unfrozen stablecoin balance is left on drainer-linked wallets{s.frozen > 0 ? <>; {fmtUSD(s.frozen)} is already frozen</> : null}.</> : 'No freezable stablecoin balance was found on drainer-linked wallets at the last check.'}</p>}
         {rows.length ? (
-          <div className="frz-two">
-            <div className="rank-wrap">
-              <table className="ledger rank">
-                <thead><tr><th className="r">#</th><th>Address</th><th>Linked drainer</th><th>Token</th><th className="r">Balance</th><th className="r">USD</th><th>Status</th><th>How to request</th></tr></thead>
-                <tbody>
-                  {rows.slice(0, n).map((f, i) => {
-                    const c = model.byKey.get(f.chain + ':' + f.drainer) || model.cases.find(x => x.chain === f.chain && x.address.toLowerCase() === (f.drainer || '').toLowerCase())
-                    const tier = c?.tier || f.drainer_tier
-                    return (
-                      <tr key={f.chain + f.address + (f.token || f.symbol) + i} className={'row' + (f.already_frozen ? ' frozen' : '')} data-frz-row={f.address} style={css({ '--tc': tv(tier) })}>
-                        <td className="r rk" data-l="#">{i + 1}</td>
-                        <td className="who" data-l="Address" data-rank={i + 1} data-tier={(f.symbol || '') + ' on ' + chainLong(f.chain)}>
-                          <Addr value={f.address} chain={f.chain} link /> <span className="muted small">{chainShort(f.chain)}</span>
-                          <span className="kit">{roleInfo(f.role)[0].toLowerCase()}</span>
-                        </td>
-                        <td data-l="Linked drainer">{tier ? <span className="tg">{tier}</span> : null} {c ? <button className="linkbtn mono small" onClick={() => onOpen(c)}>{mid(f.drainer, 6, 4)}</button> : <Addr value={f.drainer} chain={f.chain} />}</td>
-                        <td data-l="Token"><span className="iss" style={css({ '--ic': ISSUER_COLOR(issuerOf(f)) })}><i />{f.symbol || 'token'}</span><span className="sub">{issuerOf(f)}</span></td>
-                        <td className="r num" data-l="Balance">{fmtBal(f.balance)}</td>
-                        <td className="r" data-l="USD"><b className="num">{f.usd == null ? <span className="muted">unpriced</span> : fmtUSD(f.usd)}</b></td>
-                        <td data-l="Status">{f.already_frozen ? <span className="badge-frozen">already frozen</span> : <span className="muted">not frozen</span>}{f.checked_at ? <span className="sub" title={fmtStamp(f.checked_at)}>checked {ago(f.checked_at, model.now)}</span> : null}</td>
-                        <td className="wrapc hint" data-l="How to request">{f.already_frozen ? <span className="muted">nothing to request</span> : <span title={freezeHint(issuerOf(f), f.symbol)}>{small ? freezeHint(issuerOf(f), f.symbol) : freezeHintShort(issuerOf(f), f.symbol)}</span>}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-              {rows.length > n ? <button className="btn more-btn" onClick={() => setN(x => x + 15)}>Show {Math.min(15, rows.length - n)} more of {rows.length - n}</button> : null}
+          <>
+            <div className="filters an-filters" role="group" aria-label="Order freezable balances">
+              <span className="fl">Order by</span>
+              <button className="chipf" aria-pressed={by === 'traceable'} onClick={() => setBy('traceable')}>Traceable to drains</button>
+              <button className="chipf" aria-pressed={by === 'balance'} onClick={() => setBy('balance')}>Raw balance</button>
+              {untraced ? <span className="muted small frz-warn-n">{plural(untraced, 'balance')} mostly not traced to drains</span> : null}
             </div>
-            {data.length ? (
-              <div className="frz-chart">
-                <h3>Largest holders</h3>
-                <ChartContainer config={frzConfig} className="aspect-auto w-full" style={{ height: h }} initialDimension={{ width: 420, height: h }}>
-                  <BarChart accessibilityLayer data={data} layout="vertical" margin={{ top: 4, right: 52, left: 4, bottom: 4 }}>
-                    <CartesianGrid horizontal={false} strokeDasharray="2 4" />
-                    <XAxis type="number" dataKey="usd" tickFormatter={v => fmtUSD(v, true)} tickLine={false} axisLine={{ stroke: 'var(--border)' }} tickCount={3} />
-                    <YAxis type="category" dataKey="id" width={128} tickLine={false} axisLine={false} interval={0} tick={<AddrTick rows={ticks} />} />
-                    <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent hideIndicator
-                      labelFormatter={(_, p) => { const f = (p?.[0]?.payload as { f: Freezable })?.f; return f ? (f.symbol || 'token') + ' (' + issuerOf(f) + '), ' + roleInfo(f.role)[0].toLowerCase() : '' }}
-                      formatter={(v, _n, item) => <span className="flex w-full flex-col gap-0.5"><span className="flex justify-between gap-3"><span className="muted">Freezable</span><b className="num">{fmtUSD(Number(v))}</b></span><span className="mono" style={{ fontSize: 11 }}>{(item.payload as { f: Freezable }).f.address}</span></span>} />} />
-                    <Bar dataKey="usd" radius={[0, 2, 2, 0]} isAnimationActive={false}>
-                      {data.map(d => <Cell key={d.id} fill={ISSUER_COLOR(issuerOf(d.f))} />)}
-                      <LabelList dataKey="usd" position="right" className="barlabel" formatter={(v: unknown) => fmtUSD(Number(v), true)} />
-                    </Bar>
-                  </BarChart>
-                </ChartContainer>
-                <div className="legend small">{[...new Set(data.map(d => issuerOf(d.f)))].map(i => <span key={i}><i style={{ background: ISSUER_COLOR(i) }} />{i}</span>)}</div>
+            <div className="frz-two">
+              <div className="rank-wrap">
+                <table className="ledger rank">
+                  <thead><tr><th className="r">#</th><th>Address</th><th>Linked drainer and evidence</th><th>Token</th><th className="r">Balance</th><th className="r">Known drained</th><th>Status</th><th>How to request</th></tr></thead>
+                  <tbody>
+                    {rows.slice(0, n).map((r, i) => {
+                      const { f, c } = r
+                      const tier = c?.tier || f.drainer_tier
+                      const ev = c ? [...new Set([...c.labels, ...c.evidence.map(e => e.type)])].map(l => labelInfo(l)[0]) : []
+                      return [
+                        <tr key={'r' + i} className={'row' + (f.already_frozen ? ' frozen' : '') + (r.untraced && !f.already_frozen ? ' has-warn' : '')} data-frz-row={f.address} style={css({ '--tc': tv(tier) })}>
+                          <td className="r rk" data-l="#">{i + 1}</td>
+                          <td className="who" data-l="Address" data-rank={i + 1} data-tier={(f.symbol || '') + ' on ' + chainLong(f.chain)}>
+                            <Addr value={f.address} chain={f.chain} link /> <span className="muted small">{chainShort(f.chain)}</span>
+                            <span className="kit">{roleInfo(f.role)[0].toLowerCase()}</span>
+                          </td>
+                          <td data-l="Linked drainer" className="wrapc">
+                            {tier ? <span className="tg">{tier}</span> : null} {c ? <button className="linkbtn mono small" onClick={() => onOpen(c)}>{mid(f.drainer, 6, 4)}</button> : <Addr value={f.drainer} chain={f.chain} />}
+                            {ev.length ? <span className="sub ev" title={ev.join(', ')}>{ev.slice(0, 2).join(', ')}{ev.length > 2 ? ' +' + (ev.length - 2) : ''}</span> : null}
+                          </td>
+                          <td data-l="Token"><span className="iss" style={css({ '--ic': ISSUER_COLOR(issuerOf(f)) })}><i />{f.symbol || 'token'}</span><span className="sub">{issuerOf(f)}</span></td>
+                          <td className="r" data-l="Balance"><b className="num">{f.usd == null ? <span className="muted">unpriced</span> : fmtUSD(f.usd)}</b><span className="sub num">{fmtBal(f.balance)} {f.symbol || ''}</span></td>
+                          <td className="r" data-l="Known drained"><span className="num">{c ? fmtUSD(r.known) : <span className="muted">unknown</span>}</span><span className="sub">traceable {fmtUSD(r.traceable)}</span></td>
+                          <td data-l="Status">{f.already_frozen ? <span className="badge-frozen">already frozen</span> : <span className="muted">not frozen</span>}{f.checked_at ? <span className="sub" title={fmtStamp(f.checked_at)}>checked {ago(f.checked_at, model.now)}</span> : null}</td>
+                          <td className="wrapc hint" data-l="How to request">{f.already_frozen ? <span className="muted">nothing to request</span> : <span title={freezeHint(issuerOf(f), f.symbol)}>{small ? freezeHint(issuerOf(f), f.symbol) : freezeHintShort(issuerOf(f), f.symbol)}</span>}</td>
+                        </tr>,
+                        r.untraced && !f.already_frozen ? (
+                          <tr key={'w' + i} className="warnrow"><td colSpan={8}><span className="frz-warn">Most of this balance is not traced to drains ({fmtUSD(f.usd || 0)} held, {fmtUSD(r.known)} known drained through this drainer). Verify before requesting a freeze.</span></td></tr>
+                        ) : null,
+                      ]
+                    })}
+                  </tbody>
+                </table>
+                {rows.length > n ? <button className="btn more-btn" onClick={() => setN(x => x + 15)}>Show {Math.min(15, rows.length - n)} more of {rows.length - n}</button> : null}
               </div>
-            ) : null}
-          </div>
+              {data.length ? (
+                <div className="frz-chart">
+                  <h3>{by === 'traceable' ? 'Largest traceable holdings' : 'Largest holders'}</h3>
+                  <ChartContainer config={frzConfig} className="aspect-auto w-full" style={{ height: h }} initialDimension={{ width: 420, height: h }}>
+                    <BarChart accessibilityLayer data={data} layout="vertical" margin={{ top: 4, right: 52, left: 4, bottom: 4 }}>
+                      <CartesianGrid horizontal={false} strokeDasharray="2 4" />
+                      <XAxis type="number" dataKey="usd" tickFormatter={v => fmtUSD(v, true)} tickLine={false} axisLine={{ stroke: 'var(--border)' }} tickCount={3} />
+                      <YAxis type="category" dataKey="id" width={128} tickLine={false} axisLine={false} interval={0} tick={<AddrTick rows={ticks} />} />
+                      <ChartTooltip cursor={{ fill: 'var(--muted)' }} content={<ChartTooltipContent hideIndicator
+                        labelFormatter={(_, p) => { const r = (p?.[0]?.payload as { r: FreezeRow })?.r; return r ? (r.f.symbol || 'token') + ' (' + issuerOf(r.f) + '), ' + roleInfo(r.f.role)[0].toLowerCase() : '' }}
+                        formatter={(_v, _n, item) => { const r = (item.payload as { r: FreezeRow }).r; return (
+                          <span className="flex w-full flex-col gap-0.5"><span className="flex justify-between gap-3"><span className="muted">Balance</span><b className="num">{fmtUSD(r.f.usd || 0)}</b></span><span className="flex justify-between gap-3"><span className="muted">Traceable</span><b className="num">{fmtUSD(r.traceable)}</b></span><span className="mono" style={{ fontSize: 11 }}>{r.f.address}</span></span>
+                        ) }} />} />
+                      <Bar dataKey="usd" radius={[0, 2, 2, 0]} isAnimationActive={false}>
+                        {data.map(d => <Cell key={d.id} fill={ISSUER_COLOR(issuerOf(d.r.f))} />)}
+                        <LabelList dataKey="usd" position="right" className="barlabel" formatter={(v: unknown) => fmtUSD(Number(v), true)} />
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                  <div className="legend small">{[...new Set(data.map(d => issuerOf(d.r.f)))].map(i => <span key={i}><i style={{ background: ISSUER_COLOR(i) }} />{i}</span>)}</div>
+                </div>
+              ) : null}
+            </div>
+          </>
         ) : null}
-        <p className="note-row"><span>Every drainer-linked wallet in the data, whatever the filter below. A balance is a snapshot at the time shown and may have moved since; whether to freeze is the issuer's decision.</span></p>
+        <p className="note-row"><span>Every drainer-linked wallet in the data, whatever the filter below. Traceable is the smaller of the balance and what the linked drainer is known to have taken; a collector can also hold money from other, possibly legitimate, sources. A balance is a snapshot at the time shown and may have moved since; whether to freeze is the issuer's decision.</span></p>
       </div>
     </section>
   )
@@ -265,7 +285,7 @@ function RankTable({ model, rows, onOpen }: { model: Model; rows: DrainerRow[]; 
                     <span className="tg">{c.tier}</span> <Addr value={c.address} chain={c.chain} h={8} t={6} link /> <span className="muted small">{chainShort(c.chain)}</span>
                     <span className="kit" title={c.family ? 'Code family hash ' + c.family : undefined}>{kitLine(c)}</span>
                   </td>
-                  <td className="r" data-l="Taken"><b className="num">{r.usd ? fmtUSD(r.usd) : <span className="muted">$0</span>}</b>{r.unpriced ? <span className="sub">{r.unpriced} unpriced</span> : null}{c.approvalOnly ? <span className="sub">approval only, nothing taken yet</span> : null}{(model.freezeByCase.get(c.key)?.usd || 0) > 0 ? <span className="frz-b" title="Stablecoins on its linked wallets that the issuer can still freeze">freezable {fmtUSD(model.freezeByCase.get(c.key)!.usd, true)}</span> : null}</td>
+                  <td className="r" data-l="Taken"><b className="num">{r.usd ? fmtUSD(r.usd) : <span className="muted">$0</span>}</b>{r.unpriced ? <span className="sub">{r.unpriced} unpriced</span> : null}{c.approvalOnly ? <span className="sub">approval only, nothing taken yet</span> : null}{Math.min(model.freezeByCase.get(c.key)?.usd || 0, r.usd) > 0 ? <span className="frz-b" title={'Stablecoins on its linked wallets that the issuer can still freeze, up to what it is known to have taken (balance ' + fmtUSD(model.freezeByCase.get(c.key)!.usd) + ')'}>freezable {fmtUSD(Math.min(model.freezeByCase.get(c.key)!.usd, r.usd), true)}</span> : null}</td>
                   <td className="r" data-l="Victims">{fmtInt(r.victims)}</td>
                   <td className="r" data-l="Drains">{fmtInt(r.drains)}</td>
                   <td className="r" data-l="Campaign start"><span title={fmtStamp(r.start)}>{fmtDay(r.start)}</span><span className="sub">{fmtTime(r.start)} UTC</span></td>
