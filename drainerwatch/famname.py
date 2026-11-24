@@ -19,7 +19,7 @@ SOURCES = ("kit", "contract_name", "token_name", "functions", "hash")
 KIT_NAMES = {
     "ms_drainer": "MS Drainer", "trusty_v1": "Trusty v1 (MS Drainer public contract)", "ms_new": "MS_NEW (MS Drainer)",
     "ms_generated": "MS generated bait", "verify_account": "VerifyAccount", "owner_collector": "OwnerCollector",
-    "ms_oneshot_spender": "MS Drainer one-shot spender (wallet randomizer)", "buytron_swap_trx": "buytron SwapTRX", "buytron_swap_proxy": "buytron SwapProxy", "tron_1e46": "TRON 10^46 approval kit",
+    "ms_oneshot_spender": "MS Drainer one-shot spender (wallet randomizer)", "buytron_swap_trx": "buytron SwapTRX", "buytron_swap_proxy": "buytron SwapProxy", "tron_1e46": "TRON 10^46 approval kit", "tron_sweeper": "TRON sweeper kit (trc20Withdraw / registerProxy / sweep markers)",
 }
 # well-known protocols / assets: a flagged contract calling itself like this is an impersonation, not the real one
 FAMOUS = ["SunSwap", "JustLend", "Uniswap", "PancakeSwap", "SushiSwap", "1inch", "OpenSea", "Seaport", "Permit2", "Tether",

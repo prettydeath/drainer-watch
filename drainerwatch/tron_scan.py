@@ -75,6 +75,8 @@ class TronCtx(Ctx):
             code = "0x" + ci["runtime"]
             self.code_hex[addr] = code
             a = bytecode.analyze(code, tvm=True)
+            if not a.get("kit") and (a.get("tron_markers") or bytecode.tron_sweep_abi(ci.get("abi_names"))):
+                a["kit"] = "tron_sweeper"        # G10: sweeper-kit markers (score / family only, never a pull kit)
             info = dict(is_contract=1, size=a["size"], kit=a.get("kit"), puller=int(bool(a.get("owner_gated_puller"))),
                         origin=ci.get("origin"), name=ci.get("name"), selectors=a["selectors"])
             if ci.get("origin"):

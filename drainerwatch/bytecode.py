@@ -6,7 +6,7 @@ from .constants import (BAIT_ADDR_SELECTORS, ERC20_MIN_SELECTORS, ERC20_SELECTOR
                         MS_NEW_COMPANION_SELECTORS, MS_NEW_MIN_BAIT, MS_NEW_MIN_COMPANION, MS_NEW_SELECTORS,
                         OWNER_COLLECTOR_MIN, OWNER_COLLECTOR_SELECTORS, REDFLAG_SELECTORS, SEL_TRANSFER_FROM,
                         SWEEPER_MAX_CODE, TRUSTY_V1_MIN_BAIT, TRUSTY_V1_SELECTORS, VERIFY_ACCOUNT_MIN,
-                        VERIFY_ACCOUNT_SELECTORS)
+                        VERIFY_ACCOUNT_SELECTORS, TRON_SWEEPER_SELECTORS, FORWARDER_7702_SELECTORS)
 from .util import keccak
 
 OP_PUSH1, OP_PUSH4, OP_PUSH20, OP_PUSH32 = 0x60, 0x63, 0x73, 0x7F
@@ -95,6 +95,7 @@ def analyze(code_hex, tvm=False) -> dict:
         out = analyze(code_hex)
         out["tvm_ops"] = tvm_ops(code)
         out["owner_gated_puller"] = owner_gated_puller(code, out["selectors"], tvm=True)
+        out["tron_markers"] = sorted(TRON_SWEEPER_SELECTORS[x] for x in out["selectors"] if x in TRON_SWEEPER_SELECTORS)
         return out
     sels = selectors_of(code)
     code_hash = "0x" + keccak(code).hex()
@@ -105,6 +106,16 @@ def analyze(code_hex, tvm=False) -> dict:
                 kit_exact=exact, kit_public=KIT_PUBLIC_RUNTIME_KECCAK.get(code_hash), ms_variant=ms_variant(code, kit, sels),
                 owner_gated_puller=owner_gated_puller(code, sels), erc20_like=len(set(sels) & ERC20_SELECTORS) >= ERC20_MIN_SELECTORS,
                 delegatecall=has_delegatecall(code), safe_proxy=is_safe_proxy(code))
+
+
+def tron_sweep_abi(names) -> bool:
+    """G10: a TRON contract ABI with a function named like sweep(...) (sweeper-kit marker from a public tracker)."""
+    return any(n and "sweep" in n.lower() for n in (names or ()))
+
+
+def log_count(code) -> int:
+    """G3: number of LOG0-LOG4 opcodes (events emitted) in the runtime."""
+    return sum(1 for _, op, _ in iter_ops(strip_metadata(to_bytes(code))) if 0xA0 <= op <= 0xA4)
 
 
 def has_delegatecall(code) -> bool:
@@ -265,6 +276,16 @@ def match_family(skeleton, selectors, size, seeds):
     if best:
         return best[1], "selectors", best[2]
     return None
+
+
+def is_forwarder_7702(code_hex) -> bool:
+    """G11: EIP-7702 'Forwarder' delegate: dispatcher with initialize(address) and destination() (forwards native value to
+    the address stored by initialize). Wallet implementations have far richer dispatchers."""
+    code = to_bytes(code_hex)
+    if not code or is_delegated_eoa(code_hex):
+        return False
+    sels = set(selectors_of(code))
+    return FORWARDER_7702_SELECTORS <= sels and len(sels) <= 8
 
 
 def is_sweeper_code(code_hex) -> bool:

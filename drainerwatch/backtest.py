@@ -37,7 +37,15 @@ DETECTOR_LABELS = ["seed", "split_pull", "multi_victim_pull", "eoa_spender_pull"
                    "bait_forward_multi", "kept_share", "token_spender_pull", "token_spender_multi", "owner_takeover",
                    "owner_takeover_multi", "safe_spender", "safe_spender_pull", "seaport_zero", "seaport_zero_multi",
                    "nft_operator_pull", "batch7702_approve", "eip7702_batch", "eip7702_chain0", "poison_zero",
-                   "share_grid", "operator_wallet", "operator_wallet_multi", "serial_deployer", "serial_deployer_multi"]
+                   "share_grid", "operator_wallet", "operator_wallet_multi", "serial_deployer", "serial_deployer_multi",
+                   # GitHub / paper research rules G1-G13
+                   "fake_call", "fake_call_multi", "fake_call_contract", "fake_call_contract_multi", "many_funders",
+                   "phish_deploy", "phish_multicall", "router_sweep", "router_sweep_multi", "nft_bulk", "nft_bulk_multi",
+                   "seaport_fee_drain", "seaport_fee_multi", "poison_tiny", "poison_counterfeit", "poison_batch",
+                   "lookalike_contract", "counterfactual_forward", "counterfactual_multi", "codehash_cluster",
+                   "forwarder_7702", "forwarder_7702_multi", "batch7702_decoy", "batch7702_decoy_multi",
+                   "full_balance_pull", "increase_allowance_eoa", "increase_allowance_pull", "zero_nonce_spender",
+                   "zero_nonce_multi", "zero_nonce_pull", "tron_sweeper_kit", "cex_sweep_capped"]
 
 
 def components(rows):
@@ -169,6 +177,7 @@ def run(incidents_path, split, blind=True, window=1, budget_sec=7200, cache_path
                 stats[k] += st.get(k, 0)
         rows0 = rollup.rollup(conn, det_seeds, labels)
         enrich.lookup_verified(conn, es, rows0, cap=60)       # verified-source cap (T3) for split-only evidence
+        enrich.victim_funding(conn, es, rows0, labels, cap=10)  # CEX deposit-sweep guard
         flagged = {r["address"]: r for r in rollup.rollup(conn, det_seeds, labels)}
         payouts = defaultdict(list)
         for p in conn.execute("SELECT drainer,wallet,role,share,txs FROM payouts"):

@@ -76,6 +76,7 @@ def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
         enrich.walk_payouts(conn, es, labels, prices)
         enrich.cross_chain_check(conn, rpcs)
         enrich.lookup_verified(conn, es, rows)
+        enrich.victim_funding(conn, es, rows, labels)
         rows = rollup.rollup(conn, sd, labels)
         famname.resolve(conn, rpcs)                      # family names: token name()/symbol(), signature database
     except Exception as e:  # noqa: BLE001 - enrichment is best effort

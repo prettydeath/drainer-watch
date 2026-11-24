@@ -235,8 +235,9 @@ class TronRpc:
         rt = (r or {}).get("runtimecode") or ""
         if not sc and not rt:
             return None
+        abi = [e.get("name") or "" for e in ((sc.get("abi") or {}).get("entrys") or []) if isinstance(e, dict)]
         return dict(runtime=rt, origin=to_base58(sc.get("origin_address")) if sc.get("origin_address") else None,
-                    name=sc.get("name"))
+                    name=sc.get("name"), abi_names=abi)
 
     def get_code_many(self, addrs):
         """Same contract as Rpc.get_code_many: addr -> '0x<runtime>' for contracts, '0x' for accounts, None on error."""

@@ -422,7 +422,7 @@ def poison_zero(ctx, tr):
 
 
 # ---------- block pass hooks (ETH full blocks) ----------
-def bait_forward(ctx, rows):
+def bait_forward(ctx, rows, ev_type="bait_forward"):
     """W3: value > 0 call with a bait selector (or any selector on a vanity-address contract) to contract code; the share
     of msg.value that left the contract to third addresses in the same tx: Etherscan internal transfers of that tx
     (capped per run), else the contract's balance delta over the block (recent state only; other txs of the block to
@@ -465,7 +465,7 @@ def bait_forward(ctx, rows):
             continue
         share = round(min(share, 1.0), 4)
         grid = wrules.grid_share(share)
-        if share < BAIT_FORWARD_MIN and not grid:
+        if share < BAIT_FORWARD_MIN and (not grid or ev_type != "bait_forward"):
             continue
         info = ctx.analysis(to) or {}
         det = dict(victim=frm, value_wei=str(val), selector=sel, in_dispatch=sel in (info.get("selectors") or []),
@@ -473,7 +473,7 @@ def bait_forward(ctx, rows):
         if grid and share < BAIT_FORWARD_MIN:
             det["kept_share"] = round(1 - grid, 2)
         from .scan import add_evidence_pending
-        if add_evidence_pending(ctx, "bait_forward", to, h, bn, det):
+        if add_evidence_pending(ctx, ev_type, to, h, bn, det):
             for r in receivers[:3]:
                 add_payout(ctx.conn, ctx.chain, to, r, "receiver")
         price = ctx.prices.native.get(CHAINS[ctx.chain]["native"])
@@ -481,7 +481,7 @@ def bait_forward(ctx, rows):
                             decimals=18, amount=fmt_amount(val, 18), usd=round(val / 1e18 * price, 2) if price else None,
                             recipient=receivers[0] if receivers else to))
         ctx.d5(to, h, bn)
-        ctx.stats["w3_bait_forward"] += 1
+        ctx.stats["w3_" + ev_type] += 1
 
 
 def auth_batches(ctx, per_tx, chain0, first):

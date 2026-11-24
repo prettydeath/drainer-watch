@@ -642,6 +642,21 @@ W_T3 = {"ghost_forward", "ghost_forward_multi", "deploy_drain_weak", "bait_forwa
         "operator_wallet", "serial_deployer"}
 
 
+# GitHub / paper research rules G1-G13 (see assign_tier): one G rule never gives T1
+G_T2 = {"fake_call_multi", "fake_call_contract_multi", "phish_multicall", "router_sweep_multi", "nft_bulk_multi",
+        "seaport_fee_multi", "counterfactual_multi", "batch7702_decoy_multi", "zero_nonce_multi",
+        "increase_allowance_pull", "zero_nonce_pull"}
+G_T3 = {"fake_call", "fake_call_contract", "many_funders", "phish_deploy", "router_sweep", "nft_bulk", "seaport_fee_drain",
+        "poison_tiny", "poison_counterfeit", "poison_batch", "lookalike_contract", "counterfactual_forward",
+        "forwarder_7702", "forwarder_7702_multi", "batch7702_decoy", "increase_allowance_eoa", "zero_nonce_spender",
+        "tron_sweeper_kit"}
+# G-rule label -> rule id: T1 needs two DIFFERENT rules
+G_RULE = {"fake_call_multi": "G1", "fake_call_contract_multi": "G1", "phish_multicall": "G3", "router_sweep_multi": "G4",
+          "nft_bulk_multi": "G5", "seaport_fee_multi": "G5", "counterfactual_multi": "G8",
+          "batch7702_decoy_multi": "G11", "zero_nonce_multi": "G13", "zero_nonce_pull": "G13",
+          "increase_allowance_pull": "G12"}
+
+
 def assign_tier(labels, victims, active):
     """labels: set of detector labels. Returns tier 'T1'|'T2'|'T3'|None.
     T1 confirmed: seed with observed activity; D2 with >=3 victims; D2 + family match to a seed.
@@ -669,6 +684,11 @@ def assign_tier(labels, victims, active):
     if "vanity_drainer" in labels and victims >= 2 and (w2 or labels & (W_T3 | PULL_LABELS | {"bait_payable"})):
         return "T1"
     if len(w2) >= 2:
+        return "T1"
+    # G rules: T1 = two different G rules at T2 strength, a G T2 rule plus a W T2 rule, or the NIP-8 deploy fingerprint
+    # plus its NIP-9 multicall drain with >= 2 victims
+    g2 = labels & G_T2
+    if len({G_RULE[x] for x in g2}) >= 2 or (g2 and w2) or ({"phish_deploy", "phish_multicall"} <= labels and victims >= 2):
         return "T1"
     # TRON T-1..T-8: kit_pull through a kit dispatcher (verify_account etc.), Claimer split with the kit code,
     # outflow signed by a hijacking controller key, mass permission hijack, AML kit approve+transfer x3 = T1
@@ -699,7 +719,7 @@ def assign_tier(labels, victims, active):
         return "T1"
     if {"foreign_swap_multi", "foreign_swap_kit"} <= labels:
         return "T1"
-    if w2 or "vanity_drainer" in labels or ("eip7702_batch" in labels and labels & {"eip7702_sweeper", "eip7702_chain0"}):
+    if g2 or w2 or "vanity_drainer" in labels or ("eip7702_batch" in labels and labels & {"eip7702_sweeper", "eip7702_chain0"}):
         return "T2"
     if labels & {"split_pull", "pays_known_operator", "eoa_spender_multi", "bait_payable", "foreign_swap_multi",
                  "foreign_swap_kit", "ms_deadline", "oneshot_hub", "prefund_multi", "owner_collect", "kit_exact",
@@ -713,7 +733,7 @@ def assign_tier(labels, victims, active):
                  "redflag_selectors", "family_match", "pays_inferred_operator", "split_xtx", "foreign_recipient_swap",
                  "kit_signature", "owner_gated_puller", "bait_withdraw", "prefund_hub", "cross_chain",
                  "gen_back_transfer", "eip7702_operator", "emergency_gas_self", "kit_pull", "increase_max",
-                 "prefund_approve", "perm_hijack", "fixed_fee", "poison_zero"} | W_T3):
+                 "prefund_approve", "perm_hijack", "fixed_fee", "poison_zero"} | W_T3 | G_T3):
         return "T3"
     return None
 

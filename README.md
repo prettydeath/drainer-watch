@@ -178,6 +178,40 @@ independent behaviour and 2+ victims. Most need the receipts source (ETH, Base);
 </details>
 
 <details>
+<summary><b>GitHub / paper research rules (G1-G13)</b></summary>
+
+Generic rules derived from public detection bots, academic phishing / address-poisoning datasets and vendor reports
+(2023-2026). Same policy as W: one G rule never gives T1. T1 needs two different G rules at T2 strength, a G T2 rule plus
+a W T2 rule, or the deploy-time phishing fingerprint (G3) together with its multicall drain and 2+ victims.
+
+| id | rule | tier effect |
+|----|------|-------------|
+| G1 `fake_call` (ETH) | value > 0 call whose input is only a 4-byte kit bait selector (`SecurityUpdate()`, `Claim()`, `ClaimRewards()`, `claimRewards()`, `Connect()`, `Execute()`, `Multicall()`, `NetworkMerge()`, `Verify()`) to an address with no code: the wallet shows a method name, the money lands in an EOA. Filters: the sender sent no other tx within 2 blocks, round amounts (<= 3 decimals) need several different amounts to one recipient, recipient nonce < 2000, sender nonce < 9999 | 1-2 victims T3; 3+ T2 (`fake_call_multi`) |
+| G1 `fake_call_contract` (ETH) | the contract form: value > 0 no-argument call (non-bait selector) to code, zero logs in the receipt, >= 95 % of the value forwarded in the same tx (W3 machinery) | T3; 3+ victims T2; verified source capped |
+| G2 `many_funders` (ETH) | 7+ distinct EOAs send plain native amounts within 80-120 % of the median to one EOA (nonce <= 50) within 5 days; no funder nonce shared by more than a third of them (one operator's sybil wallets consolidating) | T3 only |
+| G3 `phish_deploy` / `phish_multicall` (ETH) | deploy-time fingerprint: runtime without `balanceOf`, <= 1 event, <= 10 functions, a `multicall((address,bytes)[])` / `multicall(address[],bytes[])`, storage slot 0 -> A, A's slot 0 -> B with `withdraw()` / `withdraw(uint256,address)`; the drain: such a contract runs a multicall packing `transferFrom` / `transfer` / Permit2 batch calls that move third-party EOAs' tokens | deploy T3; drain T2; both with 2+ victims T1 |
+| G4 `router_sweep` | a tx to a trusted router (Uniswap SwapRouter02 / Universal Router, PancakeSwap) in which one token of `tx.from` goes in and >= 95 % leaves the router to another EOA with no swap (the pull + sweepToken pattern). Sweeps back to `tx.from` are normal | 1 victim T3; 2+ T2 |
+| G5 `nft_bulk` / `seaport_fee_drain` | 2+ NFTs of `tx.from` moved to one EOA through the Seaport TransferHelper (`bulkTransfer` 0x32389b71, checked against the verified ABI); a Seaport order selling NFTs where the offerer keeps <= 1 % of a near-zero price (<= 0.001 native) and the buyer is someone else (gifts and private sales have a real price) | bulk: T3, 3+ victims T2; fee: T3, 2+ victims T2 |
+| G6 `poison_tiny` / `poison_counterfeit` / `poison_batch` | address poisoning beyond W10: real-stablecoin transfers under 10 USD from a lookalike of a recent partner (first 3 / last 4 hex characters; 20+ matching characters is a typo, not poisoning); counterfeit-symbol tokens sent "from" the victim to a lookalike; batched poison txs (only Transfer / Approval logs, 6+ transfers, mostly stablecoins / fakes, repeated amounts or fake mints). Senders whose txs in view are mostly something else (attack ratio < 0.5) are dropped. Campaigns are clustered on shared txs and lookalike addresses (`cluster` = `px_...`), never on the fake token | T3 only, no drains |
+| G7 `lookalike_contract` | a new contract sharing the first 3 and last 3 hex characters with a busy contract (stablecoins, allowlisted protocols, contracts with 20+ events in the chunk) | T3 only |
+| G8 `counterfactual_forward` | tokens leave an address that received them before it had code: it is created inside the tx (node state at block - 1, else Etherscan) by a non-allowlisted factory and forwards the pre-existing balance; `codehash_cluster` marks 3+ flagged contracts with the same exact runtime | T3; 2+ children T2; verified source capped; cluster score only |
+| G9 intel (`c2_config_intel`) | operator-supplied intel list `data/intel.csv` (chain,address,label), e.g. on-chain kit configuration contracts | label only, never a tier |
+| G10 TRON sweeper markers | `trc20Withdraw(address,address,address[],uint256[])` 0xd766df8c or `registerProxy()` 0xddd81f82 in the dispatcher, or an ABI function named `sweep...`: family `tron_sweeper` (`tron_sweeper_kit`); never a pull-kit signature, because payment gateways sweep deposit addresses too | T3 |
+| G11 `forwarder_7702` / `batch7702_decoy` | an EIP-7702 delegate whose dispatcher is the "Forwarder" (`initialize(address)` + `destination()`, <= 8 functions); a self-call of an EOA delegated to a legitimate wallet implementation that touches a router (decoy swap leg) and moves the owner's tokens to an EOA that has never sent a tx | forwarder T3, 2+ delegators T2; decoy T3, 2+ victims T2 |
+| G12 `increase_allowance_eoa` / `full_balance_pull` | `increaseAllowance` (0x39509351) signed by the owner to an EOA spender; a third party's pull that leaves the victim with a zero balance of the token (balance at that block; recent state only) | T3; with a pull by the same spender T2 (`increase_allowance_pull`); full balance score only |
+| G13 `zero_nonce_spender` | an approval to an EOA spender that had never sent a tx at approval time (nonce 0 today, else the nonce at the approval block); complements K5, which looks at the pull's own nonce | T3; 3+ victims T2; with a pull T2 (`zero_nonce_pull`) |
+
+False-positive guards added with them: more allowlisted protocols from public false-positive lists (Pendle RouterV4,
+Polygon RootChainManager / ERC20PredicateProxy, Odos Router v3, Seaport TransferHelper) and legitimate EIP-7702
+delegates (Coinbase EIP7702Proxy / CoinbaseSmartWallet, Uniswap CaliburEntry, Simple7702Account, Biconomy Nexus), all
+checked by their Etherscan ContractName; optional public false-positive and rescue-wallet lists loaded from
+`DRAINERWATCH_FP_DIR` when present (not shipped); the CEX deposit-sweep cap (`cex_sweep_capped`: every drain of a
+subject went to an exchange-labelled sink and the victims' known funding is exchange withdrawals only -> T3). The TRON
+multisig co-signer rule is T-6's existing condition (several foreign keys that must co-sign are skipped).
+
+</details>
+
+<details>
 <summary><b>TRON rules (T-1 to T-8)</b></summary>
 
 TRON is scanned from a full node's HTTP API (TronGrid with keys, publicnode without), block by block: `getblockbylimitnext` returns every transaction with its contract type,
@@ -205,9 +239,9 @@ buytron contracts are regression fixtures in `tests/fixtures_kits/`; real-transa
 
 </details>
 
-Not implemented: on-chain config-storage watching (intel, not drain detection), Blur bulk-order signatures, tiny-amount
-(< 10 USD) lookalike transfers (only the zero-value form, W10), Permit2 amount / expiration fingerprints (K4 covers the
-millisecond deadline). W1b, W3 and the archive checks are best effort: a public node keeps only recent state, so on
+Not implemented: on-chain config-storage watching (only the G9 intel list), Blur bulk-order signatures, Permit2 amount /
+expiration fingerprints (K4 covers the millisecond deadline), the G1 "victim's outbound is mostly plain native" filter
+(needs account history), OpenSea / Wyvern proxy `upgradeTo` by a non-owner (legacy). W1b, W3 and the archive checks are best effort: a public node keeps only recent state, so on
 older blocks they depend on Etherscan lookups (capped per run) or stay unknown.
 
 Code families keep their hash in `family` and get a readable `family_name` with its `family_name_source`: kit name,
@@ -303,8 +337,8 @@ spender per visitor, funds it with gas and pulls later).
   contract; N1 cashback flag with a kit dispatcher; N4 / N5 with the kit amount; N7 router allowance + swap). T2 strong (D2 with 1-2 victims;
   D4; D8 3+ victims; bait contract 1-2 victims; R-A1 2 victims; D10 multi-victim or kit deadline; family / kit
   signature / owner-gated puller with activity; K4 alone; K5 hub; K12 3+ funded workers; K9; K2 exact runtime; K6;
-  K14 twin of a T1; N2 exact public runtime; N1 calldata only; N4 dust approval; N5 emergency gas; W1-W13 as listed in
-  their table). T3 suspect (D3 alone; D6; D7 no-arg; D8 1-2 victims; R-A1 1 victim;
+  K14 twin of a T1; N2 exact public runtime; N1 calldata only; N4 dust approval; N5 emergency gas; W1-W13 and G1-G13 as listed in
+  their tables). T3 suspect (D3 alone; D6; D7 no-arg; D8 1-2 victims; R-A1 1 victim;
   D10 single; red-flag selectors; family / kit signature / puller without activity). The
   score is an additive documented weight (`constants.SCORE`); the tier is the published field. Tiers are leads for
   investigation, not findings of fact. Operator/affiliate roles and `deposit_sweep` links are inferences.

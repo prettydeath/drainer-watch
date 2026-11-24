@@ -4,7 +4,7 @@ import json
 from collections import defaultdict
 
 from . import bytecode, wrules
-from .constants import (ALLOWLIST, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, KIT_PUBLIC_CONTRACTS,
+from .constants import (ALLOWLIST, CODEHASH_CLUSTER_MIN, INTEL_CSV, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, KIT_PUBLIC_CONTRACTS,
                         KIT_VANITY_RE, MALICIOUS_CATEGORIES, MIN_USD, ONESHOT_T1_WORKERS, POOL_SELECTORS, TRON_ALLOWLIST, TRON_FEE_MIN_HITS,
                         OPERATOR_WALLET_T2, SERIAL_DEPLOYER_T2, TRON_PERM_T2, TRON_PREFUND_T2, VANITY_MIN_APPROVERS)
 from .detectors import assign_tier, score_of, window_hit
@@ -18,11 +18,26 @@ ACTIVITY_TYPES = {"seed_activity", "split_pull", "pays_known_operator", "redflag
                   "kit_pull", "tron_approval", "prefund_approve", "perm_hijack_drain", "fixed_fee",
                   # web-research rules W1-W10
                   "deploy_drain", "ghost_forward", "bait_forward", "token_spender_pull", "owner_takeover", "safe_pull",
-                  "seaport_zero", "nft_operator_pull", "batch7702_approve", "vanity_approval", "safe_approval"}
+                  "seaport_zero", "nft_operator_pull", "batch7702_approve", "vanity_approval", "safe_approval",
+                  # GitHub / paper research rules G1-G13
+                  "fake_call", "fake_call_contract", "many_funders", "phish_multicall", "router_sweep", "nft_bulk",
+                  "seaport_fee_drain", "counterfactual_forward", "batch7702_decoy", "increase_allowance_eoa",
+                  "zero_nonce_spender", "forwarder_7702"}
+# G rules: evidence type -> (victim-set threshold for the _multi label or None, multi label)
+G_MULTI = {"fake_call": (3, "fake_call_multi"), "fake_call_contract": (3, "fake_call_contract_multi"),
+           "router_sweep": (2, "router_sweep_multi"), "nft_bulk": (3, "nft_bulk_multi"),
+           "seaport_fee_drain": (2, "seaport_fee_multi"), "counterfactual_forward": (2, "counterfactual_multi"),
+           "forwarder_7702": (2, "forwarder_7702_multi"), "batch7702_decoy": (2, "batch7702_decoy_multi"),
+           "zero_nonce_spender": (3, "zero_nonce_multi"), "many_funders": (None, None), "phish_deploy": (None, None),
+           "phish_multicall": (None, None), "increase_allowance_eoa": (None, None), "lookalike_contract": (None, None),
+           "poison_tiny": (None, None), "poison_counterfeit": (None, None), "poison_batch": (None, None)}
+G_DRAIN_TYPES = {"fake_call", "fake_call_contract", "router_sweep", "nft_bulk", "seaport_fee_drain", "phish_multicall",
+                 "batch7702_decoy", "counterfactual_forward"}
 # labels that come from code alone (no on-chain behaviour): never enough for cluster tier inheritance
 STATIC_LABELS = {"redflag_selectors", "family_match", "kit_signature", "owner_gated_puller", "wa_scam", "kit_exact",
                  "cross_chain", "cross_chain_t1", "eip7702_operator", "kit_public", "kit_vanity", "share_grid", "kept_share",
-                 "oneshot_spender"}
+                 "oneshot_spender", "codehash_cluster", "full_balance_pull", "c2_config_intel", "tron_sweeper_kit",
+                 "lookalike_contract", "phish_deploy"}
 # kit K-rules rules whose evidence type is also the label
 KIT_EVIDENCE_LABELS = ("owner_collect", "ms_deadline", "batch_approval_drain", "kit_router_swap", "kit_deposit",
                        "gen_back_transfer")
@@ -35,9 +50,11 @@ VANITY_BEHAVIOUR = {"bait_payable", "redflag_payable", "bait_forward", "deploy_d
 VERIFIED_CAPPABLE = {"split_pull", "split_xtx", "multi_victim_pull", "cross_chain", "redflag_selectors",
                      "pays_inferred_operator", "redflag_payable", "bait_forward", "bait_forward_multi", "token_spender_pull",
                      "token_spender_multi", "share_grid", "kept_share", "deploy_drain", "deploy_drain_weak", "ghost_forward",
-                     "ghost_forward_multi"}
+                     "ghost_forward_multi", "fake_call_contract", "fake_call_contract_multi", "counterfactual_forward",
+                     "counterfactual_multi", "full_balance_pull", "codehash_cluster"}
 BEHAVIOUR_CAPPED = {"split_pull", "split_xtx", "multi_victim_pull", "bait_forward", "bait_forward_multi", "token_spender_pull",
-                    "token_spender_multi", "deploy_drain", "ghost_forward", "ghost_forward_multi"}
+                    "token_spender_multi", "deploy_drain", "ghost_forward", "ghost_forward_multi", "fake_call_contract_multi",
+                    "counterfactual_multi"}
 # a split (D2 / R-A1) of ONE victim with no priced amount (unpriced token, usd 0) and no other behavioural or kit
 # evidence is capped at T3: fee-on-transfer / tax-router tokens split every transfer 85/10/5 exactly like a drainer.
 # Matters most on chains without Etherscan source verification on our plan (BSC), where the verified cap cannot apply.
@@ -47,7 +64,9 @@ UNVERIFIED_SPLIT_KEEP = {"kit_signature", "owner_gated_puller", "family_match", 
                          "bait_payable", "kit_exact", "kit_public", "pays_known_operator", "ms_deadline", "vanity_drainer"}
 # own evidence that was capped: never re-raised by cross-chain twins (K14) or cluster inheritance
 CAPPED_LABELS = {"unpriced_capped", "verified_capped", "tron_split_capped", "unverified_split_capped"}
-UNPRICED_NEUTRAL = {"redflag_selectors", "cross_chain", "spoof_split", "share_grid"}
+UNPRICED_NEUTRAL = {"redflag_selectors", "cross_chain", "spoof_split", "share_grid", "poison_tiny", "poison_counterfeit",
+                    "poison_batch", "poison_zero", "codehash_cluster", "full_balance_pull", "lookalike_contract",
+                    "c2_config_intel"}
 
 
 def allow_sets():
@@ -113,7 +132,7 @@ def rollup(conn, seeds, labels, now=None):
                                    # web-research rules W1-W11
                                    vapp=set(), ghosts=set(), bfwd=set(), kept=False, tsp=set(), takeovers=set(),
                                    safe_app=set(), safe_pull=set(), sz=set(), a7702=False, a7702_c0=False, grid=False,
-                                   dd_strong=False))
+                                   dd_strong=False, g=defaultdict(set), cf_children=set()))
     for r in conn.execute("SELECT chain,address,type,tx,ts,detail FROM evidence"):
         p = per[(r["chain"], r["address"])]
         d = json.loads(r["detail"] or "{}")
@@ -237,6 +256,19 @@ def rollup(conn, seeds, labels, now=None):
         elif t == "eip7702_batch":
             p["a7702"] = True
             p["a7702_c0"] = p["a7702_c0"] or bool(d.get("chain0"))
+        # GitHub / paper research rules G1-G13
+        if t in G_MULTI:
+            vs = d.get("victims") or ([d["victim"]] if d.get("victim") else [])
+            vs = set(vs) if isinstance(vs, list) else set()
+            p["g"][t] |= vs
+            if t == "counterfactual_forward":
+                p["cf_children"].add(d.get("child"))
+            elif t in G_DRAIN_TYPES or t in ("zero_nonce_spender", "increase_allowance_eoa", "forwarder_7702", "many_funders"):
+                p["victims"] |= vs
+            if t.startswith("poison_"):
+                p["pkeys"] = p.get("pkeys", set()) | set(d.get("txs") or []) | set(d.get("lookalikes") or [])
+        elif t == "full_balance_pull":
+            p["g"][t].add(d.get("victim"))
         if t in ("split_pull", "split_xtx") and not d.get("spoof") and d.get("recipients"):
             p["grid"] = p["grid"] or bool(wrules.grid_share(d["recipients"][0].get("share")))
         if t == "bait_payable" and d.get("claimer_shape"):
@@ -417,6 +449,23 @@ def rollup(conn, seeds, labels, now=None):
                 lb.add("eip7702_chain0")
         if p["grid"]:
             lb.add("share_grid")
+        for t, vs in p["g"].items():           # G1-G13
+            if t == "full_balance_pull":
+                lb.add(t)
+                continue
+            lb.add(t)
+            k, multi = G_MULTI[t]
+            n = len(p["cf_children"]) if t == "counterfactual_forward" else len(vs)
+            if k and n >= k:
+                lb.add(multi)
+        if p["kit"] == "tron_sweeper":          # G10 marker: family / score only, never a kit signature
+            lb.discard("kit_signature")
+            lb.add("tron_sweeper_kit")
+        if "eoa_spender_pull" in lb:            # the same EOA spender later pulled (D8)
+            if "zero_nonce_spender" in lb:
+                lb.add("zero_nonce_pull")
+            if "increase_allowance_eoa" in lb:
+                lb.add("increase_allowance_pull")
         if wrules.is_vanity(addr) and (len(p["vapp"]) >= VANITY_MIN_APPROVERS or lb & VANITY_BEHAVIOUR):
             lb.add("vanity_drainer")
             p["victims"] |= p["vapp"]
@@ -474,6 +523,7 @@ def rollup(conn, seeds, labels, now=None):
             for r in group:
                 r["family"] = r["family"] or fid
     clusters(conn, rows, labels, allow)
+    g_post(conn, rows, per, labels)
     conn.execute("DELETE FROM contracts")
     conn.executemany(
         "INSERT INTO contracts(chain,address,tier,score,source,family,labels,first_seen,last_seen,victims,drains,usd,"
@@ -483,6 +533,76 @@ def rollup(conn, seeds, labels, now=None):
           r["is_contract"], r["verified"], r.get("cluster"), r["contract_name"]) for r in rows])
     conn.commit()
     return rows
+
+
+def g_post(conn, rows, per, labels):
+    """G6 poisoning campaigns (shared tx / lookalike address -> cluster id px_...), G8 exact code-hash clusters of
+    flagged contracts (>= CODEHASH_CLUSTER_MIN, label codehash_cluster, score only), G9 intel labels (data/intel.csv,
+    no tier) and the CEX deposit-sweep cap (every drain of a subject went to an exchange-labelled sink from a victim
+    whose known funding is exchange withdrawals only: custodial sweep, capped at T3). Mutates rows."""
+    from . import grules
+    items = [((r["chain"], r["address"]), per[(r["chain"], r["address"])].get("pkeys") or set())
+             for r in rows if (r["chain"], r["address"]) in per and per[(r["chain"], r["address"])].get("pkeys")]
+    if items:
+        roots = grules.poison_clusters([(k, [(k[0], x) for x in keys]) for k, keys in items])
+        by_root = defaultdict(list)
+        for k, root in roots.items():
+            by_root[root].append(k)
+        idx = {(r["chain"], r["address"]): r for r in rows}
+        for root, ks in by_root.items():
+            cid = "px_" + hashlib.sha256(str(min(ks)).encode()).hexdigest()[:10]
+            for k in ks:
+                if not idx[k].get("cluster"):
+                    idx[k]["cluster"] = cid
+    by_hash = defaultdict(list)
+    for r in rows:
+        if r.get("code_hash") and (r.get("size") or 0) >= 100:
+            by_hash[(r["chain"], r["code_hash"])].append(r)
+    for group in by_hash.values():
+        if len(group) >= CODEHASH_CLUSTER_MIN:
+            for r in group:
+                r["labels"] = sorted(set(r["labels"]) | {"codehash_cluster"})
+    intel = load_intel()
+    for r in rows:
+        if (r["chain"], r["address"]) in intel:
+            r["labels"] = sorted(set(r["labels"]) | {"c2_config_intel"})
+    cex_only = cex_funded_victims(conn)
+    if not cex_only:
+        return
+    sinks = defaultdict(list)
+    for d in conn.execute("SELECT chain,drainer,victim,recipient FROM drains"):
+        sinks[(d["chain"], d["drainer"])].append((d["victim"], d["recipient"]))
+    for r in rows:
+        legs = sinks.get((r["chain"], r["address"]))
+        if not legs or r["tier"] not in ("T1", "T2") or set(r["labels"]) & {"seed", "kit_signature", "approval_fingerprint"}:
+            continue
+        ok = all((labels.get((r["chain"], rc)) or (None, None))[1] == "exchange" and (r["chain"], v) in cex_only
+                 for v, rc in legs)
+        if ok:
+            r["tier"] = "T3"
+            r["labels"] = sorted(set(r["labels"]) | {"cex_sweep_capped"})
+
+
+def load_intel():
+    """G9: operator intel labels (attribution only, never a tier): data/intel.csv chain,address,label[,source]."""
+    import csv
+    out = {}
+    try:
+        with open(INTEL_CSV, encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                if row.get("address"):
+                    out[((row.get("chain") or "eth").strip(), row["address"].strip().lower())] = row.get("label") or "intel"
+    except OSError:
+        pass
+    return out
+
+
+def cex_funded_victims(conn):
+    """(chain, victim) whose looked-up funding (enrich.victim_funding) is exchange withdrawals only."""
+    try:
+        return {(r["chain"], r["victim"]) for r in conn.execute("SELECT chain,victim FROM victim_funding WHERE cex_only=1")}
+    except Exception:  # noqa: BLE001 - table created by the enrichment step
+        return set()
 
 
 def _own_strong(r):

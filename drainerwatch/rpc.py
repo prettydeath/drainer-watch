@@ -77,6 +77,11 @@ class Rpc:
         res = self.batch([("eth_getTransactionCount", [a, "latest"]) for a in addrs], chunk=100, strict=False)
         return {a: (hx(r) if r is not None else None) for a, r in zip(addrs, res)}
 
+    def nonces_at(self, pairs):
+        """pairs: [(addr, block)] -> {(addr, block): int|None} (recent state only on public nodes)."""
+        res = self.batch([("eth_getTransactionCount", [a, hex(b)]) for a, b in pairs], chunk=50, strict=False)
+        return {p: (hx(r) if r is not None else None) for p, r in zip(pairs, res)}
+
     def balances(self, pairs):
         """pairs: [(addr, block)] -> {(addr, block): int|None} (eth_getBalance; historical blocks need an archive node,
         failures come back as None and the callers treat the check as unknown)."""
@@ -219,7 +224,7 @@ def split_receipts(receipts):
         h = rc["transactionHash"]
         meta[h] = {"from": (rc.get("from") or "").lower(), "to": (rc.get("to") or "").lower() or None,
                    "block": hx(rc.get("blockNumber")), "created": (rc.get("contractAddress") or "").lower() or None,
-                   "status": hx(rc.get("status"), 1)}
+                   "status": hx(rc.get("status"), 1), "nlogs": len(rc.get("logs") or [])}
         for lg in rc.get("logs") or []:
             t = lg.get("topics") or []
             if t and t[0] in topics and not lg.get("removed"):

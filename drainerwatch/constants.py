@@ -486,3 +486,110 @@ SCORE = {"seed": 50, "approval_fingerprint": 50, "bait_payable": 35, "kit_signat
          "owner_takeover_multi": 15, "safe_spender": 15, "safe_spender_pull": 20, "seaport_zero": 20, "seaport_zero_multi": 15,
          "nft_operator_pull": 35, "batch7702_approve": 40, "eip7702_batch": 10, "eip7702_chain0": 10, "share_grid": 10,
          "kept_share": 10, "operator_wallet": 30, "operator_wallet_multi": 15, "serial_deployer": 20, "serial_deployer_multi": 15}
+
+# ---- GitHub / paper research rules G1-G13 (public detection bots, papers and vendor reports, 2023-2026) ----
+# G1 fake-function native call: a no-argument call (input = selector only) with value > 0 to an address WITHOUT code
+# (the money simply lands in the EOA; the wallet shows a "SecurityUpdate"/"Claim" method name to the victim)
+FAKE_CALL_NAMES = ["SecurityUpdate()", "Claim()", "ClaimRewards()", "claimRewards()", "Connect()", "Execute()",
+                   "Multicall()", "NetworkMerge()", "Verify()"]
+FAKE_CALL_SELECTORS = {selector(n): n for n in FAKE_CALL_NAMES}
+FAKE_CALL_MAX_RECIPIENT_NONCE = 2000     # busier receivers are services (public detection-bot filter)
+FAKE_CALL_MAX_SENDER_NONCE = 9999
+FAKE_CALL_NEAR_BLOCKS = 2                # the sender sent another tx within 2 blocks: scripted / normal use, skip
+FAKE_CALL_T2_VICTIMS = 3
+# G1 contract variant: value > 0 no-argument call to code, zero logs, >= 95 % of the value forwarded (W3 machinery)
+FAKE_CALL_CONTRACT_MAX = 15
+# G2 many funders: >= 7 distinct EOAs pay one fresh EOA similar native amounts (80-120 % of the median) within 5 days,
+# not one same-nonce sybil batch (no nonce shared by more than a third of the funders)
+FUNDERS_MIN = 7
+FUNDERS_BAND = (0.8, 1.2)
+FUNDERS_WINDOW_SEC = 5 * 86400
+FUNDERS_MAX_RECIPIENT_NONCE = 50
+FUNDERS_TRACK_MIN = 3                    # recipients with >= 3 distinct funders in one chunk are tracked across runs
+# G3 deploy-time phishing contract (public NIP-8 / NIP-9 rules): no balanceOf, <= 1 event, <= 10 functions, a multicall
+SEL_BALANCE_OF = selector("balanceOf(address)")
+PHISH_MULTICALL_SELECTORS = {selector("multicall((address,bytes)[])"): "multicall((address,bytes)[])",
+                             selector("multicall(address[],bytes[])"): "multicall(address[],bytes[])"}
+PHISH_WITHDRAW_SELECTORS = {selector("withdraw()"), selector("withdraw(uint256,address)")}
+PHISH_MAX_FUNCS, PHISH_MAX_EVENTS = 10, 1
+PHISH_PULL_SELECTORS = {selector("transferFrom(address,address,uint256)"), selector("transfer(address,uint256)"),
+                        selector("permit(address,((address,uint160,uint48,uint48)[],address,uint256),bytes)"),
+                        selector("transferFrom((address,address,uint160,address)[])")}
+# G4 trusted-router pull + sweep: tokens of tx.from go in and leave the router to a third party with no swap
+ROUTER_MULTICALL_SELECTORS = {selector("multicall(uint256,bytes[])"), selector("multicall(bytes32,bytes[])"),
+                              selector("multicall(bytes[])")}
+SEL_ROUTER_PULL = selector("pull(address,uint256)")                         # f2d5d56b
+SEL_SWEEP_TOKEN = selector("sweepToken(address,uint256,address)")           # df2ab5bb
+SEL_UNWRAP_WETH9 = selector("unwrapWETH9(uint256,address)")                 # 49404b7c
+TRUSTED_ROUTERS = {
+    "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45": "Uniswap SwapRouter02",
+    "0x2626664c2603336e57b271c5c0b26f421741e481": "Uniswap SwapRouter02 Base",
+    "0xe592427a0aece92de3edee1f18e0157c05861564": "Uniswap SwapRouter",
+    "0x13f4ea83d0bd40e75c8222255bc855a974568dd4": "PancakeSwap Router v3",
+    "0x3fc91a3afd70395cd496c647d5a6cc9d4b2b7fad": "Uniswap Universal Router",
+    "0x66a9893cc07d91d95644aedd05d03f95e1dba8af": "Uniswap Universal Router v4",
+    "0x6ff5693b99212da76ad316178a184ab56d299b43": "Uniswap Universal Router Base",
+    "0x1a0a18ac4becddbd6389559687d1a73d8927e416": "PancakeSwap Universal Router",
+}
+ROUTER_SWEEP_MIN_SHARE = 0.95
+ROUTER_SWEEP_T2_VICTIMS = 2
+# G5 NFT: Seaport TransferHelper bulkTransfer to one recipient. Selector checked against the Etherscan-verified ABI of
+# TransferHelper: bulkTransfer(((uint8,address,uint256,uint256)[],address,bool)[],bytes32) = 0x32389b71
+NFT_TRANSFER_HELPERS = {"0x0000000000c2d145a2526bd8c716263bfebe1a72": "Seaport TransferHelper"}
+SEL_BULK_TRANSFER = "32389b71"
+NFT_BULK_MIN_ITEMS = 2
+NFT_BULK_T2_VICTIMS = 3
+SEAPORT_FEE_MAX_OFFERER_SHARE = 0.01     # the offerer keeps <= 1 % of the payment (fees = ~100 %)
+SEAPORT_NEAR_ZERO_WEI = 10 ** 15         # ... and the whole price is <= 0.001 native / wrapped native
+# G6 address-poisoning extensions (CMU USENIX'25 parameters): tiny real-stablecoin transfers, counterfeit tokens,
+# batched poison txs; poisoning stays T3 with no drains
+POISON_TINY_MAX_USD = 10.0
+POISON_TYPO_CHARS = 20                   # >= 20 matching leading+trailing hex chars: a typo, not poisoning
+POISON_BATCH_MIN_LEGS = 6
+POISON_MIN_ATTACK_RATIO = 0.5
+# G7 lookalike contract creation: first 3 and last 3 hex characters of a busy contract
+LOOKALIKE_CONTRACT_PRE, LOOKALIKE_CONTRACT_SUF = 3, 3
+LOOKALIKE_BUSY_MIN = 20                  # a contract is "busy" with >= 20 txs / transfers in the chunk
+# G8 counterfactual destination: tokens leave an address created in the same tx by a non-allowlisted factory
+COUNTERFACTUAL_MAX_LOOKUPS = 40
+CODEHASH_CLUSTER_MIN = 3
+# G11 EIP-7702 forwarder delegate (initialize(address) + destination(), forwards native to slot 0)
+FORWARDER_7702_SELECTORS = {selector("initialize(address)"), selector("destination()")}
+SEL_7821_EXECUTE = selector("execute(bytes32,bytes)")                       # e9ae5c53
+BATCH_DECOY_T2_VICTIMS = 2
+# G12 PTXPhish ice-phishing prerequisite: a third party moves the victim's FULL token balance
+FULL_BALANCE_MAX_LOOKUPS = 60
+# G13 zero-nonce spender at approval time (EOA spender that never sent a tx)
+ZERO_NONCE_MAX_LOOKUPS = 150
+ZERO_NONCE_T2_VICTIMS = 3
+# legitimate EIP-7702 delegate implementations, ContractName verified on Etherscan 2026-11-24 (eth / base)
+LEGIT_7702_DELEGATES.update({
+    "0x7702cb554e6bfb442cb743a7df23154544a7176c": "Coinbase EIP7702Proxy",
+    "0x000100abaad02f1cfc8bbe32bd5a564817339e72": "Coinbase CoinbaseSmartWallet",
+    "0x000000009b1d0af20d8c6d0a44e162d11f9b8f00": "Uniswap CaliburEntry",
+    "0x4cd241e8d1510e30b2076397afc7508ae59c66c9": "eth-infinitism Simple7702Account",
+    "0x000000004f43c49e93c970e84001853a70923b03": "Biconomy Nexus",
+})
+# protocols from public false-positive lists (ContractName verified on Etherscan 2026-11-24)
+ALLOWLIST.update({
+    "0x888888888889758f76e7103c6cbf23abbf58f946": "Pendle RouterV4",
+    "0xa0c68c638235ee32657e8f720a23cec1bfc77c77": "Polygon RootChainManager",
+    "0x40ec5b33f54e0e8a33a975908c5ba1c14e5bbbdf": "Polygon ERC20PredicateProxy",
+    "0x0d05a7d3448512b78fa8a9e46c4872c88c4a0d05": "Odos Router v3",
+    "0x0000000000c2d145a2526bd8c716263bfebe1a72": "Seaport TransferHelper",
+})
+# G10 TRON ABI / dispatcher markers of sweeper kits
+TRON_SWEEPER_SELECTORS = {selector("trc20Withdraw(address,address,address[],uint256[])"): "trc20Withdraw",
+                          selector("registerProxy()"): "registerProxy"}
+TRON_SWEEP_ABI_MARKER = "sweep("
+# optional private / operator lists (never committed): public false-positive lists, failsafe rescue wallets, intel labels
+FP_LIST_DIR_ENV = "DRAINERWATCH_FP_DIR"
+INTEL_CSV = DATA_DIR / "intel.csv"
+SCORE.update({"fake_call": 20, "fake_call_multi": 15, "fake_call_contract": 25, "fake_call_contract_multi": 10,
+              "many_funders": 15, "phish_deploy": 20, "phish_multicall": 35, "router_sweep": 30, "router_sweep_multi": 15,
+              "nft_bulk": 10, "nft_bulk_multi": 25, "seaport_fee_drain": 20, "seaport_fee_multi": 15,
+              "poison_tiny": 5, "poison_counterfeit": 5, "poison_batch": 5, "lookalike_contract": 10,
+              "counterfactual_forward": 30, "counterfactual_multi": 15, "codehash_cluster": 5,
+              "forwarder_7702": 25, "batch7702_decoy": 30, "batch7702_decoy_multi": 15, "full_balance_pull": 10,
+              "increase_allowance_eoa": 15, "zero_nonce_spender": 15, "zero_nonce_multi": 15, "tron_sweeper_kit": 20,
+              "cex_sweep_capped": 0})

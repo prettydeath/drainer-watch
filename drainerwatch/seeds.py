@@ -47,9 +47,51 @@ def read_local_csv(path=SEEDS_CSV):
     return out
 
 
+FP_CHAIN_IDS = {"1": "eth", "56": "bsc", "8453": "base"}
+_FP_CACHE = {}
+
+
+def fp_list_dir():
+    """Directory of the optional public false-positive lists (scam-detector fp_list.csv, failsafe_wallets.csv): env
+    DRAINERWATCH_FP_DIR, else the private dataset folder when present. Never committed (third-party data)."""
+    import os
+    from pathlib import Path
+    from .constants import FP_LIST_DIR_ENV, ROOT
+    d = os.environ.get(FP_LIST_DIR_ENV)
+    p = Path(d) if d else ROOT / "tests" / "backtest" / "private" / "datasets" / "starter-kits" / "scam-detector-py"
+    return p if p.is_dir() else None
+
+
+def load_fp_lists(chain, directory=None):
+    """{address: source tag} from the public FP lists for one chain (fp_list.csv: address,chain_id,comment;
+    failsafe_wallets.csv: address,chain_id,comment without header). Cached per (dir, chain)."""
+    d = directory or fp_list_dir()
+    if d is None:
+        return {}
+    key = (str(d), chain)
+    if key in _FP_CACHE:
+        return _FP_CACHE[key]
+    out = {}
+    for name, tag in (("fp_list.csv", "fp_list"), ("failsafe_wallets.csv", "failsafe")):
+        f = d / name
+        if not f.exists():
+            continue
+        with open(f, newline="", encoding="utf-8") as fh:
+            for row in csv.reader(fh):
+                if len(row) < 2 or not row[0].strip().lower().startswith("0x"):
+                    continue
+                if FP_CHAIN_IDS.get(row[1].strip()) == chain:
+                    a = norm_addr(row[0].strip(), "evm")
+                    if a:
+                        out[a] = f"{tag}: {(row[2] if len(row) > 2 else '').strip()}"
+    _FP_CACHE[key] = out
+    return out
+
+
 def load_allowlist(chain, path=ALLOWLIST_CSV):
-    """Operator additions to the allowlist: data/allowlist.csv (chain,address,note); empty chain = all chains."""
-    out = set()
+    """Operator additions to the allowlist: data/allowlist.csv (chain,address,note); empty chain = all chains. Plus the
+    optional public FP lists (load_fp_lists)."""
+    out = set(load_fp_lists(chain)) if chain != "tron" and path == ALLOWLIST_CSV else set()
     if path.exists():
         with open(path, newline="", encoding="utf-8") as f:
             for r in csv.DictReader(f):

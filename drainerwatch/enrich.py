@@ -497,3 +497,45 @@ def walk_payouts(conn, es, labels, prices, budget=MAX_WALK_CALLS):
                     break
         conn.commit()
     return used
+
+
+VICTIM_FUNDING_MAX_LOOKUPS = 20
+
+
+def victim_funding(conn, es, rows, labels, cap=VICTIM_FUNDING_MAX_LOOKUPS, now=None):
+    """CEX deposit-sweep guard (public false-positive lists): for T1/T2 subjects whose drains all went to an
+    exchange-labelled sink, look up the victims' first incoming native and token transfers (Etherscan, cached in
+    victim_funding). cex_only = 1 when every sender seen is exchange-labelled (a custodial deposit address being swept).
+    Returns the number of API calls."""
+    now = now or now_ts()
+    conn.execute("CREATE TABLE IF NOT EXISTS victim_funding(chain TEXT, victim TEXT, cex_only INTEGER, checked_at INTEGER, "
+                 "PRIMARY KEY(chain, victim))")
+    if not es or not es.enabled:
+        return 0
+    have = {(r["chain"], r["victim"]) for r in conn.execute("SELECT chain,victim FROM victim_funding")}
+    todo = []
+    for r in rows:
+        if r["tier"] not in ("T1", "T2") or r["chain"] == "tron":
+            continue
+        legs = conn.execute("SELECT DISTINCT victim,recipient FROM drains WHERE chain=? AND drainer=?",
+                            (r["chain"], r["address"])).fetchall()
+        if legs and all((labels.get((r["chain"], x["recipient"])) or (None, None))[1] == "exchange" for x in legs):
+            todo += [(r["chain"], x["victim"]) for x in legs if (r["chain"], x["victim"]) not in have]
+    calls = 0
+    for chain, v in list(dict.fromkeys(todo)):
+        if calls + 2 > cap:
+            break
+        senders = set()
+        for action in ("txlist", "tokentx"):
+            calls += 1
+            res = es.call(chain, dict(module="account", action=action, address=v, sort="asc", page=1, offset=10))
+            for t in res or []:
+                if (t.get("to") or "").lower() == v and int(t.get("value") or 0) > 0:
+                    senders.add((t.get("from") or "").lower())
+        if not senders:
+            continue
+        cex = all((labels.get((chain, s)) or (None, None))[1] == "exchange" for s in senders)
+        conn.execute("INSERT OR REPLACE INTO victim_funding(chain,victim,cex_only,checked_at) VALUES(?,?,?,?)",
+                     (chain, v, int(cex), now))
+    conn.commit()
+    return calls

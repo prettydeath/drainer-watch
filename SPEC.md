@@ -111,6 +111,20 @@ Deps: `requests`, `pycryptodome` (keccak for selectors/topics). Python >=3.11.
 - Tiers (`detectors.W_T2` / `W_T3`): one W rule never gives T1; two different W rules, or W2 + independent behaviour with
   2+ victims, give T1. Verified-source cap extends to deploy_drain, ghost_forward, bait_forward, token_spender_pull.
 
+## GitHub / paper research rules G1-G13 (grules.py pure functions, gscan.py wiring: g_chunk per chunk, g_block in the ETH block pass)
+- G1 `fake_call` (no-arg kit bait selector + value to an EOA; filters: other tx within 2 blocks, round amounts, recipient
+  nonce < 2000, sender < 9999) and `fake_call_contract` (no-arg value call to code, zero logs, >= 95 % forwarded); G2
+  `many_funders` (7+ EOAs, 80-120 % of median, 5 days, table `g_funds`, nonce-batch filter); G3 `phish_deploy` (code +
+  storage chain) / `phish_multicall`; G4 `router_sweep`; G5 `nft_bulk` (TransferHelper 0x32389b71) / `seaport_fee_drain`;
+  G6 `poison_tiny` / `poison_counterfeit` / `poison_batch` (+ `px_` clusters); G7 `lookalike_contract`; G8
+  `counterfactual_forward` (+ `codehash_cluster`); G9 `c2_config_intel` (data/intel.csv); G10 TRON `tron_sweeper` kit
+  markers; G11 `forwarder_7702` / `batch7702_decoy`; G12 `increase_allowance_eoa` / `full_balance_pull`; G13
+  `zero_nonce_spender`. Receipts txmeta carries `nlogs` (all logs of the receipt).
+- Tiers (`detectors.G_T2` / `G_T3`, rule ids in `G_RULE`): never T1 from one G rule; T1 = two different G rules at T2, a G
+  T2 + a W T2, or `phish_deploy` + `phish_multicall` with 2+ victims. Guards: allowlist additions, legitimate 7702
+  delegates, optional FP lists (`DRAINERWATCH_FP_DIR`), CEX deposit-sweep cap (`enrich.victim_funding`, table
+  `victim_funding`, label `cex_sweep_capped`).
+
 ## Family names (famname.py)
 `family` stays the skeleton hash (or kit id); `family_name` / `family_name_source` are resolved in this order: kit
 fingerprint (`kit`); the most common name the members give themselves, Etherscan-verified ContractName (EVM, cached

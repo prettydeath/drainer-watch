@@ -4,7 +4,7 @@ import logging
 import time
 from collections import Counter, defaultdict
 
-from . import bytecode, detectors, enrich, wrules, wscan
+from . import bytecode, detectors, enrich, gscan, wrules, wscan
 from .auth7702 import authority_of
 from .constants import (ALLOWLIST, ALLOWLIST_CSV, APPROVAL_KEEP_SEC, APPROVE_SELECTORS, BAIT_CAPTURE,
                         MALICIOUS_CATEGORIES, CHAINS, CONFIRMATIONS, D8_MAX_LOOKUPS, D8_MAX_SPENDER_NONCE,
@@ -13,7 +13,7 @@ from .constants import (ALLOWLIST, ALLOWLIST_CSV, APPROVAL_KEEP_SEC, APPROVE_SEL
                         GEN_FRESH_SEC, GEN_MAX_USES, INITIAL_BLOCKS, MAX_GAPS, KIT_APPROVAL_AMOUNTS, KIT_DEPOSIT_GAS,
                         KIT_DEPOSIT_MAX_NONCE, KIT_DEPOSIT_MIN_SHARE, MIN_USD, MS_NEW_SELECTORS, MS_WITHDRAW_SELECTORS,
                         ONESHOT_FUND_WINDOW, ONESHOT_MAX_NONCE, ONESHOT_RETURN_GASES, ONESHOT_RETURN_WINDOW,
-                        PERMIT2, PERMIT_SELECTORS, REDFLAG_SELECTORS, SEL_MS_NEW_DEPOSIT, SEL_MULTICALL_DEADLINE,
+                        PERMIT2, PERMIT_SELECTORS, PHISH_MULTICALL_SELECTORS, SEL_INCREASE_ALLOWANCE, REDFLAG_SELECTORS, SEL_MS_NEW_DEPOSIT, SEL_MULTICALL_DEADLINE,
                         SEL_P2_TRANSFER_FROM, SEL_P2_TRANSFER_FROM_BATCH, SEL_R02_EXACT_INPUT_SINGLE, SEL_TRANSFER_FROM,
                         SEL_V3_EXACT_INPUT_SINGLE, SWAP_V2_ETH_IN_SELECTORS, SWAP_V2_SELECTORS, XSPLIT_MAX_GAP, ZERO)
 from .db import add_evidence, meta_get, meta_set
@@ -456,6 +456,8 @@ def process_chunk(ctx, a, b, logs, txmeta=None):
 
     # web-research rules W1-W10 (most need the receipts source)
     wscan.web_chunk(ctx, logs, tr, ap, txmeta)
+    # GitHub / paper research rules G1-G13
+    gscan.g_chunk(ctx, logs, tr, ap, txmeta)
 
     ctx.flush()
     refresh_known(ctx)
@@ -625,6 +627,8 @@ def eth_block_pass(ctx, a, b, txmeta=None):
     auth_per_tx, auth_chain0 = defaultdict(lambda: defaultdict(int)), defaultdict(int)     # W8a
     creations, redflag, withdraws, swaps, permits, pulls, approves = [], [], [], [], [], [], []
     vcalls = []                       # W3: value > 0 calls to vanity-address contracts with a non-bait selector
+    g1rows, natives, phish_calls, incr = [], [], [], []   # G1 no-arg payable calls, G2 plain transfers, G3 multicalls, G12
+    senders = defaultdict(list)       # G1: sender -> blocks of its txs in this range
     ap_txs = {a["tx"] for a in ctx.chunk_ap if a["kind"] == "approval"}
     inputs = {}                       # tx -> input for txs with Approval logs (K8 detail)
     bait_set = load_bait_set(ctx)
@@ -642,6 +646,20 @@ def eth_block_pass(ctx, a, b, txmeta=None):
             for t in blk.get("transactions", []):
                 ty = hx(t.get("type"))
                 to = (t.get("to") or "").lower() or None
+                g_inp = t.get("input") or "0x"
+                senders[t["from"].lower()].append(bn)
+                if to and len(g_inp) == 10 and hx(t.get("value")) > 0:
+                    g1rows.append((t["hash"], to, g_inp[2:10].lower(), hx(t["value"]), t["from"].lower(), bn,
+                                   hx(t.get("nonce"))))
+                elif to and g_inp[2:10].lower() in PHISH_MULTICALL_SELECTORS:
+                    phish_calls.append((t["hash"], to, t["from"].lower(), bn, g_inp))
+                elif to and g_inp[2:10].lower() == SEL_INCREASE_ALLOWANCE:
+                    ap_g = detectors.decode_approve(g_inp)
+                    if ap_g:
+                        incr.append(dict(tx=t["hash"], frm=t["from"].lower(), token=to, spender=ap_g["spender"],
+                                         amount=ap_g["amount"], block=bn))
+                elif to and hx(t.get("value")) > 0 and g_inp in ("0x", ""):
+                    natives.append((t["from"].lower(), to, t["hash"], bn, hx(t.get("value")), hx(t.get("nonce"))))
                 if ty == 4:
                     ctx.stats["type4_txs"] += 1
                     for au in t.get("authorizationList") or []:
@@ -739,6 +757,7 @@ def eth_block_pass(ctx, a, b, txmeta=None):
             ctx.d5(d, v["tx"], v["block"], extra=dict(delegate=True))
     ctx.stats["delegates"] += len(delegates)
     wscan.auth_batches(ctx, auth_per_tx, auth_chain0, {d: (v["tx"], v["block"]) for d, v in delegates.items()})
+    gscan.g_block(ctx, g1rows, senders, natives, phish_calls, incr, delegates, created, txmeta or {})
 
     # D7 red-flag payable + bait(address) customers, withdraw callers; D10 foreign-recipient swaps
     ok = tx_status(ctx, [r[0] for r in redflag] + [x["tx"] for x in swaps] + [x["tx"] for x in permits]
