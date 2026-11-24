@@ -90,7 +90,7 @@ export interface OpenAllowance {
   victim_balance: string | number | null
   usd_at_risk: number | null
   pulled: boolean | null
-  checked_at: string | null
+  checked_at: string | number | null
 }
 
 export type FamilyNameSource = 'kit' | 'contract_name' | 'token_name' | 'functions' | 'hash'
@@ -149,7 +149,7 @@ export interface Freezable {
   balance: string | number | null
   usd: number | null
   already_frozen: boolean | null
-  checked_at: string | null
+  checked_at: string | number | null
 }
 
 export interface DataJson {

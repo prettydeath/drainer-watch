@@ -215,7 +215,7 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
                 {c.approvalOnly ? <ApprovalOnly c={c} /> : c.victims ? <>{plural(c.victims, 'wallet')} lost {c.usd ? fmtUSD(c.usd) : 'tokens we could not price'} to this {what} between {fmtDay(c.first_seen)} and {fmtDay(c.last_seen)}. </> : <>No victim is counted for this {what} yet; first seen {fmtDay(c.first_seen)}, last seen {fmtDay(c.last_seen)}. </>}
                 {c.approvalOnly ? <span className="muted">{c.tier === 'T1' ? 'Confirmed kit spender' : TIER_NAME[c.tier] + ' kit spender'} (approval fingerprint), not yet a drain.</span> : TIERS[c.tier] ? <span className="muted">{TIER_NAME[c.tier]}: {TIERS[c.tier][1]}</span> : null}
               </p>
-              {c.family ? <p className="meta">Family {c.famLabel}{c.famSource ? ' (' + famSourceNote(c.famSource) + ')' : ''}, code hash <span className="mono">{c.family}</span>.</p> : null}
+              {c.family ? <p className="meta">Family {c.famLabel}{c.famSource && c.famSource !== 'hash' ? ' (' + famSourceNote(c.famSource) + ')' : ''}{/^f_/.test(c.family) ? <>, code hash <span className="mono">{c.family}</span></> : null}.</p> : null}
               {c.contract_name || c.verified != null ? (
                 <p className="meta">{c.verified ? 'Verified source on the explorer' : c.verified === false ? 'Source not verified on the explorer' : ''}{c.contract_name ? (c.verified != null ? ', ' : '') + 'contract name ' + c.contract_name : ''}{c.code_size ? ', ' + c.code_size.toLocaleString('en-US') + ' bytes of code' : ''}.</p>
               ) : null}

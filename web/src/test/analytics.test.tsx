@@ -7,7 +7,9 @@ import App from '@/App'
 import {
   DEFAULT_FILTER, atRisk, drainWindow, fmtAllowance, freezeHint, freezeSummary, drainerRows, fmtDuration, parseRoute, perChainSeries, recipients, sortRows, summarize, toCSV,
 } from '@/lib/analytics'
+import { ago, toMs } from '@/lib/format'
 import { buildModel } from '@/lib/model'
+import { famLabel } from '@/lib/vocab'
 import type { Contract, DataJson, Drain } from '@/lib/types'
 
 const fixture = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../tests/fixtures/sample_data.json'), 'utf8')) as DataJson
@@ -109,6 +111,14 @@ describe('aggregation', () => {
     expect(csv[1]).toContain('0xb')
     expect(csv[1]).toContain('0xaff affiliate 80%; ' + shared + ' collector')
     expect(toCSV([{ ...drainerRows(m, DEFAULT_FILTER)[0], c: { ...m.cases[0], title: '=A, "b"' } }])).toContain('"=A, ""b"""')
+  })
+  it('reads epoch seconds, epoch ms and ISO times', () => {
+    expect(toMs(1795526327)).toBe(1795526327000)
+    expect(toMs('1795526327')).toBe(1795526327000)
+    expect(toMs(1795526327000)).toBe(1795526327000)
+    expect(toMs('2026-11-24T12:00:00Z')).toBe(Date.parse('2026-11-24T12:00:00Z'))
+    expect(ago(1795526327, 1795526327000 + 2 * 3600e3)).toBe('2 h ago')
+    expect(famLabel('f_c620df', ' ', 'contract_name')).toBe('Code family c620df')
   })
   it('formats durations', () => {
     expect(fmtDuration(30e3)).toBe('under 1 min')

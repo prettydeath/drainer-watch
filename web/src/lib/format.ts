@@ -11,8 +11,12 @@ export const fmtInt = (n: number | null | undefined) => nf0.format(n || 0)
 export const H = 3600e3
 export const DAY = 24 * H
 
+/** ISO string, epoch milliseconds, or epoch seconds (some backend fields, e.g. checked_at) -> epoch ms */
+export const toMs = (ts: string | number | null | undefined): number =>
+  ts == null || ts === '' ? NaN : typeof ts === 'number' ? (Math.abs(ts) < 1e11 ? ts * 1000 : ts) : /^\d+(\.\d+)?$/.test(ts) ? toMs(Number(ts)) : Date.parse(ts)
+
 export function ago(ts: string | number, now = Date.now()) {
-  const t = typeof ts === 'number' ? ts : Date.parse(ts)
+  const t = toMs(ts)
   if (!Number.isFinite(t)) return 'unknown'
   const s = (now - t) / 1000
   if (s < 90) return 'just now'
@@ -20,11 +24,11 @@ export function ago(ts: string | number, now = Date.now()) {
   if (s < 86400) return Math.round(s / 3600) + ' h ago'
   return Math.round(s / 86400) + ' d ago'
 }
-const valid = (ts: string | number) => Number.isFinite(typeof ts === 'number' ? ts : Date.parse(ts))
+const valid = (ts: string | number) => Number.isFinite(toMs(ts))
 export const fmtDay = (ts: string | number) =>
-  valid(ts) ? new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : 'unknown date'
+  valid(ts) ? new Date(toMs(ts)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : 'unknown date'
 export const fmtTime = (ts: string | number) =>
-  valid(ts) ? new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : ''
+  valid(ts) ? new Date(toMs(ts)).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }) : ''
 export const fmtStamp = (ts: string | number) => (valid(ts) ? fmtDay(ts) + ', ' + fmtTime(ts) + ' UTC' : 'unknown time')
 
 export const mid = (a: string | null | undefined, h = 6, t = 4) =>

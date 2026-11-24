@@ -101,7 +101,7 @@ function FamilyCard({ f, maxD7, onOpen }: { f: Family; maxD7: number; onOpen: (c
   return (
     <article className="card fam margin">
       <h3 title={f.key ? 'Code family hash ' + f.key : undefined}>{f.name}<small>{plural(f.contracts.length, 'drainer')}, {fmtUSD(f.usd)}</small></h3>
-      {f.source && f.source !== 'kit' ? <p className="famsrc">{famSourceNote(f.source)}{f.key ? <>, code hash <span className="mono">{f.key}</span></> : null}</p> : null}
+      {f.source && f.source !== 'kit' ? <p className="famsrc">{famSourceNote(f.source)}{/^f_/.test(f.key) && f.source !== 'hash' ? <>, code hash <span className="mono">{f.key}</span></> : null}</p> : null}
       <p className="blurb">{f.blurb}</p>
       <div className="profile">
         {f.axes >= 3 ? (

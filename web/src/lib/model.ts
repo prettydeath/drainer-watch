@@ -127,7 +127,7 @@ export function buildModel(raw: DataJson): Model {
   const famMeta = new Map(data.families.map(f => [f.family, f]))
   const cases: Case[] = data.contracts.map(c0 => {
     const fm = c0.family && !c0.family_name ? famMeta.get(c0.family) : undefined
-    const c = fm?.family_name ? { ...c0, family_name: fm.family_name, family_name_source: fm.family_name_source } : c0
+    const c = fm?.family_name?.trim() ? { ...c0, family_name: fm.family_name, family_name_source: fm.family_name_source } : c0
     const isWallet = walletKind(c)
     return {
       ...c,
@@ -146,7 +146,7 @@ export function buildModel(raw: DataJson): Model {
       approvalOnly: !(c.drains || 0) && !(c.usd || 0) &&
         ((c.open_allowances || []).length > 0 || [...(c.labels || []), ...(c.evidence || []).map(e => e.type)].some(k => APPROVAL_SIGNS.test(k))),
       famLabel: c.family ? famLabel(c.family, c.family_name, c.family_name_source) : null,
-      famSource: c.family ? (c.family_name && c.family_name_source !== 'hash' ? c.family_name_source || null : V_SRC(c.family)) : null,
+      famSource: c.family ? (c.family_name?.trim() && c.family_name_source !== 'hash' ? c.family_name_source || null : V_SRC(c.family)) : null,
       caseNo: 'DW-' + chainShort(c.chain).toUpperCase().slice(0, 3) + '-' + c.address.slice(-4).toUpperCase(),
     }
   })
@@ -172,7 +172,7 @@ export function buildModel(raw: DataJson): Model {
     .map(([k, cs]) => {
       const profile = methodProfile(cs)
       const meta = famMeta.get(k)
-      const named = meta?.family_name ? meta : cs.find(c => c.family_name)
+      const named = meta?.family_name?.trim() ? meta : cs.find(c => c.family_name?.trim())
       const nm = named ? famLabel(k, named.family_name, named.family_name_source) : famName(k || null)
       return {
         key: k,

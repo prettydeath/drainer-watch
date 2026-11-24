@@ -2,7 +2,7 @@
 // Per-drainer totals (usd, victims, drains, first_seen, last_seen) come from contracts[] and cover the full history;
 // drain-level views (unpriced counts, timeline dots, per-chain series, window recipients) use drains[], which render.py
 // caps at the latest MAX_DRAINS rows.
-import { DAY, H } from './format'
+import { DAY, H, toMs } from './format'
 import { tokenSymbol, type Case, type DrainRow, type Model } from './model'
 import type { Payout, Tier } from './types'
 import { TIER_RANK } from './vocab'
@@ -245,7 +245,7 @@ export function parseRoute(hash: string): Route {
 }
 
 /* ---- open allowances (approved, not pulled yet) ---- */
-export interface AtRisk { c: Case; victim: string; token: string; symbol: string | null; allowance: string; balance: string | null; usd: number | null; checked: string | null }
+export interface AtRisk { c: Case; victim: string; token: string; symbol: string | null; allowance: string; balance: string | null; usd: number | null; checked: string | number | null }
 export const isUnlimited = (a: string | number | null | undefined) => {
   if (a == null) return false
   if (typeof a === 'string' && /unlimited|max/i.test(a)) return true
@@ -278,7 +278,7 @@ export function freezeSummary(model: Model): FreezeSummary | null {
   if (tot && Object.keys(tot).length) Object.entries(tot).forEach(([k, v]) => by.set(k, Number(v) || 0))
   else open.forEach(f => { const k = f.issuer || 'Unknown issuer'; by.set(k, (by.get(k) || 0) + (f.usd || 0)) })
   const byIssuer = [...by.entries()].filter(e => e[1] > 0).sort((a, b) => b[1] - a[1])
-  const checked = rows.map(f => ts(f.checked_at)).filter(Number.isFinite)
+  const checked = rows.map(f => toMs(f.checked_at)).filter(Number.isFinite)
   return {
     usd: byIssuer.reduce((s, e) => s + e[1], 0),
     frozen: rows.filter(f => f.already_frozen).reduce((s, f) => s + (f.usd || 0), 0),
