@@ -105,7 +105,7 @@ def analyze(code_hex, tvm=False) -> dict:
                 redflags=[REDFLAG_SELECTORS[s] for s in sels if s in REDFLAG_SELECTORS], kit=kit,
                 kit_exact=exact, kit_public=KIT_PUBLIC_RUNTIME_KECCAK.get(code_hash), ms_variant=ms_variant(code, kit, sels),
                 owner_gated_puller=owner_gated_puller(code, sels), erc20_like=len(set(sels) & ERC20_SELECTORS) >= ERC20_MIN_SELECTORS,
-                delegatecall=has_delegatecall(code), safe_proxy=is_safe_proxy(code))
+                delegatecall=has_delegatecall(code), safe_proxy=is_safe_proxy(code), generic_proxy=is_generic_proxy(code))
 
 
 def tron_sweep_abi(names) -> bool:
@@ -116,6 +116,21 @@ def tron_sweep_abi(names) -> bool:
 def log_count(code) -> int:
     """G3: number of LOG0-LOG4 opcodes (events emitted) in the runtime."""
     return sum(1 for _, op, _ in iter_ops(strip_metadata(to_bytes(code))) if 0xA0 <= op <= 0xA4)
+
+
+# EIP-1967 implementation / admin / beacon slots and the EIP-1822 (UUPS) proxiable slot
+PROXY_SLOTS = tuple(bytes.fromhex(h) for h in (
+    "360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc",
+    "b53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103",
+    "a3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50",
+    "c5f16f0fcc639fa48a6947836d9850f504798523bf8c9a3a87d5876cf622bcf7"))
+
+
+def is_generic_proxy(code) -> bool:
+    """Standard upgradeable proxy (EIP-1967 / UUPS): DELEGATECALL plus a standard slot constant. Its skeleton is the
+    library's, shared by thousands of unrelated contracts, so it must never place the contract in a code family."""
+    code = to_bytes(code)
+    return bool(code) and any(s in code for s in PROXY_SLOTS) and has_delegatecall(code)
 
 
 def has_delegatecall(code) -> bool:

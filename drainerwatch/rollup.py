@@ -100,7 +100,7 @@ def load_verified(conn):
                 name = f"{r['name'] or '?'} (proxy, implementation " + ("unknown)" if ver is None else "unverified)")
         else:
             ver, name = bool(r["verified"]), r["name"]
-        out[(r["chain"], r["address"])] = dict(verified=ver, name=name)
+        out[(r["chain"], r["address"])] = dict(verified=ver, name=name, proxy=bool(r["proxy"]))
     return out
 
 
@@ -158,7 +158,7 @@ def rollup(conn, seeds, labels, now=None):
         elif t == "bytecode":
             if d.get("redflags"):
                 p["redflags"] = True
-            if d.get("family"):
+            if d.get("family") and not d.get("generic_proxy") and not (verified.get((r["chain"], r["address"])) or {}).get("proxy"):
                 p["fam"] = d["family"]
             if d.get("kit"):
                 p["kit"] = d["kit"]

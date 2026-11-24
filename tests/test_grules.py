@@ -232,7 +232,8 @@ def test_g8_counterfactual_child_forwards_preexisting_balance():
     rpc = CodeAtRpc(before={k: "0x" for k in kids}, codes={f: CODE, **{k: CODE for k in kids}},
                     symbols={USDT: ("USDT", 6)}, nonces={k: 1 for k in kids})
     ctx, rows = run(rcs, rpc=rpc)
-    assert rows[f]["tier"] == "T2" and {"counterfactual_forward", "counterfactual_multi"} <= set(rows[f]["labels"])
+    # T3 only: payment-processor deposit-address factories (live: Base 0xe5b3a5e9…, factory nonce 5439) forward the same way
+    assert rows[f]["tier"] == "T3" and {"counterfactual_forward", "counterfactual_multi"} <= set(rows[f]["labels"])
     rpc = CodeAtRpc(before={k: CODE for k in kids}, codes={f: CODE, **{k: CODE for k in kids}},
                     symbols={USDT: ("USDT", 6)}, nonces={k: 1 for k in kids})
     _, rows = run(rcs, rpc=rpc)                               # the child existed before: an ordinary contract
@@ -373,3 +374,11 @@ def test_gap_only_after_the_lag_exceeds_gap_after_sec():
     assert not meta_get(ctx.conn, "gaps:eth")
     assert scan.plan_range(ctx.conn, "eth", 1400, 100) == (1299, 1398)          # 398 behind: gap 1001-1298
     assert json.loads(meta_get(ctx.conn, "gaps:eth"))[0]["to"] == 1298
+
+
+def test_generic_proxy_never_forms_a_family():
+    slot = "360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+    proxy = "0x60806040" + "7f" + slot + "54" + "f4" + "00" * 60       # PUSH32 <EIP-1967 slot> SLOAD DELEGATECALL
+    assert bytecode.is_generic_proxy(proxy)
+    assert not bytecode.is_generic_proxy("0x6080604052" + "f4" + "00" * 60)       # delegatecall, no standard slot
+    assert not bytecode.is_generic_proxy("0x60806040" + "7f" + slot + "00" * 60)  # slot constant, no delegatecall

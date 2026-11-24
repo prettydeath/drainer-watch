@@ -646,10 +646,10 @@ TRON_PULL_T1_WITH = {"kit_signature", "approval_fingerprint", "approval_kit_shap
                      "split_xtx", "split_pull"}
 # GitHub / paper research rules G1-G13 (see assign_tier): one G rule never gives T1
 G_T2 = {"fake_call_multi", "fake_call_contract_multi", "phish_multicall", "router_sweep_multi", "nft_bulk_multi",
-        "seaport_fee_multi", "counterfactual_multi", "batch7702_decoy_multi", "zero_nonce_multi",
+        "seaport_fee_multi", "batch7702_decoy_multi", "zero_nonce_multi",
         "increase_allowance_pull", "zero_nonce_pull"}
 G_T3 = {"fake_call", "fake_call_contract", "many_funders", "phish_deploy", "router_sweep", "nft_bulk", "seaport_fee_drain",
-        "poison_tiny", "poison_counterfeit", "poison_batch", "lookalike_contract", "counterfactual_forward",
+        "poison_tiny", "poison_counterfeit", "poison_batch", "lookalike_contract", "counterfactual_forward", "counterfactual_multi",
         "forwarder_7702", "forwarder_7702_multi", "batch7702_decoy", "increase_allowance_eoa", "zero_nonce_spender",
         "tron_sweeper_kit"}
 # G-rule label -> rule id: T1 needs two DIFFERENT rules

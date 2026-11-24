@@ -193,7 +193,7 @@ class Ctx:
             found["kit_public"] = info["kit_public"]
         if info.get("ms_variant"):
             found["ms_variant"] = info["ms_variant"]
-        m = bytecode.match_family(info["skeleton"], info["selectors"], info["size"], self.seed_family_index())
+        m = None if info.get("generic_proxy") else             bytecode.match_family(info["skeleton"], info["selectors"], info["size"], self.seed_family_index())
         if m:
             found.update(family=m[0], via=m[1], matched_seed=self.seed_family_index()[m[2]]["address"])
         if found:
