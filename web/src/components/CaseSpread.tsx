@@ -4,7 +4,8 @@ import { Dialog as DialogPrimitive } from 'radix-ui'
 import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { DAY, fmtDay, fmtStamp, fmtTime, fmtUSD, plural } from '@/lib/format'
-import type { Case, Model } from '@/lib/model'
+import { addrUrl, hasExplorer, tokenSymbol, type Case, type Model } from '@/lib/model'
+import { fmtAllowance } from '@/lib/analytics'
 import { TIERS, TIER_NAME, chainLong, chainShort, famSourceNote, kindText, labelInfo, roleInfo, viaText } from '@/lib/vocab'
 import { Addr, FullId, Tx, reduceMotion, tv } from './shared'
 
@@ -40,7 +41,7 @@ function Timeline({ c, now }: { c: Case; now: number }) {
     if (out.length === 1) out.unshift({ t: firstDay - DAY, cum: 0, n: 0 })
     return out
   }, [c, now])
-  if (!rows.length) return <p className="muted">None of its drains is in the latest published drain list, so there is no timeline to draw.</p>
+  if (!rows.length) return <p className="muted">{c.approvalOnly ? 'No drain yet: only the approval is on record.' : 'None of its drains is in the latest published drain list, so there is no timeline to draw.'}</p>
   return (
     <>
       <ChartContainer config={timelineConfig} className="aspect-auto h-[200px] w-full" style={{ marginLeft: -6 }} initialDimension={{ width: 460, height: 200 }}>
@@ -58,6 +59,36 @@ function Timeline({ c, now }: { c: Case; now: number }) {
         </LineChart>
       </ChartContainer>
       <div className="meta">Solid line: value taken so far. Dotted: drains per day, right scale. Drawn from the latest published drains{rows.length >= MAX_TIMELINE_DAYS ? ', last 90 days' : ''}.</div>
+    </>
+  )
+}
+
+
+const EVM_APPROVALS = new Set(['eth', 'bsc', 'base'])
+function StillExposed({ c }: { c: Case }) {
+  const rows = c.open_allowances
+  const checker = EVM_APPROVALS.has(c.chain) && hasExplorer(c.chain) ? addrUrl(c.chain, 'x').replace(/\/address\/x$/, '/tokenapprovalchecker') : null
+  const tail = checker ? <p className="meta">Whoever owns the wallet can revoke the approval; the explorer's <a className="txlink" href={checker} target="_blank" rel="noopener noreferrer">token approval checker</a> lists open approvals.</p> : null
+  if (!rows) {
+    if (!c.approvalOnly) return null
+    return <><h4>Still exposed</h4><p className="muted">Not checked yet: the current allowance and the victim's balance are not in this data.</p>{tail}</>
+  }
+  if (!rows.length) return <><h4>Still exposed</h4><p className="muted">No open approval to this {c.isWallet ? 'wallet' : 'address'} at the last check.</p></>
+  return (
+    <>
+      <h4>Still exposed</h4>
+      {c.exposure_total_usd ? <p><b>{fmtUSD(c.exposure_total_usd)}</b> can still be pulled through open approvals.</p> : null}
+      <ul className="links">
+        {rows.map((a, i) => (
+          <li key={i}>
+            <Addr value={a.victim} chain={c.chain} link />
+            <span>{tokenSymbol(a.token, a.symbol) || 'token'}, allowance {fmtAllowance(a.allowance)}</span>
+            {a.pulled ? <span className="muted small">already pulled</span> : <span>{a.usd_at_risk != null ? fmtUSD(a.usd_at_risk) + ' at risk' : a.victim_balance != null ? 'balance ' + fmtAllowance(a.victim_balance) : <span className="muted">balance unknown</span>}</span>}
+            {a.checked_at ? <span className="muted small">checked {fmtStamp(a.checked_at)}</span> : null}
+          </li>
+        ))}
+      </ul>
+      {tail}
     </>
   )
 }
@@ -81,10 +112,25 @@ function Freeze({ c, model }: { c: Case; model: Model }) {
   )
 }
 
+function ApprovalOnly({ c }: { c: Case }) {
+  const ap = c.approvals
+  const syms = [...new Set([...(c.open_allowances || []).map(a => tokenSymbol(a.token, a.symbol)), ...ap.map(a => tokenSymbol(a.token))].filter(Boolean))]
+  const unlimited = (c.open_allowances || []).some(a => fmtAllowance(a.allowance) === 'unlimited')
+  const n = c.victims || new Set([...ap.map(a => a.victim), ...(c.open_allowances || []).map(a => a.victim)]).size || 1
+  const first = ap[0]
+  return (
+    <>
+      {plural(n, 'wallet')} gave this {c.isWallet ? 'wallet' : 'address'} {unlimited ? 'unlimited ' : ''}permission to spend {n === 1 ? 'its' : 'their'} {syms.join(' and ') || 'tokens'}{!unlimited && ap.length ? ' (the kit\u2019s hard-coded approval amount)' : ''}; nothing has been taken yet. {' '}
+      <span className="muted">An empty address is still dangerous: kit spenders are fresh wallets that receive gas and pull later, and an approval does not show up in the spender's own transaction list on explorers.</span>
+      {first ? <> <Tx chain={c.chain} tx={first.tx}>Approval transaction</Tx>, by <Addr value={first.victim} chain={c.chain} link />.</> : null}{' '}
+    </>
+  )
+}
+
 function Deployer({ c }: { c: Case }) {
   const d = c.deployer
   if (c.isWallet === true)
-    return <p>This subject is a wallet (an externally owned account), not a contract: it has no code, so nobody deployed it.{d.funder ? <> It was funded by <Addr value={d.funder} chain={c.chain} link />{d.funder_entity ? <> ({d.funder_entity})</> : null}.</> : null}</p>
+    return <p>This is a wallet (an externally owned account), not a contract, so there is no deployer.{d.funder ? <> It was funded by <Addr value={d.funder} chain={c.chain} link />{d.funder_entity ? <> ({d.funder_entity})</> : null}.</> : null}</p>
   if (d.address)
     return (
       <p>
@@ -98,7 +144,7 @@ function Deployer({ c }: { c: Case }) {
   return (
     <p>
       {c.isWallet === null
-        ? 'We have not looked up whether this address holds code, and no creation transaction is visible to us; we do not guess.'
+        ? 'Code check pending: we do not know yet whether this is a contract or a wallet, so no deployer is shown.'
         : 'The creation transaction is not visible to us, and we do not guess.'}{' '}
       <span className="muted small">Lookup: {viaText(d.via)}.</span>
     </p>
@@ -166,8 +212,8 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
                 <span className="meta">score {c.score} of 100{c.source && c.source !== 'detector' ? ', listed by ' + c.source : ''}</span>
               </div>
               <p>
-                {c.victims ? <>{plural(c.victims, 'wallet')} lost {c.usd ? fmtUSD(c.usd) : 'tokens we could not price'} to this {what} between {fmtDay(c.first_seen)} and {fmtDay(c.last_seen)}. </> : <>No victim is counted for this {what} yet; first seen {fmtDay(c.first_seen)}, last seen {fmtDay(c.last_seen)}. </>}
-                {TIERS[c.tier] ? <span className="muted">{TIER_NAME[c.tier]}: {TIERS[c.tier][1]}</span> : null}
+                {c.approvalOnly ? <ApprovalOnly c={c} /> : c.victims ? <>{plural(c.victims, 'wallet')} lost {c.usd ? fmtUSD(c.usd) : 'tokens we could not price'} to this {what} between {fmtDay(c.first_seen)} and {fmtDay(c.last_seen)}. </> : <>No victim is counted for this {what} yet; first seen {fmtDay(c.first_seen)}, last seen {fmtDay(c.last_seen)}. </>}
+                {c.approvalOnly ? <span className="muted">{c.tier === 'T1' ? 'Confirmed kit spender' : TIER_NAME[c.tier] + ' kit spender'} (approval fingerprint), not yet a drain.</span> : TIERS[c.tier] ? <span className="muted">{TIER_NAME[c.tier]}: {TIERS[c.tier][1]}</span> : null}
               </p>
               {c.family ? <p className="meta">Family {c.famLabel}{c.famSource ? ' (' + famSourceNote(c.famSource) + ')' : ''}, code hash <span className="mono">{c.family}</span>.</p> : null}
               {c.contract_name || c.verified != null ? (
@@ -200,6 +246,7 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
                   <li key={d.tx + d.victim}><span className="muted small">{fmtDay(d.ts)}, {fmtTime(d.ts)}</span><span>{d.usd == null ? <span className="muted">unpriced {d.symbol || ''}</span> : fmtUSD(d.usd)}</span><span className="small">from <Addr value={d.victim} chain={d.chain} /></span><Tx chain={d.chain} tx={d.tx}>tx</Tx></li>
                 ))}{c.drainList.length > recent.length ? <li className="muted small">and {c.drainList.length - recent.length} more in the published list</li> : null}</ul>
               ) : <p className="muted">None in the latest published drains.</p>}
+              <StillExposed c={c} />
               <h4>Where the money surfaced</h4>
               {reached.length ? (
                 <ol className="exhibits" style={{ '--start': c.evidence.length } as React.CSSProperties}>

@@ -75,6 +75,21 @@ export interface Contract {
   evidence: Evidence[]
   cluster?: string | null
   cross_chain?: { chain: string; tier: Tier }[]
+  /** approvals to this spender that are still open (backend >= allowance check) */
+  open_allowances?: OpenAllowance[]
+  exposure_total_usd?: number | null
+}
+
+export interface OpenAllowance {
+  victim: string
+  token: string
+  symbol: string | null
+  /** raw amount, or 'unlimited' */
+  allowance: string | number | null
+  victim_balance: string | number | null
+  usd_at_risk: number | null
+  pulled: boolean | null
+  checked_at: string | null
 }
 
 export type FamilyNameSource = 'kit' | 'contract_name' | 'token_name' | 'functions' | 'hash'

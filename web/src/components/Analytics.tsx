@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import {
-  DEFAULT_FILTER, WINDOWS, drainWindow, freezeHint, freezeHintShort, freezeSummary, drainerRows, fmtDuration, perChainSeries, recipients, sortRows, summarize, toCSV, windowOf,
+  DEFAULT_FILTER, WINDOWS, atRisk, drainWindow, fmtAllowance, freezeHint, freezeHintShort, freezeSummary, drainerRows, fmtDuration, perChainSeries, recipients, sortRows, summarize, toCSV, windowOf,
   type DrainerRow, type Filter, type Recipient, type SortKey,
 } from '@/lib/analytics'
 import { DAY, ago, fmtDay, fmtInt, fmtStamp, fmtTime, fmtUSD, mid, plural } from '@/lib/format'
@@ -33,6 +33,48 @@ const kitLine = (c: Case) => {
   if (!parts.length) parts.push(c.title)
   if (c.isWallet && !/wallet/i.test(parts[0])) parts.push('wallet')
   return parts.join(', ')
+}
+
+
+/* ---------------- open allowances ---------------- */
+
+function AtRiskNow({ model, onOpen }: { model: Model; onOpen: (c: Case) => void }) {
+  const rows = useMemo(() => atRisk(model), [model])
+  const [n, setN] = useState(8)
+  const head = <div className="sect-h"><h2>At risk now</h2><p>Approvals to drainer spenders that are still open: the tokens can be pulled at any moment.</p></div>
+  if (!rows) return <section className="sect" id="at-risk">{head}<div className="card card-pad margin"><p className="empty">Not computed yet: this data.json predates the open-allowance check.</p></div></section>
+  const usd = rows.reduce((s, r) => s + (r.usd || 0), 0)
+  const victims = new Set(rows.map(r => r.victim.toLowerCase())).size
+  return (
+    <section className="sect" id="at-risk">
+      {head}
+      <div className="card card-pad frz">
+        <p className="frz-lead">{rows.length ? <><b className="num">{fmtUSD(usd)}</b> sits in {plural(victims, 'wallet')} that still let a drainer spend their tokens ({plural(rows.length, 'open approval')}); revoking an approval closes it.</> : 'No open approval to a tracked drainer at the last check.'}</p>
+        {rows.length ? (
+          <div className="rank-wrap">
+            <table className="ledger rank">
+              <thead><tr><th>Victim wallet</th><th>Spender</th><th>Token</th><th className="r">Allowance</th><th className="r">Balance</th><th className="r">At risk</th><th>Checked</th></tr></thead>
+              <tbody>
+                {rows.slice(0, n).map((r, i) => (
+                  <tr key={r.c.key + r.victim + r.token} className="row" data-risk-row={r.victim} style={css({ '--tc': tv(r.c.tier) })}>
+                    <td className="who" data-l="Victim wallet" data-rank={i + 1} data-tier={(r.symbol || 'token') + ' on ' + chainLong(r.c.chain)}><Addr value={r.victim} chain={r.c.chain} link /> <span className="muted small">{chainShort(r.c.chain)}</span></td>
+                    <td data-l="Spender"><span className="tg">{r.c.tier}</span> <button className="linkbtn mono small" onClick={() => onOpen(r.c)}>{mid(r.c.address, 6, 4)}</button></td>
+                    <td data-l="Token"><b>{r.symbol || <Addr value={r.token} chain={r.c.chain} />}</b></td>
+                    <td className="r" data-l="Allowance">{r.allowance}</td>
+                    <td className="r num" data-l="Balance">{r.balance == null ? <span className="muted">unknown</span> : fmtAllowance(r.balance)}</td>
+                    <td className="r" data-l="At risk"><b className="num">{r.usd == null ? <span className="muted">unpriced</span> : fmtUSD(r.usd)}</b></td>
+                    <td data-l="Checked">{r.checked ? <span title={fmtStamp(r.checked)}>{ago(r.checked, model.now)}</span> : <span className="muted">unknown</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {rows.length > n ? <button className="btn more-btn" onClick={() => setN(x => x + 15)}>Show {Math.min(15, rows.length - n)} more of {rows.length - n}</button> : null}
+          </div>
+        ) : null}
+        <p className="note-row"><span>An approval stays valid until the owner revokes it; explorers list a wallet's approvals in their token approval checker. Balances are a snapshot at the time shown.</span></p>
+      </div>
+    </section>
+  )
 }
 
 /* ---------------- freezable now ---------------- */
@@ -223,7 +265,7 @@ function RankTable({ model, rows, onOpen }: { model: Model; rows: DrainerRow[]; 
                     <span className="tg">{c.tier}</span> <Addr value={c.address} chain={c.chain} h={8} t={6} link /> <span className="muted small">{chainShort(c.chain)}</span>
                     <span className="kit" title={c.family ? 'Code family hash ' + c.family : undefined}>{kitLine(c)}</span>
                   </td>
-                  <td className="r" data-l="Taken"><b className="num">{r.usd ? fmtUSD(r.usd) : <span className="muted">$0</span>}</b>{r.unpriced ? <span className="sub">{r.unpriced} unpriced</span> : null}{(model.freezeByCase.get(c.key)?.usd || 0) > 0 ? <span className="frz-b" title="Stablecoins on its linked wallets that the issuer can still freeze">freezable {fmtUSD(model.freezeByCase.get(c.key)!.usd, true)}</span> : null}</td>
+                  <td className="r" data-l="Taken"><b className="num">{r.usd ? fmtUSD(r.usd) : <span className="muted">$0</span>}</b>{r.unpriced ? <span className="sub">{r.unpriced} unpriced</span> : null}{c.approvalOnly ? <span className="sub">approval only, nothing taken yet</span> : null}{(model.freezeByCase.get(c.key)?.usd || 0) > 0 ? <span className="frz-b" title="Stablecoins on its linked wallets that the issuer can still freeze">freezable {fmtUSD(model.freezeByCase.get(c.key)!.usd, true)}</span> : null}</td>
                   <td className="r" data-l="Victims">{fmtInt(r.victims)}</td>
                   <td className="r" data-l="Drains">{fmtInt(r.drains)}</td>
                   <td className="r" data-l="Campaign start"><span title={fmtStamp(r.start)}>{fmtDay(r.start)}</span><span className="sub">{fmtTime(r.start)} UTC</span></td>
@@ -462,6 +504,7 @@ export default function Analytics({ model, onOpen }: { model: Model; onOpen: (c:
         <SummaryStrip model={model} rows={rows} f={f} recs={recs} />
       </section>
       <FreezableNow model={model} onOpen={onOpen} />
+      <AtRiskNow model={model} onOpen={onOpen} />
       <section className="sect" id="active-table">
         <div className="sect-h"><h2>Drainers active now</h2><p>Ranked by value taken since each campaign began. Select a row to open its file.</p></div>
         <div className="card card-pad ruled ranked">

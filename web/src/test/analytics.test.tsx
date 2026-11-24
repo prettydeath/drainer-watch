@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it } from 'vitest'
 import App from '@/App'
 import {
-  DEFAULT_FILTER, drainWindow, freezeHint, freezeSummary, drainerRows, fmtDuration, parseRoute, perChainSeries, recipients, sortRows, summarize, toCSV,
+  DEFAULT_FILTER, atRisk, drainWindow, fmtAllowance, freezeHint, freezeSummary, drainerRows, fmtDuration, parseRoute, perChainSeries, recipients, sortRows, summarize, toCSV,
 } from '@/lib/analytics'
 import { buildModel } from '@/lib/model'
 import type { Contract, DataJson, Drain } from '@/lib/types'
@@ -167,12 +167,47 @@ describe('freezable', () => {
   it('shows "Not computed yet" without the field and the table with it', async () => {
     history.replaceState(null, '', '#analytics')
     render(<App data={fixture} />)
-    expect(await screen.findByText(/Not computed yet/, undefined, { timeout: 15000 })).toBeTruthy()
+    expect((await screen.findAllByText(/Not computed yet/, undefined, { timeout: 15000 })).length).toBe(2) // freezable + open allowances
     cleanup()
     const c = fixture.contracts[0]
     render(<App data={{ ...fixture, freezable: [F({ chain: c.chain, drainer: c.address, drainer_tier: c.tier, usd: 1234 })] as never }} />)
     expect(await screen.findByText(/sits on drainer-linked wallets right now/, undefined, { timeout: 15000 })).toBeTruthy()
     expect(document.querySelectorAll('[data-frz-row]').length).toBe(1)
+  })
+})
+
+describe('approval-only subjects and open allowances', () => {
+  const ev = [{ type: 'approval_fingerprint', tx: '0xapp', ts: '2026-11-23T16:48:47Z',
+    detail: 'victim 0x378d0bc33a9506faeaf12e7bcff32ab0fcc63bb9 approved token 0xdac17f958d2ee523a2206206994597c13d831ec7 with the ms_drainer kit amount (hard-coded approval value: kit fingerprint)' }]
+  const spender = C({ address: '0x81097f6fea74e4540c83daf01ae24c0f7e8df7a6', labels: ['approval_fingerprint'], evidence: ev, drains: 0, usd: 0, victims: 1, code_size: null })
+  it('flags approval-only cases and parses the approval from the evidence', () => {
+    const m = buildModel({ ...base, contracts: [spender, C({ address: '0xa', usd: 5, drains: 1, labels: ['approval_fingerprint'] })] })
+    const c = m.cases.find(x => x.address === spender.address)!
+    expect(c.approvalOnly).toBe(true)
+    expect(c.approvals).toEqual([{ victim: '0x378d0bc33a9506faeaf12e7bcff32ab0fcc63bb9', token: '0xdac17f958d2ee523a2206206994597c13d831ec7', tx: '0xapp', ts: '2026-11-23T16:48:47Z' }])
+    expect(m.cases.find(x => x.address === '0xa')!.approvalOnly).toBe(false)
+    expect(atRisk(m)).toBeNull()
+  })
+  it('lists open allowances that were not pulled, largest first', () => {
+    const oa = (o: Record<string, unknown>) => ({ victim: '0xv1', token: '0xdac17f958d2ee523a2206206994597c13d831ec7', symbol: null, allowance: 'unlimited', victim_balance: '50', usd_at_risk: 50, pulled: false, checked_at: NOW, ...o })
+    const m = buildModel({ ...base, contracts: [{ ...spender, open_allowances: [oa({}), oa({ victim: '0xv2', usd_at_risk: 900, allowance: String(2n ** 256n - 1n) }), oa({ victim: '0xv3', pulled: true })] }] })
+    const r = atRisk(m)!
+    expect(r.map(x => x.victim)).toEqual(['0xv2', '0xv1'])
+    expect(r[0].allowance).toBe('unlimited')
+    expect(r[0].symbol).toBe('USDT')
+    expect(fmtAllowance('1500')).toBe('1,500')
+  })
+  it('the spread says nothing was taken yet and explains why an empty spender is dangerous', async () => {
+    history.replaceState(null, '', '#eth:' + spender.address)
+    render(<App data={{ ...base, contracts: [spender] }} />)
+    await waitFor(() => expect(document.querySelector('[data-case]')).toBeTruthy(), { timeout: 15000 })
+    const page = document.querySelector('[data-case]')!.textContent!
+    expect(page).toMatch(/1 wallet gave this address permission to spend its USDT/)
+    expect(page).toMatch(/nothing has been taken yet/)
+    expect(page).not.toMatch(/lost/)
+    expect(page).toContain('Confirmed kit spender (approval fingerprint)')
+    expect(page).toMatch(/Still exposed/)
+    expect(page).toMatch(/Not checked yet/)
   })
 })
 

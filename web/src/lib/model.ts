@@ -12,6 +12,10 @@ export interface Case extends Contract {
   /** primary family label (family_name, else the vocab name of the hash); null when no family */
   famLabel: string | null
   famSource: string | null
+  /** approval evidence but no drain yet: nothing taken so far */
+  approvalOnly: boolean
+  /** approvals named in the evidence, used when open_allowances is absent */
+  approvals: { victim: string; token: string; tx: string | null; ts: string }[]
 }
 export interface Family {
   key: string
@@ -70,6 +74,26 @@ export function caseTitle(c: Contract, isWallet: boolean | null) {
 // vocab families are kit fingerprints; f_<hash> without a name is a bare code-hash group
 const V_SRC = (hash: string) => (/^f_/.test(hash) ? 'hash' : 'kit')
 
+const APPROVAL_SIGNS = /approv|spender|permit|oneshot|increase_max/
+const APPROVAL_RE = /victim (0x[0-9a-fA-F]{40}|T[1-9A-HJ-NP-Za-km-z]{33}) approved token (0x[0-9a-fA-F]{40}|T[1-9A-HJ-NP-Za-km-z]{33})/
+function approvalsOf(c: Contract) {
+  const out: Case['approvals'] = []
+  ;(c.evidence || []).forEach(e => {
+    const m = APPROVAL_RE.exec(e.detail || '')
+    if (m && !out.some(a => a.victim === m[1] && a.token === m[2])) out.push({ victim: m[1], token: m[2], tx: e.tx, ts: e.ts })
+  })
+  return out
+}
+
+/** well-known stablecoins, for wording when the data carries no symbol */
+const KNOWN_TOKENS: Record<string, string> = {
+  '0xdac17f958d2ee523a2206206994597c13d831ec7': 'USDT', '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': 'USDC',
+  '0x55d398326f99059ff775485246999027b3197955': 'USDT', '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d': 'USDC',
+  '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913': 'USDC', 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t': 'USDT',
+}
+export const tokenSymbol = (token: string | null | undefined, symbol?: string | null) =>
+  symbol || (token ? KNOWN_TOKENS[token] || KNOWN_TOKENS[token.toLowerCase()] || null : null)
+
 export function methodProfile(cs: Case[]) {
   const sig = cs.map(c => new Set([...c.labels, ...c.evidence.map(e => e.type)]))
   return METHOD_AXES.map(([axis, keys]) => ({
@@ -117,6 +141,9 @@ export function buildModel(raw: DataJson): Model {
       drainList: [],
       isWallet,
       title: caseTitle(c, isWallet),
+      approvals: approvalsOf(c),
+      approvalOnly: !(c.drains || 0) && !(c.usd || 0) &&
+        ((c.open_allowances || []).length > 0 || [...(c.labels || []), ...(c.evidence || []).map(e => e.type)].some(k => APPROVAL_SIGNS.test(k))),
       famLabel: c.family ? famLabel(c.family, c.family_name, c.family_name_source) : null,
       famSource: c.family ? (c.family_name && c.family_name_source !== 'hash' ? c.family_name_source || null : V_SRC(c.family)) : null,
       caseNo: 'DW-' + chainShort(c.chain).toUpperCase().slice(0, 3) + '-' + c.address.slice(-4).toUpperCase(),
@@ -127,9 +154,10 @@ export function buildModel(raw: DataJson): Model {
     const key = caseKey(d.chain, d.drainer)
     const c = byKey.get(key)
     const row = { ...d, t: Date.parse(d.ts), tier: c ? c.tier : null, key }
-    if (c) c.drainList.push(row)
+    if (c) { c.drainList.push(row); c.approvalOnly = false }
     return row
   })
+  cases.forEach(c => { if (c.approvalOnly && !c.family && !c.contract_name && !c.isWallet) c.title = 'Kit spender' })
   cases.sort((a, b) => TIER_RANK[a.tier] - TIER_RANK[b.tier] || Date.parse(b.last_seen) - Date.parse(a.last_seen))
 
   // families (kit radar)
