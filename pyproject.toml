@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "drainer-watch"
 version = "0.1.0"
-description = "Monitor of crypto drainer contracts on Ethereum, BSC and Base with deployer and VASP links"
+description = "Monitor of crypto drainer contracts on Ethereum, BSC, Base and TRON with deployer and VASP links"
 license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.11"

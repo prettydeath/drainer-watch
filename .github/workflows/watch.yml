@@ -2,15 +2,16 @@ name: watch
 
 on:
   schedule:
+    # fallback heartbeat only: GitHub throttles schedules on young repos, the cadence comes from the self re-dispatch below
     - cron: "3-59/10 * * * *"
   workflow_dispatch:
     inputs:
       max_blocks:
-        description: "Blocks per chain for this run (empty = defaults: eth 100, base 400, bsc 800)"
+        description: "Blocks per chain for this run (empty = defaults: eth 100, base 450, bsc 2000, tron 300)"
         default: ""
       budget_sec:
         description: "Time budget in seconds"
-        default: "300"
+        default: "420"
 
 permissions:
   contents: write
@@ -52,11 +53,12 @@ jobs:
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
           BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+          TRONGRID_API_KEYS: ${{ secrets.TRONGRID_API_KEYS }}
           DASHBOARD_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
           MB="${{ github.event.inputs.max_blocks }}"
           BS="${{ github.event.inputs.budget_sec }}"
-          python -m drainerwatch run --budget-sec "${BS:-300}" ${MB:+--max-blocks "$MB"}
+          python -m drainerwatch run --budget-sec "${BS:-420}" ${MB:+--max-blocks "$MB"}
 
       - name: Publish to the data branch (single orphan commit)
         id: publish
@@ -82,3 +84,26 @@ jobs:
       pages: write
       id-token: write
     uses: ./.github/workflows/pages.yml
+
+  # Self re-dispatch: keeps a ~10 min cadence without relying on cron. The next run is queued behind this one by the
+  # concurrency group; nothing is dispatched when another watch run is already queued (no pile-up, no tight loop).
+  next:
+    needs: run
+    if: ${{ always() && needs.run.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      actions: write
+    steps:
+      - name: Wait for the next slot and re-dispatch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          started=$(gh api "repos/$GH_REPO/actions/runs/${{ github.run_id }}" --jq .run_started_at)
+          elapsed=$(( $(date -u +%s) - $(date -u -d "$started" +%s) ))
+          wait=$(( 540 - elapsed )); [ $wait -gt 0 ] && sleep $wait
+          queued=$(gh api "repos/$GH_REPO/actions/workflows/watch.yml/runs?per_page=20"             --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.status=="queued" or .status=="waiting" or .status=="pending" or .status=="requested")] | length')
+          if [ "$queued" -gt 0 ]; then echo "another watch run is already queued ($queued); not dispatching"; exit 0; fi
+          gh workflow run watch.yml --ref "${{ github.ref_name }}"
+          echo "dispatched the next run"

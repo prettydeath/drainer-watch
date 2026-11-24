@@ -1,6 +1,6 @@
 # drainer-watch — MVP spec (P0)
 
-Real-time-ish monitor of crypto drainer contracts on ETH / BSC / Base, published as a static
+Real-time-ish monitor of crypto drainer contracts on ETH / BSC / Base / TRON, published as a static
 dashboard (GitHub Actions + Pages), same pattern as `C:\Claude code\usdt-freeze-watch`
 (package `freezewatch`: requests-only, sqlite in `data/`, `template.html` -> `site/index.html`).
 Read that project first and mirror its conventions (util.http_json retries, key_pool, meta cursor,
@@ -31,11 +31,18 @@ Deps: `requests`, `pycryptodome` (keccak for selectors/topics). Python >=3.11.
   (`chain,address,label,source`) for operator-supplied seeds. Refresh at most once per 6 h.
 - Optional keyed enrichment: Etherscan V2 (`ETHERSCAN_API_KEYS`, comma list, chainid 1/56/8453) —
   best-effort only (free tier may not cover BSC/Base; failure must not break the run).
-- Prices: CoinGecko simple price (keyless) for ETH, BNB; stablecoins = 1.0. Other tokens: amount only, usd=null.
+- TRON: TronGrid HTTP API (env `TRON_API_URL`, default `https://api.trongrid.io`; keys `TRONGRID_API_KEYS`, comma
+  list, header `TRON-PRO-API-KEY`, round robin with cooldown on the credit limit; keyless works at a lower rate).
+- Prices: CoinGecko simple price (keyless) for ETH, BNB, TRX; stablecoins = 1.0. Other tokens: amount only, usd=null.
 
 ## Ingestion (per chain, incremental cursor in `meta`)
 - First run starts at `latest - initial_blocks` (default 300). Each run processes up to
-  `--max-blocks` (default eth 100, base 400, bsc 800) within `--budget-sec`; lag is reported, not hidden.
+  `--max-blocks` (default eth 100, base 450, bsc 2000, tron 300) within `--budget-sec`; lag is reported, not hidden.
+- Head-first: when the lag exceeds one run's `max_blocks`, the cursor jumps to `head - max_blocks` and the skipped
+  range is stored in `meta gaps:<chain>` (last 50) and published as `chains[c].gaps` / `gap_blocks` ("not scanned").
+- TRON (`tron_scan.py`): `getblockbylimitnext` (all txs with type, owner, calldata, call value, fee limit, signatures)
+  + `gettransactioninfobyblocknum` per block (TRC-20 Transfer/Approval logs, fee, internal TRX), chunks of 20 blocks.
+  Addresses are stored in base58 (`T…`); contract info (`getcontractinfo`: runtime + origin) cached in `tron_contracts`.
 - All chains: `eth_getLogs` for topic0 ∈ {Transfer, Approval} over adaptive block chunks
   (halve on "too many results"/timeout). Transfer with 3 topics = ERC-20 (ignore 4-topic ERC-721 in MVP,
   but count `ApprovalForAll` (topic0) to seed operators).
@@ -114,6 +121,27 @@ Deps: `requests`, `pycryptodome` (keccak for selectors/topics). Python >=3.11.
   tx,ts,amount,usd,confidence, UNIQUE(chain,subject,counterparty,kind,tx))`.
 - Per-entity aggregate in data.json for law-enforcement use (where to send VASP requests).
 
+## TRON rules (tron_detectors.py, tron_scan.py)
+- T-1 `kit_pull`: a third party's tokens pulled through a contract whose dispatcher is a drainer kit (`verify_account`,
+  `owner_collector`, `ms_drainer`, `buytron_*`) or the R-A2 owner-gated parametric puller (TVM-aware: CALLTOKEN counts as
+  a call). Kit dispatcher + pull = T1; puller only = T2. Cross-tx split R-A1 (`split_xtx`, share ≤ 0.99, 98/2).
+- D2 `split_pull` single-tx split through a contract (0.60–0.95, 2–3 recipients).
+- T-3 `tron_approval`: 10^46 with feeLimit 35 TRX = `approval_fingerprint` (T1), 10^46 otherwise (T2); `daea85c5(address)`
+  (T2); approve(exact) with feeLimit 300 TRX followed by transfer(spender, 0|amount) (T2, T1 with ≥ 3 victims);
+  increaseApproval MAX to a < 30-day-old EOA or a kit/puller contract (T3). A spender with any of these that then calls
+  `transferFrom` gets `eoa_spender_pull`.
+- T-4 `prefund_approve`: whole-TRX 5–100 transfer to a wallet that approves the funder or a contract it created within
+  6 h (T3; ≥ 3 victims with the same amount T2). Payout role `funder` links the spender to the funder.
+- T-5 `bait_payable` on TRON: payable bait(address) on a contract with bait selectors; `claimer_split` when the value is
+  min(balance − 50 TRX, 0.8·balance) (post-call balance from getaccount) → T1 with the kit dispatcher.
+- T-6 `perm_hijack`: AccountPermissionUpdate leaving the account's own key insufficient (owner, or all actives) on an
+  account ≥ 30 days old, where one foreign key alone (or with the account's own key) can sign — several foreign keys that
+  must co-sign are an organisation multisig and are skipped; subject = heaviest foreign key; T3, ≥ 3 accounts T2; an outflow whose signature
+  recovers to the controller key = `perm_hijack_drain` T1.
+- T-7 `fixed_fee`: whole-TRX transfer 5–100 from the puller (or recipient) within 60 s after a third-party pull; ≥ 2 hits
+  with the same amount T3, ≥ 3 victims T2.
+- T-8 `zero_transfer_spoof`: ≥ 3 zero-value USDT legs out of other wallets in one chunk; T3 only, no victims/drains.
+
 ## Tiers / score
 - T1 confirmed: seed with observed activity, OR D2 with ≥3 distinct victims, OR D2 + family match.
 - T2 strong: D2 with 1–2 victims, D4, family match to seed (D5) with any activity.
@@ -130,10 +158,11 @@ drains(chain,tx,log_index,ts,victim,drainer,token,symbol,decimals,amount,usd,rec
 payouts(chain,drainer,wallet,role,share,txs, PRIMARY KEY(chain,drainer,wallet))
 approvals(chain,owner,spender,token,tx,block,ts)  -- rolling 7 d, pruned
 tokens(chain,address,symbol,decimals) · codes(chain,address,code_hash,size,skeleton,selectors JSON)
+tron_contracts(address,is_contract,size,kit,puller,origin,name,selectors,checked_at) · tron_fund(funder,recipient,amount,tx,ts,block)
 seeds(address,chain NULL,label,source,added) · meta(k,v)
 
 ## CLI
-`drainerwatch run [--chains eth,bsc,base] [--max-blocks N] [--budget-sec S]` (scan + detect + render)
+`drainerwatch run [--chains eth,bsc,base,tron] [--max-blocks N] [--budget-sec S] [--env-file F]` (scan + detect + render)
 `drainerwatch loop --interval 60` (for a Linux box) · `drainerwatch render` · `drainerwatch seeds`
 `drainerwatch backtest --chain eth --from-block A --to-block B` (no cursor change)
 Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on new T1/T2 only; else no-op.
@@ -142,7 +171,9 @@ Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on 
 ```json
 {
   "generated_at": "2026-11-23T10:00:00Z",
-  "chains": {"eth": {"cursor_block": 0, "head_block": 0, "lag_blocks": 0, "last_scan_at": "", "explorer": "https://etherscan.io"}},
+  "chains": {"eth": {"cursor_block": 0, "head_block": 0, "lag_blocks": 0, "last_scan_at": "", "explorer": "https://etherscan.io",
+                     "tx_path": "tx", "native": "ETH", "block_sec": 12, "gap_blocks": 0,
+                     "gaps": [{"from": 0, "to": 0, "at": "2026-11-24T10:00:00Z"}]}},
   "totals": {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0},
   "contracts": [{"chain": "eth", "address": "0x…", "tier": "T1", "score": 90, "source": "detector|scamsniffer|local",
                  "family": "f_ab12cd or null", "labels": ["split_pull", "seed"], "first_seen": "", "last_seen": "",
