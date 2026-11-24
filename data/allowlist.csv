@@ -3,3 +3,4 @@ chain,address,note
 eth,0xd980df2a697bfd38279be1ee2bc13495c101d5c9,TransparentUpgradeableProxy of a verified redemption vault (impl 0x84a3a13ee09cf79e41e2ef6b926bc7b15f122882)
 bsc,0x0000a8b6741441bb4ba0dfe313a2bc7b2cf10000,FlapTokenLocker (BscScan verified token locker of the Flap launchpad; lock() pulls via transferFrom)
 bsc,0xb5d2fc5628ae5537a9c62e9fca1c242b470d455a,MaxionNFTMarketplaceV2 (BscScan verified NFT marketplace)
+base,0x0000000000006ac72ed1d192fa28f0058d3f8806,Guest (BaseScan verified 0xsequence wallet Guest module for dispatching batched calls)
