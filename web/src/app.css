@@ -415,7 +415,7 @@ svg.gantt { display: block; font-size: 11px; }
   .ledger.rank td.nil { display: none; }
   .frz .hint { max-width: none; }
 }
-.frz tr.row { cursor: default; }
+
 .frz .ledger.rank .who { min-width: 0; }
 
 .ledger tr.has-warn td { border-bottom: 0; }
@@ -429,3 +429,15 @@ svg.gantt { display: block; font-size: 11px; }
   .ledger.rank tr.row.has-warn { border-bottom: 0; }
   .frz-warn-n { margin-left: 0; flex-basis: 100%; }
 }
+/* wallet files */
+.wlink { font-size: 12.5px; font-style: italic; white-space: nowrap; }
+.wlink::after { content: " \203A"; font-style: normal; }
+.wl-drainers { font-size: 14px; }
+.wl-drainers td { white-space: normal; vertical-align: top; line-height: 1.45; padding-top: 5px; padding-bottom: 5px; }
+.wl-drainers .sub { display: block; font-size: 12px; color: var(--muted-foreground); }
+.wl-drainers .tg { color: var(--tc); }
+.frz tr.row { cursor: pointer; }
+.frz tr.row:hover td, .frz tr.row:focus-visible td { background: var(--muted); }
+.kits > * { min-width: 0; } .scope-card { max-width: 100%; } @media (max-width: 1180px) { .scope-card { max-width: min(620px, 100%); } }
+.fam-grid > * { min-width: 0; } .fam h3, .fam .famsrc, .file h3 { overflow-wrap: anywhere; }
+.wl-drainers th { white-space: nowrap; }

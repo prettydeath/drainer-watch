@@ -10,6 +10,7 @@ import {
 import { ago, toMs } from '@/lib/format'
 import { buildModel } from '@/lib/model'
 import { famLabel } from '@/lib/vocab'
+import { walletFile } from '@/lib/wallet'
 import type { Contract, DataJson, Drain } from '@/lib/types'
 
 const fixture = JSON.parse(readFileSync(resolve(import.meta.dirname, '../../../tests/fixtures/sample_data.json'), 'utf8')) as DataJson
@@ -228,6 +229,51 @@ describe('approval-only subjects and open allowances', () => {
     expect(page).toContain('Confirmed kit spender (approval fingerprint)')
     expect(page).toMatch(/Still exposed/)
     expect(page).toMatch(/Not checked yet/)
+  })
+})
+
+describe('wallet case files', () => {
+  const coll = '0xc011ec7000000000000000000000000000000001'
+  it('parses #wallet:chain:address', () => {
+    expect(parseRoute('#wallet:tron:TWJbeT1111111111111111111111111111')).toEqual({ tab: null, caseRef: null, walletRef: { chain: 'tron', address: 'TWJbeT1111111111111111111111111111' } })
+  })
+  it('falls back to payouts and published drains without the wallets aggregate', () => {
+    const w = walletFile(mk(), 'eth', coll)
+    expect(w.full).toBe(false)
+    expect(w.roles).toEqual(['collector'])
+    expect(w.drainers.map(d => [d.drainer, d.usd, d.txs])).toEqual([['0xa', 100, 1], ['0xb', 50, 1]])
+    expect(w.nIn).toBe(2)
+    expect(w.totalIn).toBe(150)
+    expect(w.known).toBe(true)
+    expect(walletFile(mk(), 'eth', '0xnobody').known).toBe(false)
+  })
+  it('uses the backend aggregate when present', () => {
+    const m = buildModel({ ...base, contracts: [C({ address: '0xa', usd: 500 })], wallets: { ['eth:' + coll]: {
+      roles: ['collector'], drainers: [{ drainer: '0xa', tier: 'T1', role: 'collector', share: 0, usd: 900, txs: 60, first: '2026-11-01T00:00:00Z', last: '2026-11-24T00:00:00Z' }],
+      inflows: [{ tx: '0x1', ts: '2026-11-24T00:00:00Z', victim: '0xv', drainer: '0xa', token: null, symbol: 'USDT', amount: '5', usd: 5 }],
+      outflows_known: [], first_in: '2026-11-01T00:00:00Z', last_in: '2026-11-24T00:00:00Z', total_in_usd: 900, n_in: 60 } } })
+    const w = walletFile(m, 'eth', coll)
+    expect(w).toMatchObject({ full: true, nIn: 60, totalIn: 900, bestTier: 'T1' })
+    expect(w.drainers[0].c?.address).toBe('0xa')
+  })
+  it('opens from #wallet: and from a freezable row; no "How to request" column', async () => {
+    const c = fixture.contracts[0]
+    const w = c.payouts[0].wallet
+    history.replaceState(null, '', '#wallet:' + c.chain + ':' + w)
+    render(<App data={fixture} />)
+    await waitFor(() => expect(document.querySelector('[data-wallet="' + c.chain + ':' + w + '"]')).toBeTruthy(), { timeout: 15000 })
+    expect(document.querySelector('[data-wallet]')!.textContent).toMatch(/Linked drainers/)
+    cleanup()
+    history.replaceState(null, '', '#analytics')
+    render(<App data={{ ...fixture, freezable: [{ chain: c.chain, address: w, role: 'collector', drainer: c.address, drainer_tier: c.tier, token: null, symbol: 'USDT', issuer: 'Tether', balance: '10', usd: 10, already_frozen: false, checked_at: 1795526327 }] }} />)
+    const row = await waitFor(() => { const r = document.querySelector('[data-frz-row]') as HTMLElement; expect(r).toBeTruthy(); return r }, { timeout: 15000 })
+    expect(screen.queryByText('How to request')).toBeNull()
+    fireEvent.click(row)
+    await waitFor(() => expect(document.querySelector('[data-wallet]')).toBeTruthy(), { timeout: 15000 })
+    expect(location.hash).toBe('#wallet:' + c.chain + ':' + w)
+    fireEvent.click(screen.getByRole('button', { name: 'Close file' }))
+    await waitFor(() => expect(document.querySelector('[data-wallet]')).toBeNull())
+    expect(location.hash).toBe('#analytics')
   })
 })
 

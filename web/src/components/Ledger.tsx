@@ -3,6 +3,7 @@ import { fmtDay, fmtTime, fmtUSD } from '@/lib/format'
 import type { Case, Model } from '@/lib/model'
 import { chainShort } from '@/lib/vocab'
 import { Addr, Tx, tv } from './shared'
+import { WalletLink } from './nav'
 
 const PAGE = 14
 
@@ -26,7 +27,7 @@ export function DrainLedger({ model, onOpen }: { model: Model; onOpen: (c: Case)
       </div>
       {rows.length ? (
         <table className="ledger">
-          <thead><tr><th>Time, UTC</th><th>Tier</th><th>Drainer</th><th className="hide-sm">Victim</th><th className="r">Value</th><th className="r">Proof</th></tr></thead>
+          <thead><tr><th>Time, UTC</th><th>Tier</th><th>Drainer</th><th className="hide-sm">Victim</th><th className="hide-sm">To</th><th className="r">Value</th><th className="r">Proof</th></tr></thead>
           <tbody>
             {rows.slice(0, n).map(d => {
               const c = model.byKey.get(d.key)
@@ -37,6 +38,7 @@ export function DrainLedger({ model, onOpen }: { model: Model; onOpen: (c: Case)
                   <td><span className="tg">{d.tier}</span></td>
                   <td><Addr value={d.drainer} chain={d.chain} /> <span className="muted small">{chainShort(d.chain)}</span></td>
                   <td className="hide-sm"><Addr value={d.victim} chain={d.chain} /></td>
+                  <td className="hide-sm">{d.recipient && d.recipient !== d.drainer ? <><Addr value={d.recipient} chain={d.chain} /> <WalletLink chain={d.chain} address={d.recipient} /></> : <span className="muted small">drainer</span>}</td>
                   <td className="r">{d.usd == null ? <span className="muted">unpriced{d.symbol ? ' ' + d.symbol : ''}</span> : fmtUSD(d.usd)}</td>
                   <td className="r"><Tx chain={d.chain} tx={d.tx}>tx</Tx></td>
                 </tr>

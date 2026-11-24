@@ -6,6 +6,7 @@ import { CaseFiles } from '@/components/CaseFiles'
 import { DrainLedger, Exposure } from '@/components/Ledger'
 import { Flow } from '@/components/Flow'
 import { ThemeToggle, tv, useTheme } from '@/components/shared'
+import { WalletNav } from '@/components/nav'
 import { ago, fmtInt, fmtStamp, fmtUSD, plural } from '@/lib/format'
 import { buildModel, type Case, type Model } from '@/lib/model'
 import { parseRoute, type Tab } from '@/lib/analytics'
@@ -15,6 +16,7 @@ import { TIERS, TIER_NAME, TIER_ORDER } from '@/lib/vocab'
 const Kits = lazy(() => import('@/components/Kits'))
 const Analytics = lazy(() => import('@/components/Analytics'))
 const CaseSpread = lazy(() => import('@/components/CaseSpread'))
+const WalletSpread = lazy(() => import('@/components/WalletSpread'))
 
 type Load = { state: 'loading' } | { state: 'error'; error: string } | { state: 'ready'; model: Model }
 
@@ -52,6 +54,7 @@ export default function App({ data }: { data?: DataJson }) {
 
 function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: () => void }) {
   const [open, setOpen] = useState<Case | null>(null)
+  const [wallet, setWallet] = useState<{ chain: string; address: string } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [withSuspects, setWithSuspects] = useState(false)
@@ -61,6 +64,7 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
   const syncHash = useCallback(() => {
     const r = parseRoute(location.hash)
     if (r.tab) setTab(r.tab)
+    setWallet(r.walletRef || null)
     const h = r.caseRef
     if (!h) { setOpen(null); return }
     const c = model.byKey.get(h.chain + ':' + h.address) ||
@@ -80,17 +84,26 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
     return () => { removeEventListener('hashchange', syncHash); removeEventListener('popstate', syncHash) }
   }, [syncHash])
   const openCase = useCallback((c: Case) => {
+    setWallet(null)
     setOpen(c)
     const want = '#' + c.key
     if (location.hash !== want) history.pushState(null, '', want)
   }, [])
+  const openWallet = useCallback((chain: string, address: string) => {
+    setOpen(null)
+    setWallet({ chain, address })
+    const want = '#wallet:' + chain + ':' + address
+    if (location.hash !== want) history.pushState(null, '', want)
+  }, [])
   const close = useCallback(() => {
     setOpen(null)
-    if (parseHash()) history.replaceState(null, '', location.pathname + location.search + (tab === 'analytics' ? '#analytics' : ''))
+    setWallet(null)
+    if (parseHash() || parseRoute(location.hash).walletRef) history.replaceState(null, '', location.pathname + location.search + (tab === 'analytics' ? '#analytics' : ''))
   }, [tab])
   const pickTab = useCallback((t: Tab) => (e: React.MouseEvent) => {
     e.preventDefault()
     setOpen(null)
+    setWallet(null)
     setTab(t)
     if (location.hash !== '#' + t) history.pushState(null, '', '#' + t)
     window.scrollTo(0, 0)
@@ -105,6 +118,7 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
   const stale = Date.now() - model.now > 2 * 3600e3
 
   return (
+    <WalletNav.Provider value={openWallet}>
     <div className="desk">
       <header className="mast">
         <div>
@@ -199,7 +213,9 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
       <footer className="foot">
         Drainer Watch is an automated, public monitor. Every claim links to its transaction; a tier is an assessment, not a verdict. Data: <a href="data.json">data.json</a>. Source and method: <a href="https://github.com/prettydeath/drainer-watch">github.com/prettydeath/drainer-watch</a>.
       </footer>
+      {wallet ? <Boundary key={'w' + wallet.chain + wallet.address} what="wallet file"><Suspense fallback={null}><WalletSpread chain={wallet.chain} address={wallet.address} model={model} onClose={close} onOpen={openCase} /></Suspense></Boundary> : null}
       {open ? <Boundary key={open.key} what="case file"><Suspense fallback={null}><CaseSpread c={open} model={model} onClose={close} onOpen={openCase} /></Suspense></Boundary> : null}
     </div>
+    </WalletNav.Provider>
   )
 }

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, XAxis, YAxis } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import {
-  DEFAULT_FILTER, WINDOWS, atRisk, drainWindow, fmtAllowance, freezeHint, freezeHintShort, freezeRows, freezeSummary, drainerRows, fmtDuration, perChainSeries, recipients, sortRows, summarize, toCSV, windowOf,
+  DEFAULT_FILTER, WINDOWS, atRisk, drainWindow, fmtAllowance, freezeRows, freezeSummary, drainerRows, fmtDuration, perChainSeries, recipients, sortRows, summarize, toCSV, windowOf,
   type DrainerRow, type Filter, type FreezeRow, type Recipient, type SortKey,
 } from '@/lib/analytics'
 import { DAY, ago, fmtDay, fmtInt, fmtStamp, fmtTime, fmtUSD, mid, plural } from '@/lib/format'
@@ -10,6 +10,7 @@ import type { Case, Model } from '@/lib/model'
 import type { Freezable, Tier } from '@/lib/types'
 import { TIER_NAME, TIER_ORDER, chainLong, chainShort, famSourceNote, labelInfo, roleInfo } from '@/lib/vocab'
 import { Addr, tv, useMedia } from './shared'
+import { WalletLink, WalletNav } from './nav'
 
 const PAGE = 25
 const TOP_BARS = 15
@@ -91,7 +92,7 @@ function FreezableNow({ model, onOpen }: { model: Model; onOpen: (c: Case) => vo
   const s = useMemo(() => freezeSummary(model), [model])
   const [n, setN] = useState(10)
   const [by, setBy] = useState<'traceable' | 'balance'>('traceable')
-  const small = useMedia('(max-width: 640px)')
+  const openWallet = useContext(WalletNav)
   const rows = useMemo(() => freezeRows(model, by), [model, by])
   const head = <div className="sect-h"><h2>Freezable now</h2><p>Stablecoins on drainer-linked wallets that the issuer can still freeze, with how much of each balance drains can explain.</p></div>
   if (!model.freezable || !s)
@@ -123,31 +124,32 @@ function FreezableNow({ model, onOpen }: { model: Model; onOpen: (c: Case) => vo
             <div className="frz-two">
               <div className="rank-wrap">
                 <table className="ledger rank">
-                  <thead><tr><th className="r">#</th><th>Address</th><th>Linked drainer and evidence</th><th>Token</th><th className="r">Balance</th><th className="r">Known drained</th><th>Status</th><th>How to request</th></tr></thead>
+                  <thead><tr><th className="r">#</th><th>Address</th><th>Linked drainer and evidence</th><th>Token</th><th className="r">Balance</th><th className="r">Known drained</th><th>Status</th></tr></thead>
                   <tbody>
                     {rows.slice(0, n).map((r, i) => {
                       const { f, c } = r
                       const tier = c?.tier || f.drainer_tier
                       const ev = c ? [...new Set([...c.labels, ...c.evidence.map(e => e.type)])].map(l => labelInfo(l)[0]) : []
                       return [
-                        <tr key={'r' + i} className={'row' + (f.already_frozen ? ' frozen' : '') + (r.untraced && !f.already_frozen ? ' has-warn' : '')} data-frz-row={f.address} style={css({ '--tc': tv(tier) })}>
+                        <tr key={'r' + i} className={'row' + (f.already_frozen ? ' frozen' : '') + (r.untraced && !f.already_frozen ? ' has-warn' : '')} data-frz-row={f.address} style={css({ '--tc': tv(tier) })}
+                          tabIndex={0} onClick={() => openWallet?.(f.chain, f.address)} onKeyDown={e => { if (e.key === 'Enter' && e.target === e.currentTarget) openWallet?.(f.chain, f.address) }}
+                          aria-label={'Open the wallet file of ' + f.address}>
                           <td className="r rk" data-l="#">{i + 1}</td>
                           <td className="who" data-l="Address" data-rank={i + 1} data-tier={(f.symbol || '') + ' on ' + chainLong(f.chain)}>
                             <Addr value={f.address} chain={f.chain} link /> <span className="muted small">{chainShort(f.chain)}</span>
                             <span className="kit">{roleInfo(f.role)[0].toLowerCase()}</span>
                           </td>
                           <td data-l="Linked drainer" className="wrapc">
-                            {tier ? <span className="tg">{tier}</span> : null} {c ? <button className="linkbtn mono small" onClick={() => onOpen(c)}>{mid(f.drainer, 6, 4)}</button> : <Addr value={f.drainer} chain={f.chain} />}
+                            {tier ? <span className="tg">{tier}</span> : null} {c ? <button className="linkbtn mono small" onClick={e => { e.stopPropagation(); onOpen(c) }}>{mid(f.drainer, 6, 4)}</button> : <Addr value={f.drainer} chain={f.chain} />}
                             {ev.length ? <span className="sub ev" title={ev.join(', ')}>{ev.slice(0, 2).join(', ')}{ev.length > 2 ? ' +' + (ev.length - 2) : ''}</span> : null}
                           </td>
                           <td data-l="Token"><span className="iss" style={css({ '--ic': ISSUER_COLOR(issuerOf(f)) })}><i />{f.symbol || 'token'}</span><span className="sub">{issuerOf(f)}</span></td>
                           <td className="r" data-l="Balance"><b className="num">{f.usd == null ? <span className="muted">unpriced</span> : fmtUSD(f.usd)}</b><span className="sub num">{fmtBal(f.balance)} {f.symbol || ''}</span></td>
                           <td className="r" data-l="Known drained"><span className="num">{c ? fmtUSD(r.known) : <span className="muted">unknown</span>}</span><span className="sub">traceable {fmtUSD(r.traceable)}</span></td>
                           <td data-l="Status">{f.already_frozen ? <span className="badge-frozen">already frozen</span> : <span className="muted">not frozen</span>}{f.checked_at ? <span className="sub" title={fmtStamp(f.checked_at)}>checked {ago(f.checked_at, model.now)}</span> : null}</td>
-                          <td className="wrapc hint" data-l="How to request">{f.already_frozen ? <span className="muted">nothing to request</span> : <span title={freezeHint(issuerOf(f), f.symbol)}>{small ? freezeHint(issuerOf(f), f.symbol) : freezeHintShort(issuerOf(f), f.symbol)}</span>}</td>
                         </tr>,
                         r.untraced && !f.already_frozen ? (
-                          <tr key={'w' + i} className="warnrow"><td colSpan={8}><span className="frz-warn">Most of this balance is not traced to drains ({fmtUSD(f.usd || 0)} held, {fmtUSD(r.known)} known drained through this drainer). Verify before requesting a freeze.</span></td></tr>
+                          <tr key={'w' + i} className="warnrow"><td colSpan={7}><span className="frz-warn">Most of this balance is not traced to drains ({fmtUSD(f.usd || 0)} held, {fmtUSD(r.known)} known drained through this drainer). Verify before requesting a freeze.</span></td></tr>
                         ) : null,
                       ]
                     })}
@@ -237,7 +239,7 @@ function Recipients({ r }: { r: DrainerRow }) {
     <ul className="recips">
       {shown.map(p => (
         <li key={p.wallet + p.role}>
-          <Addr value={p.wallet} chain={r.c.chain} link /> <span className="muted small" title={roleInfo(p.role)[1]}>{roleInfo(p.role)[0].toLowerCase()}{p.share ? ' ' + Math.round(p.share * 100) + '%' : ''}</span>
+          <Addr value={p.wallet} chain={r.c.chain} link /> <span className="muted small" title={roleInfo(p.role)[1]}>{roleInfo(p.role)[0].toLowerCase()}{p.share ? ' ' + Math.round(p.share * 100) + '%' : ''}</span> <WalletLink chain={r.c.chain} address={p.wallet} />
         </li>
       ))}
       {r.recipients.length > 2 ? (
@@ -420,6 +422,7 @@ function Gantt({ rows, now, onOpen }: { rows: DrainerRow[]; now: number; onOpen:
 const recConfig = { usd: { label: 'Received', color: 'var(--chart-3)' } } satisfies ChartConfig
 
 function WhoReceives({ recs, onOpen }: { recs: Recipient[]; onOpen: (c: Case) => void }) {
+  const openWallet = useContext(WalletNav)
   const data = useMemo(() => recs.filter(r => r.usd > 0).slice(0, TOP_RECIPIENTS)
     .map(r => ({ id: r.chain + ':' + r.wallet, usd: Math.round(r.usd), n: r.drainers.length, rec: r })), [recs])
   const ticks = useMemo(() => new Map(data.map(d => [d.id, { addr: d.rec.wallet, chain: d.rec.chain }])), [data])
@@ -439,7 +442,7 @@ function WhoReceives({ recs, onOpen }: { recs: Recipient[]; onOpen: (c: Case) =>
               formatter={(v, _n, item) => { const r = (item.payload as { rec: Recipient }).rec; return (
                 <span className="flex w-full flex-col gap-0.5"><span className="flex justify-between gap-3"><span className="muted">Received</span><b className="num">{fmtUSD(Number(v))}</b></span><span className="flex justify-between gap-3"><span className="muted">Fed by</span><b className="num">{plural(r.drainers.length, 'drainer')}</b></span><span className="mono" style={{ fontSize: 11 }}>{r.wallet}</span>{r.basis === 'window' ? <span className="muted">from the published drains only</span> : null}</span>
               ) }} />} />
-            <Bar dataKey="usd" radius={[0, 2, 2, 0]} isAnimationActive={false}>
+            <Bar dataKey="usd" radius={[0, 2, 2, 0]} isAnimationActive={false} cursor="pointer" onClick={(d: unknown) => { const r = (d as { payload?: { rec?: Recipient } })?.payload?.rec; if (r) openWallet?.(r.chain, r.wallet) }}>
               {data.map(d => <Cell key={d.id} fill={d.n >= 2 ? 'var(--t1)' : 'var(--chart-3)'} />)}
               <LabelList dataKey="n" position="right" className="barlabel" formatter={(v: unknown) => plural(Number(v), 'drainer')} />
             </Bar>
@@ -449,7 +452,7 @@ function WhoReceives({ recs, onOpen }: { recs: Recipient[]; onOpen: (c: Case) =>
       <ul className="links reclist">
         {list.map(r => (
           <li key={r.chain + r.wallet}>
-            <Addr value={r.wallet} chain={r.chain} h={8} t={6} link />
+            <Addr value={r.wallet} chain={r.chain} h={8} t={6} link /> <WalletLink chain={r.chain} address={r.wallet} />
             <span className="muted small">{r.roles.map(x => roleInfo(x)[0].toLowerCase()).join(', ')}, {chainShort(r.chain)}</span>
             <span className={'small' + (r.drainers.length >= 2 ? ' shared' : '')}>fed by {r.drainers.length >= 2 ? <b>{r.drainers.length} drainers</b> : '1 drainer'}:</span>
             {r.drainers.slice(0, 3).map(c => <button key={c.key} className="linkbtn small mono" onClick={() => onOpen(c)}>{mid(c.address, 6, 4)}</button>)}

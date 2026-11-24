@@ -8,6 +8,7 @@ import { addrUrl, hasExplorer, tokenSymbol, type Case, type Model } from '@/lib/
 import { fmtAllowance } from '@/lib/analytics'
 import { TIERS, TIER_NAME, chainLong, chainShort, famSourceNote, kindText, labelInfo, roleInfo, viaText } from '@/lib/vocab'
 import { Addr, FullId, Tx, reduceMotion, tv } from './shared'
+import { WalletLink } from './nav'
 
 const B58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
 const MAX_TIMELINE_DAYS = 90
@@ -101,7 +102,7 @@ function Freeze({ c, model }: { c: Case; model: Model }) {
     <ul className="links">
       {g.rows.map((f, i) => (
         <li key={i}>
-          <Addr value={f.address} chain={f.chain} link />
+          <Addr value={f.address} chain={f.chain} link /> <WalletLink chain={f.chain} address={f.address} />
           <span className="muted small">{roleInfo(f.role)[0].toLowerCase()}</span>
           <span>{f.usd == null ? <span className="muted">unpriced</span> : fmtUSD(f.usd)} {f.symbol || ''}{f.issuer ? <span className="muted small"> ({f.issuer})</span> : null}</span>
           {f.already_frozen ? <span className="badge-frozen">already frozen</span> : null}
@@ -226,7 +227,7 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
               <h4>Timeline</h4>
               <Timeline c={c} now={model.now} />
               <h4>Subjects</h4>
-              <ul className="subjects">{subj.map(([k, v], i) => <li key={i}><span>{k}</span><FullId value={v} chain={c.chain} /></li>)}</ul>
+              <ul className="subjects">{subj.map(([k, v], i) => <li key={i}><span>{k}</span><FullId value={v} chain={c.chain} />{i > 0 && v && c.payouts.some(p => p.wallet === v) ? <WalletLink chain={c.chain} address={v} label="wallet file" /> : null}</li>)}</ul>
               <h4>Cluster</h4>
               {cl ? (
                 <ul className="links">

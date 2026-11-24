@@ -152,6 +152,21 @@ export interface Freezable {
   checked_at: string | number | null
 }
 
+/** per-wallet aggregate from render.py (`wallets`), keyed "chain:address" */
+export interface WalletDrainer { drainer: string; tier: Tier | null; role: string | null; share: number | null; usd: number; txs: number; first: string | null; last: string | null }
+export interface WalletInflow { tx: string; ts: string; victim: string; drainer: string; token: string | null; symbol: string | null; amount: string | null; usd: number | null }
+export interface WalletOutflow { counterparty: string; kind: string; entity: string | null; category: string | null; tx: string | null; tx_in: string | null; ts: string; amount: string | null; symbol: string | null; usd: number | null; confidence: string | null }
+export interface WalletAgg {
+  roles: string[]
+  drainers: WalletDrainer[]
+  inflows: WalletInflow[]
+  outflows_known: WalletOutflow[]
+  first_in: string | null
+  last_in: string | null
+  total_in_usd: number
+  n_in: number
+}
+
 export interface DataJson {
   generated_at: string
   chains: Record<string, ChainInfo>
@@ -169,4 +184,5 @@ export interface DataJson {
   freezable_total?: Record<string, number>
   /** USD still pullable through open approvals, all subjects */
   exposure_total_usd?: number | null
+  wallets?: Record<string, WalletAgg>
 }

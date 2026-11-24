@@ -234,12 +234,15 @@ export function fmtDuration(ms: number) {
 
 /* ---- tab routing ---- */
 export type Tab = 'overview' | 'analytics'
-export type Route = { tab: Tab | null; caseRef: { chain: string; address: string } | null }
-/** '#analytics' / '#overview' pick a tab; '#chain:address' opens a case without changing the tab;
- *  an empty hash or a section anchor (#flow, #files...) belongs to the overview. */
+type Ref = { chain: string; address: string }
+export type Route = { tab: Tab | null; caseRef: Ref | null; walletRef?: Ref | null }
+/** '#analytics' / '#overview' pick a tab; '#chain:address' opens a case and '#wallet:chain:address' a wallet file,
+ *  both without changing the tab; an empty hash or a section anchor (#flow, #files...) belongs to the overview. */
 export function parseRoute(hash: string): Route {
   const h = decodeURIComponent(hash.replace(/^#/, ''))
   if (h === 'analytics' || h === 'overview') return { tab: h, caseRef: null }
+  const w = /^wallet:([a-z0-9]+):(\S+)$/i.exec(h)
+  if (w) return { tab: null, caseRef: null, walletRef: { chain: w[1].toLowerCase(), address: w[2] } }
   const m = /^([a-z0-9]+):(\S+)$/i.exec(h)
   if (m) return { tab: null, caseRef: { chain: m[1].toLowerCase(), address: m[2] } }
   return { tab: 'overview', caseRef: null }
