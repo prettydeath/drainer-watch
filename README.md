@@ -24,10 +24,10 @@ pytest -q
 ```
 
 Environment (all optional): `ETH_RPC_URL`, `BSC_RPC_URL`, `BASE_RPC_URL` (default publicnode),
-`TRON_API_URL` (default `https://api.trongrid.io`), `TRONGRID_API_KEYS` (comma list, sent as `TRON-PRO-API-KEY` in
-rotation; strongly recommended: keyless, TronGrid allows ~300 credits/s per IP and suspends the IP for 5 s, and the
-per-block tx-info call is expensive, so a keyless run scans at most 60 blocks, never advances past a block whose logs
-could not be fetched, and the dashboard says "reduced block coverage"),
+`TRONGRID_API_KEYS` (comma list, sent only to TronGrid as `TRON-PRO-API-KEY` in rotation; without keys the scanner uses
+`https://tron-rpc.publicnode.com`, which serves the same `/wallet/*` API keyless), `TRON_API_URL` (override; pointing
+it at TronGrid without a key is throttled hard, so that mode scans at most 60 blocks, never advances past a block whose
+logs could not be fetched, and the dashboard says "reduced block coverage"),
 `DRAINERWATCH_CHAINS` (default `eth,bsc,base,tron`),
 `ETHERSCAN_API_KEYS` (comma list, Etherscan V2), `WA_DATA_DIR` (local wallet-attribution CSVs),
 `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (alerts on new T1/T2; no-op without them), `DASHBOARD_URL`.
@@ -89,7 +89,7 @@ variants, the TRON VerifyAccount family and others); the research notes and real
 
 ## TRON
 
-TRON is scanned from TronGrid, block by block: `getblockbylimitnext` returns every transaction with its contract type,
+TRON is scanned from a full node's HTTP API (TronGrid with keys, publicnode without), block by block: `getblockbylimitnext` returns every transaction with its contract type,
 signer, call data, call value, fee limit and signatures; `gettransactioninfobyblocknum` adds the TRC-20 Transfer /
 Approval logs, fees and internal TRX transfers. Addresses are stored and shown in base58 (`T…`), explorer links go to
 tronscan.org. Contract runtimes come from `getcontractinfo` (its `origin_address` is recorded as the deployer, via

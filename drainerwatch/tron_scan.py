@@ -601,7 +601,7 @@ def scan_tron(conn, seeds, labels, prices, max_blocks=None, deadline=None, rpc=N
             a = hi + 1
             if missing:
                 break
-    elif persist_cursor:
+    if persist_cursor:
         meta_set(conn, f"scan_at:{CHAIN}", now_ts())
     conn.commit()
     st["end"], st["done"] = end, done

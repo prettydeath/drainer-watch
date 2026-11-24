@@ -31,8 +31,9 @@ Deps: `requests`, `pycryptodome` (keccak for selectors/topics). Python >=3.11.
   (`chain,address,label,source`) for operator-supplied seeds. Refresh at most once per 6 h.
 - Optional keyed enrichment: Etherscan V2 (`ETHERSCAN_API_KEYS`, comma list, chainid 1/56/8453) —
   best-effort only (free tier may not cover BSC/Base; failure must not break the run).
-- TRON: TronGrid HTTP API (env `TRON_API_URL`, default `https://api.trongrid.io`; keys `TRONGRID_API_KEYS`, comma
-  list, header `TRON-PRO-API-KEY`, round robin with cooldown on the credit limit; keyless works at a lower rate).
+- TRON: full-node HTTP API: TronGrid `https://api.trongrid.io` with `TRONGRID_API_KEYS` (comma list, header
+  `TRON-PRO-API-KEY`, round robin with cooldown on the credit limit, keys sent to TronGrid only), else keyless
+  `https://tron-rpc.publicnode.com`; `TRON_API_URL` overrides.
 - Prices: CoinGecko simple price (keyless) for ETH, BNB, TRX; stablecoins = 1.0. Other tokens: amount only, usd=null.
 
 ## Ingestion (per chain, incremental cursor in `meta`)

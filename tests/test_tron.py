@@ -615,7 +615,8 @@ def test_keyless_tx_infos_stop_at_first_failure(monkeypatch):
     from drainerwatch.tron import TronRpc
     from drainerwatch.util import HttpError
     monkeypatch.delenv("TRONGRID_API_KEYS", raising=False)
-    r = TronRpc(url="http://invalid.local")
+    r = TronRpc(url="http://api.trongrid.io.invalid")
+    assert r.keyless
     calls = []
 
     def post(path, body, retries=6, timeout=60):
@@ -628,3 +629,16 @@ def test_keyless_tx_infos_stop_at_first_failure(monkeypatch):
     assert calls == [1, 2, 3] and out[4] is None and out[2] == []
     import time as _t
     assert all(v is None for v in r.tx_infos([7, 8], deadline=_t.monotonic() - 1).values())
+
+
+def test_endpoint_choice_and_key_scope(monkeypatch):
+    from drainerwatch.tron import TRON_API_DEFAULT, TRON_API_KEYLESS, TronRpc
+    monkeypatch.delenv("TRON_API_URL", raising=False)
+    monkeypatch.delenv("TRONGRID_API_KEYS", raising=False)
+    r = TronRpc()
+    assert r.url == TRON_API_KEYLESS and not r.keyless and r.pool.next() is None
+    monkeypatch.setenv("TRONGRID_API_KEYS", "k1,k2")
+    r = TronRpc()
+    assert r.url == TRON_API_DEFAULT and r.pool.next() in ("k1", "k2")
+    r = TronRpc(url="https://tron-rpc.publicnode.com")
+    assert r.pool.next() is None                         # a TronGrid key never goes to another host

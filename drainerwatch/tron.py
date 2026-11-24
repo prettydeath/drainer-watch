@@ -19,7 +19,8 @@ log = logging.getLogger("drainerwatch.tron")
 B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 _B58_IDX = {c: i for i, c in enumerate(B58)}
 T_ADDR_RE = re.compile(r"^T[1-9A-HJ-NP-Za-km-z]{33}$")
-TRON_API_DEFAULT = "https://api.trongrid.io"
+TRON_API_DEFAULT = "https://api.trongrid.io"            # with TRONGRID_API_KEYS
+TRON_API_KEYLESS = "https://tron-rpc.publicnode.com"    # same /wallet/* API, no key (measured 2026-11-24: 60 blocks 6.4 s)
 KEY_HEADER = "TRON-PRO-API-KEY"
 
 
@@ -94,16 +95,19 @@ TRON_ZERO = to_base58("41" + "00" * 20)      # T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWw
 
 # ---------- client ----------
 class TronRpc:
-    """TronGrid full-node HTTP API. Keys: env TRONGRID_API_KEYS (comma list, header TRON-PRO-API-KEY, round robin; a key
-    hit by the credit limit cools down for the suspension period). Keyless works at a lower rate: TronGrid allows
-    ~300 credits/s per IP and suspends the IP for 5 s when exceeded, so the client spaces keyless calls and backs off."""
+    """TRON full-node HTTP API (/wallet/*). With env TRONGRID_API_KEYS: TronGrid (comma list, header TRON-PRO-API-KEY,
+    round robin; a key hit by the credit limit cools down for the suspension period). Without keys: publicnode, which
+    serves the same API keyless. TronGrid itself without a key (TRON_API_URL pointing at it) is throttled hard (~300
+    credits/s per IP, 5 s suspensions), so that mode spaces calls and scans a smaller window."""
     chain = "tron"
 
     def __init__(self, url=None, workers=None):
-        self.url = (url or env("TRON_API_URL", TRON_API_DEFAULT)).rstrip("/")
-        self.pool = key_pool("TRONGRID_API_KEYS")
-        self.keyless = len(self.pool) == 0
-        self.workers = workers or (1 if self.keyless else min(3, len(self.pool)))
+        pool = key_pool("TRONGRID_API_KEYS")
+        self.url = (url or env("TRON_API_URL") or (TRON_API_DEFAULT if len(pool) else TRON_API_KEYLESS)).rstrip("/")
+        self.trongrid = "trongrid.io" in self.url
+        self.pool = pool if self.trongrid else key_pool("_NO_KEYS_")    # keys are only ever sent to TronGrid
+        self.keyless = self.trongrid and len(self.pool) == 0              # TronGrid without a key: throttled mode
+        self.workers = workers or (1 if self.keyless else 3)
         self.interval = 0.35 if self.keyless else 0.0
         self.calls = 0
         self.limit_hits = 0
