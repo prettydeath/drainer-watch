@@ -60,7 +60,10 @@ class TronCtx(Ctx):
             if not info["is_contract"]:
                 self.code_hex.setdefault(addr, "0x")
             return info
-        if not fetch or self.stats["contract_lookups"] >= TRON_MAX_CONTRACT_LOOKUPS:
+        if not fetch:
+            return None
+        if self.stats["contract_lookups"] >= TRON_MAX_CONTRACT_LOOKUPS:
+            self.stats["contract_lookups_capped"] += 1
             return None
         self.stats["contract_lookups"] += 1
         try:
@@ -541,8 +544,13 @@ def scan_tron(conn, seeds, labels, prices, max_blocks=None, deadline=None, rpc=N
     deadline = deadline or (time.monotonic() + 600)
     ctx = TronCtx(conn, rpc, seeds, labels, prices, deadline)
     head = rpc.block_number()
+    keyless = bool(getattr(rpc, "keyless", False))
+    meta_set(conn, f"keyless:{CHAIN}", int(keyless))
     if start is None:
-        start, end = plan_range(conn, CHAIN, head, max_blocks or cfg["max_blocks"])
+        mb = max_blocks or cfg["max_blocks"]
+        if keyless:
+            mb = min(mb, cfg.get("max_blocks_keyless", mb))      # ~300 credits/s per IP without a key
+        start, end = plan_range(conn, CHAIN, head, mb)
     meta_set(conn, f"head:{CHAIN}", head)
     st = ctx.stats
     st["head"], st["start"] = head, start
@@ -566,6 +574,17 @@ def scan_tron(conn, seeds, labels, prices, max_blocks=None, deadline=None, rpc=N
             except HttpError as e:
                 log.warning("tron: blocks %s-%s unavailable (%s); stopping this run", a, hi, e)
                 break
+            missing = [int(b["block_header"]["raw_data"].get("number", 0)) for b in blocks
+                       if infos.get(int(b["block_header"]["raw_data"].get("number", 0))) is None]
+            if missing:                       # never advance the cursor past a block whose logs were not fetched
+                first = min(missing)
+                st["info_missing"] += len(missing)
+                blocks = [b for b in blocks if int(b["block_header"]["raw_data"].get("number", 0)) < first]
+                infos = {n: v for n, v in infos.items() if n < first}
+                hi = first - 1
+                log.warning("tron: tx info of block %s unavailable (credit limit?); stopping this run at %s", first, hi)
+            if not blocks:
+                break
             t1 = time.monotonic()
             process_tron_chunk(ctx, blocks, infos)
             log.info("tron: blocks %s-%s: fetch %.1fs, detect %.1fs, txs %d, pull legs %d, contract lookups %d, "
@@ -577,6 +596,8 @@ def scan_tron(conn, seeds, labels, prices, max_blocks=None, deadline=None, rpc=N
                 meta_set(conn, f"scan_at:{CHAIN}", now_ts())
                 conn.commit()
             a = hi + 1
+            if missing:
+                break
     elif persist_cursor:
         meta_set(conn, f"scan_at:{CHAIN}", now_ts())
     conn.commit()

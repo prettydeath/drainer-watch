@@ -700,7 +700,7 @@ function renderHeader(){
   names.forEach(c => {
     const ch = obj(D.chains[c]); const lag = ch.lag_blocks;
     const bad = typeof lag === 'number' && lag * (num(ch.block_sec) || 12) > 1800;
-    h.appendChild(el('span', {class:'head', title: chainName(c) + ': scanned up to block ' + fmtN(ch.cursor_block) + ' of ' + fmtN(ch.head_block) + (ch.last_scan_at ? ', last scan ' + dt(ch.last_scan_at) : '')},
+    h.appendChild(el('span', {class:'head', title: chainName(c) + ': scanned up to block ' + fmtN(ch.cursor_block) + ' of ' + fmtN(ch.head_block) + (ch.last_scan_at ? ', last scan ' + dt(ch.last_scan_at) : '') + (typeof ch.note === 'string' && ch.note ? '. ' + ch.note : '')},
       el('b', {text: chainName(c)}), el('span', {class:'blk', text: ch.cursor_block != null ? fmtBlock(ch.cursor_block) : 'not scanned'}),
       typeof lag === 'number' ? el('span', {class:'lag' + (bad ? ' bad' : ''), text: lag === 0 ? 'at head' : plural(lag, 'block') + ' behind'}) : null,
       num(ch.gap_blocks) > 0 ? el('span', {class:'lag bad', title: 'Blocks skipped to stay at the head (the scanner fell behind): ' + arr(ch.gaps).map(g => fmtN(g.from) + '-' + fmtN(g.to) + (g.at ? ' (' + dt(g.at) + ')' : '')).join('; '), text:'not scanned: ' + plural(num(ch.gap_blocks), 'block')}) : null));

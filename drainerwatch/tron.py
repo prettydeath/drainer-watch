@@ -187,7 +187,7 @@ class TronRpc:
         """gettransactioninfobyblocknum for each block (parallel over the key pool) -> {block: [info] | None}."""
         def one(n):
             try:
-                return n, self.post("/wallet/gettransactioninfobyblocknum", {"num": n}, retries=5)
+                return n, self.post("/wallet/gettransactioninfobyblocknum", {"num": n}, retries=3 if self.keyless else 5)
             except HttpError as e:
                 log.warning("tron: tx info of block %s unavailable (%s)", n, e)
                 return n, None

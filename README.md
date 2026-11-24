@@ -1,7 +1,7 @@
 # drainer-watch
 
-Near-real-time monitor of crypto **drainer contracts** on Ethereum, BNB Chain and Base, published as a static
-dashboard (GitHub Actions cron + GitHub Pages). Every flagged address carries evidence (tx hashes), a tier and the
+Near-real-time monitor of crypto **drainer contracts** on Ethereum, BNB Chain, Base and TRON, published as a static
+dashboard (GitHub Actions + GitHub Pages). Every flagged address carries evidence (tx hashes), a tier and the
 rule that fired. It also links drainers, payout wallets and deployers to **VASPs** (exchanges, instant exchangers,
 bridges, mixers) so that requests can be sent to the right entity.
 
@@ -12,7 +12,7 @@ state kept on an orphan `data` branch, dashboard rendered from `drainerwatch/tem
 
 ```bash
 pip install requests pycryptodome
-python -m drainerwatch run --chains eth,base,bsc --max-blocks 30 --budget-sec 300
+python -m drainerwatch run --chains eth,base,bsc,tron --max-blocks 30 --budget-sec 300 --env-file keys.env
 python -m drainerwatch loop --interval 60          # for a Linux box
 python -m drainerwatch render                      # data/*.sqlite -> site/index.html + site/data.json
 python -m drainerwatch seeds                       # refresh seeds, print counts
@@ -24,13 +24,21 @@ pytest -q
 ```
 
 Environment (all optional): `ETH_RPC_URL`, `BSC_RPC_URL`, `BASE_RPC_URL` (default publicnode),
+`TRON_API_URL` (default `https://api.trongrid.io`), `TRONGRID_API_KEYS` (comma list, sent as `TRON-PRO-API-KEY` in
+rotation; strongly recommended: keyless, TronGrid allows ~300 credits/s per IP and suspends the IP for 5 s, and the
+per-block tx-info call is expensive, so a keyless run scans at most 60 blocks, never advances past a block whose logs
+could not be fetched, and the dashboard says "reduced block coverage"),
+`DRAINERWATCH_CHAINS` (default `eth,bsc,base,tron`),
 `ETHERSCAN_API_KEYS` (comma list, Etherscan V2), `WA_DATA_DIR` (local wallet-attribution CSVs),
 `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (alerts on new T1/T2; no-op without them), `DASHBOARD_URL`.
 
 Operator inputs in `data/`: `seeds.csv` (`chain,address,label,source`), `allowlist.csv` (`chain,address,note`).
 
-Actions: add secrets `ETHERSCAN_API_KEYS` (and optionally the Telegram/RPC ones), enable Pages with source
-"GitHub Actions". `watch.yml` runs every 10 minutes and force-pushes `data/` + `site/` to the `data` branch.
+Actions: add secrets `ETHERSCAN_API_KEYS` (and optionally `TRONGRID_API_KEYS` and the Telegram/RPC ones), enable Pages
+with source "GitHub Actions". `watch.yml` force-pushes `data/` + `site/` to the `data` branch. Cadence: at the end of
+each run a `next` job waits until ~9 min after the run started and dispatches the next run (`gh workflow run`, needs
+`actions: write`), unless another watch run is already queued; the `concurrency` group keeps one run at a time. The
+10-minute cron stays as a fallback heartbeat (GitHub throttles schedules on young repositories).
 
 ## Detectors
 
@@ -79,6 +87,31 @@ kit roles `customer`, `worker`, `collector`, `kit_fee`, `kit_wallet`, `submitter
 links and `cross_chain` twins. Kit signatures come from static study of drainer kits (MS Drainer
 variants, the TRON VerifyAccount family and others); the research notes and real-data kit regressions are kept private.
 
+## TRON
+
+TRON is scanned from TronGrid, block by block: `getblockbylimitnext` returns every transaction with its contract type,
+signer, call data, call value, fee limit and signatures; `gettransactioninfobyblocknum` adds the TRC-20 Transfer /
+Approval logs, fees and internal TRX transfers. Addresses are stored and shown in base58 (`T…`), explorer links go to
+tronscan.org. Contract runtimes come from `getcontractinfo` (its `origin_address` is recorded as the deployer, via
+`getcontract`) and are analysed with the same bytecode code as EVM, made TVM-aware (TRC-10 opcodes such as
+CALLTOKEN / CALLTOKENVALUE are single-byte; CALLTOKEN counts as an external call for the R-A2 puller heuristic).
+
+| id | rule | tier effect |
+|----|------|-------------|
+| T-1 `kit_pull` | a third party's tokens are pulled through a contract whose dispatcher is a drainer kit (VerifyAccount `Verify20/Verify10/withdrawAllTrxTo`, OwnerCollector, MS bait, the public buytron contracts) | kit dispatcher + pull = T1 |
+| T-1 `split_xtx` | R-A1 on TRON: same caller + victim + token pulled in 2+ txs within 60 s to 2+ recipients, top share 0.60-0.99 (VerifyAccount splits 98/2 in two txs) | as R-A1 |
+| T-2 owner-gated puller | R-A2 on TVM bytecode (owner check, parametric transferFrom, no hard-coded address) + a third-party pull | T2 |
+| D2 `split_pull` | one-tx split through a contract (60-95 %, 2-3 recipients) | as D2, but on TRON a split (D2 or R-A1) with < 3 victims and no kit / puller code is capped at T3 (`tron_split_capped`) |
+| T-3 `tron_approval` | `approve(spender, 10^46)` (with feeLimit 35 TRX: `approval_fingerprint`); `daea85c5(address)` "ApproveAll"; `approve(exact balance)` with feeLimit 300 TRX followed by `transfer(spender, 0 or balance)`; `increaseApproval(MAX)` to an EOA younger than 30 days or to a kit/puller contract. A flagged spender that then calls `transferFrom` gets `eoa_spender_pull` | 10^46+35 TRX T1; 10^46 / ApproveAll / exact+transfer T2 (3+ victims T1); increase MAX T3 |
+| T-4 `prefund_approve` | a whole TRX amount (5-100) sent to a wallet that within 6 h approves the funder or a contract the funder created (R-A5); not in the same block (sponsored-tx relayers) and not from a funder of > 30 wallets in 6 h; payout role `funder` | T3; 3+ victims with the same amount T2 |
+| T-5 Claimer | payable bait(address) with TRX on a contract with bait selectors (`bait_payable`); `claimer_split` when value = min(balance - 50 TRX, 0.8 x balance) using the post-call balance | bait as D7; Claimer amount + kit dispatcher T1 |
+| T-6 `perm_hijack` | AccountPermissionUpdate that leaves the account's own key insufficient (removed, or weight below threshold) for the owner or every active permission, on an account at least 30 days old, where one foreign key alone (or together with the account's key) can sign; when only several foreign keys together can sign it is an organisation multisig (custodial key migrations) and is skipped; subject = the controller key; outflow from the account whose signature recovers to that key = `perm_hijack_drain` | T3; 3+ accounts T2; signed drain T1 (a count alone never gives T1) |
+| T-7 `fixed_fee` | a whole TRX amount (5-100) sent by the puller or the recipient within 60 s after a third-party pull; the same amount 2+ times to the same address | T3; 3+ victims T2 |
+| T-8 `zero_transfer_spoof` | 3+ zero-value USDT legs moved out of other wallets in one chunk (address poisoning) | T3 only, no victims or drains |
+
+Shared collectors (R-A4 clusters) work across TRON subjects the same way as on EVM. The VerifyAccount runtimes and the
+buytron contracts are regression fixtures in `tests/fixtures_kits/`; real-transaction regressions are kept private.
+
 ## Deployer and VASP links
 
 * Labels: [wallet-attribution](https://github.com/prettydeath/wallet-attribution) CSVs, refreshed every 24 h.
@@ -105,6 +138,9 @@ variants, the TRON VerifyAccount family and others); the research notes and real
   Base 0.6 vs 2.7 MB, 0.6 vs 1.2 s; BSC 4.0 vs 10.7 MB but 1.4 vs 22.9 s (856 code + 355 nonce lookups for D8), i.e.
   ~15 min for the default 800 BSC blocks per run, beyond the 300 s budget, so BSC stays on logs (no D8 / R-A1 there).
 
+* **Head-first scanning.** When a chain falls more than one run's `max_blocks` behind (for example after the schedule
+  stalled), the next run jumps to the head and records the skipped range; `data.json` `chains[c].gaps` / `gap_blocks`
+  and the dashboard top bar ("not scanned: N blocks") show it. Skipped ranges are not back-filled automatically.
 * **No traces.** Everything comes from logs and top-level transactions. Factory/CREATE2 (internal) creations are not visible
   on any chain, contract creations are scanned on ETH only (none on BSC/Base), and native-coin internal splits are
   not visible; native drains are therefore under-counted. Only ERC-20 `Transfer`

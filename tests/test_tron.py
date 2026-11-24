@@ -583,3 +583,29 @@ def test_buytron_pull_is_t1():
     run(ctx, ([blk(10, [trig(h(1), admin, c, selector("pullFunds(address,address,uint256)") + word(VICTIM) + word(BIG)
                              + num(50 * SUN))])], {10: [info(h(1), [tlog(TRON_USDT, VICTIM, BIG, 50 * SUN)])]}))
     assert tiers(ctx)[c]["tier"] == "T1"
+
+
+def test_missing_tx_info_never_advances_past_the_block(monkeypatch):
+    from drainerwatch import tron_scan
+    from drainerwatch.db import meta_get
+
+    class R(FakeTronRpc):
+        keyless = True
+
+        def block_number(self):
+            return 1000
+
+        def blocks(self, a, b):
+            return [blk(n, []) for n in range(a, b + 1)]
+
+        def tx_infos(self, ns):
+            return {n: (None if n == 945 else []) for n in ns}
+
+    conn = connect(":memory:")
+    from drainerwatch.db import meta_set
+    meta_set(conn, "cursor:tron", 900)
+    st = tron_scan.scan_tron(conn, SeedSet(), {}, Prices(native={}), rpc=R(), chunk=20)
+    assert st["start"] == 1000 - 2 - 60 + 1                     # keyless window is 60 blocks (gap 901-938 recorded)
+    assert meta_get(conn, "cursor:tron") == "944" and st["info_missing"] == 1
+    p = render.build_payload(conn)
+    assert "API key" in p["chains"]["tron"]["note"]

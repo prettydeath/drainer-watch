@@ -22,7 +22,7 @@ CHAINS = {
                  explorer="https://basescan.org", native="ETH", max_blocks=450, block_sec=2, source="receipts", chunk=60, wa="base", cg="ethereum", share=0.1),
     # TRON (TronGrid HTTP API, not JSON-RPC): own ingestion in tron_scan.py; ~3 s blocks -> ~200-300 blocks per 10-15 min
     "tron": dict(id=None, kind="tron", rpc_env="TRON_API_URL", rpc="https://api.trongrid.io",
-                 explorer="https://tronscan.org/#", tx_path="transaction", native="TRX", max_blocks=300, block_sec=3,
+                 explorer="https://tronscan.org/#", tx_path="transaction", native="TRX", max_blocks=300, max_blocks_keyless=60, block_sec=3,
                  source="blocks", chunk=20, wa="tron", cg="tron", share=0.15),
 }
 # share: fraction of the run's scan budget; slices are cumulative in run order, so time a chain leaves unused goes to the

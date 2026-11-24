@@ -191,6 +191,8 @@ def build_payload(conn, now=None):
                           tx_path=cfg.get("tx_path", "tx"), native=cfg.get("native"), block_sec=cfg.get("block_sec"),
                           gaps=[dict(g, at=iso(g.get("at"))) for g in gaps[-20:]],
                           gap_blocks=sum(max(0, int(g["to"]) - int(g["from"]) + 1) for g in gaps))
+        if meta_get(conn, f"keyless:{ch}") == "1":
+            chains[ch]["note"] = "TronGrid without an API key: reduced block coverage per run"
 
     crow = conn.execute("SELECT * FROM contracts").fetchall()
     crow.sort(key=lambda r: (TIER_ORDER.get(r["tier"], 9), -(parse(r["last_seen"]))))
