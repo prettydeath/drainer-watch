@@ -7,6 +7,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 from .constants import CHAINS, DATA_DIR, SITE_DIR, TEMPLATE
+from .scan import load_gaps
 from .db import meta_get
 from .util import iso, now_ts
 
@@ -82,6 +83,11 @@ def describe(type_, d):
               if d.get("passthrough") else "")
         tv = ("; Trusty v1 pass-through (the argument receives msg.value minus a 5-10 % owner fee)"
               + ("; kit public contract" if d.get("public") else "") if d.get("kit") == "trusty_v1" else "")
+        if d.get("unit") == "sun":
+            shp = {True: "; amount = min(balance - 50 TRX, 80 % of balance) (Claimer shape)", False: "",
+                   None: ""}.get(d.get("claimer_shape"), "")
+            return (f"victim {d.get('victim')} paid {int(d.get('value_wei') or 0) / 1e6:g} TRX to bait function "
+                    f"{d.get('name')}; argument = payout wallet {d.get('customer')}{shp}")
         return (f"victim {d.get('victim')} paid {d.get('value_wei')} wei to bait function {d.get('name')}; "
                 f"argument = customer payout wallet {d.get('customer')}{pt}{tv}")
     if type_ == "kit_deposit":
@@ -128,6 +134,36 @@ def describe(type_, d):
         rc = ", ".join(f"{r['wallet']} {r['share']:.0%} ({r['role']})" for r in d.get("recipients", []))
         return (f"caller {d.get('caller')} pulled {d.get('token')} from victim {', '.join(d.get('victims', []))} in "
                 f"{len(d.get('txs', []))} txs within 60 s and split it: {rc}")
+    # TRON rules T-1..T-8
+    if type_ == "kit_pull":
+        who = "its creator" if d.get("caller_is_creator") else "caller"
+        return (f"{who} {d.get('caller')} pulled {d.get('token')} from {d.get('victim')} to {d.get('recipient')} through "
+                f"this contract ({d.get('kit')} dispatcher: token, from, to and amount are call parameters)")
+    if type_ == "tron_approval":
+        what = {"kit_amount": "approved the kit amount 10^46", "approve_all": "called daea85c5(address) ('ApproveAll')",
+                "aml_exact": "approved its exact balance with feeLimit 300 TRX and then sent this spender a bait transfer",
+                "increase_max": "called increaseApproval with 2^256-1"}.get(d.get("kind"), d.get("kind"))
+        extra = (" (fresh account)" if d.get("fresh_spender") else "") + (
+            f" (spender code: {d.get('spender_kit')})" if d.get("spender_kit") else "")
+        return f"victim {d.get('victim')} {what} for this spender on {d.get('token')}, feeLimit {d.get('fee_limit_trx')} TRX{extra}"
+    if type_ == "prefund_approve":
+        rel = "this wallet" if not d.get("spender_creator") else f"{d.get('spender')}, a contract this wallet created"
+        return (f"sent {d.get('amount_trx')} TRX to {d.get('victim')} (tx {d.get('fund_tx')}), which {d.get('sec_before')} s "
+                f"later approved {rel}: gas pre-funding before the approval")
+    if type_ == "perm_hijack":
+        lost = " and ".join(x for x in ("owner" if d.get("owner_lost") else "", "active" if d.get("active_lost") else "") if x)
+        return (f"account {d.get('victim')} ({d.get('age_days')} days old) changed its {lost} permission so that its own key "
+                f"is no longer enough; controller keys {', '.join(d.get('controllers') or [])}"
+                + (f"; without history: {', '.join(d['fresh_keys'])}" if d.get("fresh_keys") else ""))
+    if type_ == "perm_hijack_drain":
+        return (f"outflow from hijacked account {d.get('victim')} signed by this controller key"
+                + (f": {d.get('amount_trx')} TRX" if d.get("amount_trx") else "")
+                + (f"; tokens {', '.join(d.get('tokens') or [])}" if d.get("tokens") else ""))
+    if type_ == "fixed_fee":
+        return (f"received a fixed {d.get('amount_trx')} TRX from {d.get('caller')} within 60 s of its pull from "
+                f"{d.get('victim')} (pull tx {d.get('pull_tx')})")
+    if type_ == "zero_transfer_spoof":
+        return f"{d.get('legs')} zero-value USDT transferFrom legs from {d.get('victims')} wallet(s) in one chunk (address poisoning)"
     if type_ == "foreign_recipient_swap":
         kit = "; deadline = block time + ~99 990 s (MS Drainer kit)" if d.get("kit") else ""
         return (f"victim {d.get('victim')} signed {d.get('fn')} on {d.get('router')} selling {d.get('amount_in')} of "
@@ -149,8 +185,12 @@ def build_payload(conn, now=None):
             continue
         head = int(meta_get(conn, f"head:{ch}", cur) or cur)
         sc = meta_get(conn, f"scan_at:{ch}")
+        gaps = load_gaps(conn, ch)
         chains[ch] = dict(cursor_block=int(cur), head_block=head, lag_blocks=max(0, head - int(cur)),
-                          last_scan_at=iso(int(sc)) if sc else "", explorer=cfg["explorer"])
+                          last_scan_at=iso(int(sc)) if sc else "", explorer=cfg["explorer"],
+                          tx_path=cfg.get("tx_path", "tx"), native=cfg.get("native"), block_sec=cfg.get("block_sec"),
+                          gaps=[dict(g, at=iso(g.get("at"))) for g in gaps[-20:]],
+                          gap_blocks=sum(max(0, int(g["to"]) - int(g["from"]) + 1) for g in gaps))
 
     crow = conn.execute("SELECT * FROM contracts").fetchall()
     crow.sort(key=lambda r: (TIER_ORDER.get(r["tier"], 9), -(parse(r["last_seen"]))))

@@ -6,7 +6,7 @@ import time
 from collections import Counter
 
 from . import alerts, enrich, rollup, scan, seeds as seedmod
-from .constants import CHAINS, DATA_DIR, WA_LOCAL_DEFAULT
+from .constants import CHAINS, DATA_DIR, DEFAULT_CHAIN_ORDER, WA_LOCAL_DEFAULT
 from .db import connect
 from .prices import Prices
 from .render import render_all
@@ -14,10 +14,11 @@ from .rpc import Rpc
 from .util import env, key_pool, load_env_file, redact
 
 log = logging.getLogger("drainerwatch")
+DEFAULT_CHAINS = DEFAULT_CHAIN_ORDER
 
 
 def parse_chains(s):
-    out = [c.strip().lower() for c in (s or "eth,bsc,base").split(",") if c.strip()]
+    out = [c.strip().lower() for c in (s or DEFAULT_CHAINS).split(",") if c.strip()]
     bad = [c for c in out if c not in CHAINS]
     if bad:
         raise SystemExit(f"unknown chain(s): {', '.join(bad)} (choose from {', '.join(CHAINS)})")
@@ -34,7 +35,9 @@ def summarize(conn, stats):
                      f"rpc calls {st['rpc_calls']}, limit hits {st['rpc_limit_hits']}, errors {st['rpc_errors']}, "
                      f"d2 cand/conf {st['d2_candidates']}/{st['d2_confirmed']}, d3 cand/conf {st['d3_candidates']}/"
                      f"{st['d3_confirmed']}, d4 cand {st['d4_candidates']}, tx lookups {st['tx_lookups']}, code lookups "
-                     f"{st['code_lookups']}")
+                     f"{st['code_lookups']}" + (f", tron: txs {st['txs']}, pull legs {st['pull_legs']}, contract lookups "
+                     f"{st['contract_lookups']}, account lookups {st['account_lookups']}, {st['mb']} MB in {st['sec']} s"
+                     if st.get("source") == "trongrid" else ""))
     ev = Counter({r["type"]: r["n"] for r in conn.execute("SELECT type,COUNT(*) n FROM evidence GROUP BY type")})
     tiers = Counter({r["tier"]: r["n"] for r in conn.execute("SELECT tier,COUNT(*) n FROM contracts GROUP BY tier")})
     lines.append(f"evidence: {dict(ev)}; tiers: {dict(tiers)}; drains {conn.execute('SELECT COUNT(*) FROM drains').fetchone()[0]}; "
@@ -52,10 +55,15 @@ def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
     prices.refresh()
     stats, rpcs = {}, {}
     scan_budget = budget_sec * 0.85
+    shares = [CHAINS[c].get("share", 1.0) for c in chains]
     for i, ch in enumerate(chains):
-        deadline = t0 + scan_budget * (i + 1) / len(chains)
-        rpcs[ch] = Rpc(ch)
+        deadline = t0 + scan_budget * sum(shares[:i + 1]) / sum(shares)    # cumulative: unused time rolls forward
         try:
+            if CHAINS[ch].get("kind") == "tron":
+                from . import tron_scan
+                stats[ch] = tron_scan.scan_tron(conn, sd, labels, prices, max_blocks=max_blocks, deadline=deadline)
+                continue
+            rpcs[ch] = Rpc(ch)
             stats[ch] = scan.scan_chain(conn, ch, sd, labels, prices, max_blocks=max_blocks, deadline=deadline, rpc=rpcs[ch],
                                         source=source)
         except Exception as e:  # noqa: BLE001 - one chain failing must not stop the others
@@ -160,12 +168,13 @@ def main(argv=None):
     sub = p.add_subparsers(dest="cmd", required=True)
     for name, fn in (("run", cmd_run), ("loop", cmd_loop)):
         s = sub.add_parser(name)
-        s.add_argument("--chains", default="eth,bsc,base")
+        s.add_argument("--chains", default=env("DRAINERWATCH_CHAINS", DEFAULT_CHAINS))
         s.add_argument("--source", choices=["logs", "receipts"], default=None,
                        help="block source for all chains: eth_getLogs or eth_getBlockReceipts (env DRAINERWATCH_SOURCE); "
                             "default per chain: receipts on eth/base (D8, R-A1 active), logs on bsc")
-        s.add_argument("--max-blocks", type=int, default=None, help="blocks per chain per run (default eth 100, base 400, bsc 800)")
+        s.add_argument("--max-blocks", type=int, default=None, help="blocks per chain per run (default eth 100, base 450, tron 300, bsc 2000)")
         s.add_argument("--budget-sec", type=int, default=int(env("DRAINERWATCH_BUDGET_SEC", "300")))
+        s.add_argument("--env-file", default=None, help="KEY=VALUE file with API keys (loaded into the process only)")
         if name == "loop":
             s.add_argument("--interval", type=int, default=60)
         s.set_defaults(fn=fn)
@@ -196,7 +205,7 @@ def main(argv=None):
     s.set_defaults(fn=cmd_incidents)
     args = p.parse_args(argv)
     if getattr(args, "env_file", None):
-        loaded = load_env_file(args.env_file, names={"ETHERSCAN_API_KEYS", "ETH_RPC_URL"})
+        loaded = load_env_file(args.env_file, names={"ETHERSCAN_API_KEYS", "ETH_RPC_URL", "TRONGRID_API_KEYS"})
         log.info("env file: loaded %s", ", ".join(loaded) or "nothing")
     key_pool("ETHERSCAN_API_KEYS")
     args.fn(args)

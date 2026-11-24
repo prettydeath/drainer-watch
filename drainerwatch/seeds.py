@@ -39,8 +39,8 @@ def read_local_csv(path=SEEDS_CSV):
         return out
     with open(path, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            a = norm_addr(r.get("address"))
             ch = (r.get("chain") or "").strip().lower() or None
+            a = norm_addr(r.get("address"), ch)
             if not a or (ch and ch not in CHAINS):
                 continue
             out.append((a, ch, (r.get("label") or "local seed").strip(), "local"))
@@ -53,8 +53,8 @@ def load_allowlist(chain, path=ALLOWLIST_CSV):
     if path.exists():
         with open(path, newline="", encoding="utf-8") as f:
             for r in csv.DictReader(f):
-                a = norm_addr(r.get("address"))
                 ch = (r.get("chain") or "").strip().lower()
+                a = norm_addr(r.get("address"), ch or None)
                 if a and (not ch or ch == chain):
                     out.add(a)
     return out
@@ -62,7 +62,7 @@ def load_allowlist(chain, path=ALLOWLIST_CSV):
 
 def fetch_scamsniffer():
     data = http_json("GET", SCAMSNIFFER_URL, retries=3, timeout=60, validate=lambda o: isinstance(o, list))
-    return [a for a in (norm_addr(x) for x in data) if a]
+    return [a for a in (norm_addr(x, "evm") for x in data) if a]
 
 
 def refresh(conn, force=False, now=None):

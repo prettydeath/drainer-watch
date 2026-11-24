@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Drainer Watch</title>
-<meta name="description" content="Near-real-time monitor of suspected crypto drainer contracts on Ethereum, BNB Chain and Base, with evidence, tiers and the exchanges where the money surfaced.">
+<meta name="description" content="Near-real-time monitor of suspected crypto drainer contracts on Ethereum, BNB Chain, Base and TRON, with evidence, tiers and the exchanges where the money surfaced.">
 <script>
 (function(){ try{ var t = localStorage.getItem('dw-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){} })();
 </script>
@@ -413,6 +413,8 @@ footer p{margin:4px 0}
       <li>Only ERC-20 transfers are analysed; NFT transfers are ignored.</li>
       <li>USD is known for stablecoins, wrapped and native coins only. Other tokens show the amount without a price, and appear as short pale ticks in the seismograph.</li>
       <li>Operator and affiliate roles are inferred from share sizes; deposit-address links are a 72-hour forward heuristic with medium confidence.</li>
+      <li>TRON is read from TronGrid block by block (every transaction with its type, signer, call data and fee limit, plus the TRC-20 logs). Its rules: pulls through drainer-kit or owner-gated puller contracts, splits across transactions, kit approval amounts and fee limits, gas pre-funding before an approval, payable bait calls, account permission takeovers, fixed fees after pulls, and zero-value poisoning (shown at T3 only).</li>
+      <li>Scanning is head-first: when a run falls more than one run's worth of blocks behind, the skipped range is recorded and shown next to the chain as "not scanned" instead of being silently dropped.</li>
       <li>Deployers are never guessed: when the creation is not visible and Etherscan has no answer the deployer is shown as unknown.</li>
       <li>The scanner can fall behind the chain head; the block number and lag are shown at the top for each chain.</li>
     </ul>
@@ -533,6 +535,21 @@ const LABELS = {
   cluster_inherited:['Tier from its cluster','Tier raised because it shares payout wallets with a better-evidenced cluster member.'],
   wa_scam:['Labelled scam','The wallet-attribution dataset labels this address scam or hack.'],
   unpriced_capped:['Unpriced single split, capped at T3','One victim, an unpriced token and no other evidence: token fee/tax routers split the same way.'],
+  kit_pull:['Kit pull','Tokens of a third party were pulled through a contract whose dispatcher matches a drainer kit or an owner-gated parametric puller.'],
+  approval_kit_shape:['TRON kit approval amount','An approval of exactly 10^46 units, the amount hard-coded by a TRON approval kit (with its 35 TRX fee limit it is a T1 fingerprint).'],
+  approve_all_call:['ApproveAll call','The victim called the unidentified token method daea85c5(address) for this spender, an approval trick used by a TRON kit.'],
+  aml_approve_transfer:['Fake AML check approval','Approve of the exact balance with a 300 TRX fee limit followed by a transfer of 0 or of the whole balance to the same spender.'],
+  increase_max:['increaseApproval to a fresh spender','Unlimited increaseApproval to a spender less than 30 days old or to a puller contract.'],
+  prefund_approve:['Gas pre-funding','Sent a small whole amount of TRX to a wallet that then approved this wallet or a contract it created.'],
+  prefund_approve_multi:['Gas pre-funding, repeated','Three or more wallets got the same TRX amount and then approved a spender of this wallet.'],
+  claimer_split:['Claimer amount','A payable bait call that took min(balance - 50 TRX, 80% of balance), the native-coin rule of a TRON kit.'],
+  perm_hijack:['Permission takeover','An account at least 30 days old changed its permissions so its own key is no longer enough and this key alone (or this key together with the key of the account) can sign; several foreign keys that must co-sign (organisation multisig) are not counted.'],
+  perm_hijack_multi:['Permission takeover, many accounts','The same controller key took over three or more accounts (T2; T1 needs a drain signed by the key).'],
+  tron_split_capped:['TRON split without kit code, capped at T3','A split pull on TRON with fewer than three victims and no drainer-kit or puller code: payment splitters and forwarders look the same.'],
+  perm_hijack_drain:['Drain by a takeover key','Funds left a taken-over account in a transaction signed by this controller key.'],
+  fixed_fee:['Fixed fee per pull','Received the same whole TRX amount right after pulls of tokens of other people, two or more times.'],
+  fixed_fee_multi:['Fixed fee, three or more victims','The same fixed TRX fee followed pulls from three or more victims.'],
+  poison_zero:['Zero-value poisoning','Moved 0 USDT out of wallets of other people to look-alike addresses (address poisoning). Never above T3.'],
   verified_capped:['Verified source, capped at T3','Etherscan shows verified source code and the only evidence is a split or multi-victim pull; drainers are almost never verified.']
 };
 const FAMILIES = {
@@ -541,7 +558,10 @@ const FAMILIES = {
   ms_new:['MS_NEW','Public MS_NEW contract: five-argument bait functions plus salary and receiver controls.'],
   ms_generated:['MS generated bait','Bait produced by the MS Contract Generator.'],
   trusty_v1:['Trusty v1','The kit\'s 2023 public pass-through contract: bait functions taking the customer wallet, plus fee controls.'],
-  owner_collector:['Owner collector','Five or more owner-collect functions such as collectToOwner and rescueToken.']
+  owner_collector:['Owner collector','Five or more owner-collect functions such as collectToOwner and rescueToken.'],
+  buytron_swap_trx:['buytron SwapTRX','TRON fake TRX-purchase kit: pullFunds, admin and token functions only.'],
+  buytron_swap_proxy:['buytron SwapProxy','TRON fake TRX-purchase kit, older contract: transferFrom, usdt and owner functions only.'],
+  tron_1e46:['TRON 10^46 approval kit','Approval of exactly 10^46 token units, the hard-coded amount of a TRON approval kit.']
 };
 const ROLES = {
   affiliate:['Affiliate','The larger share of a split pull, usually the customer who ran the phishing site. Inferred from share size.'],
@@ -551,13 +571,14 @@ const ROLES = {
   worker:['Worker','One-shot wallet or MS_NEW keeper doing pulls for this hub.'],
   kit_fee:['Kit fee','Fee receiver configured in a generated bait.'],
   kit_wallet:['Kit wallet','Received the generator deployer\'s leftover coins.'],
-  submitter:['Submitter','Submitted a millisecond-deadline permit.']
+  submitter:['Submitter','Submitted a millisecond-deadline permit.'],
+  funder:['Funder','Sent the victim a small amount of TRX for fees shortly before the victim approved this spender.']
 };
-const VIA = {toplevel:'Creation transaction seen by the scanner', etherscan:'Etherscan contract-creation lookup', unknown:'Unknown: not visible and never guessed'};
+const VIA = {toplevel:'Creation transaction seen by the scanner', etherscan:'Etherscan contract-creation lookup', getcontract:'TronGrid getcontractinfo (origin address)', unknown:'Unknown: not visible and never guessed'};
 const KIND = {direct:'Direct transfer', deposit_sweep:'Probable deposit address', funding:'Funded the deployer'};
 const SUBJ = {drainer:'the contract', payout:'a payout wallet', deployer:'the deployer'};
-const CHAIN_NAME = {eth:'ETH', bsc:'BSC', base:'Base'};
-const NATIVE = {eth:'ETH', bsc:'BNB', base:'ETH'};
+const CHAIN_NAME = {eth:'ETH', bsc:'BSC', base:'Base', tron:'TRON'};
+const NATIVE = {eth:'ETH', bsc:'BNB', base:'ETH', tron:'TRX'};
 const TIER_RANK = {T1:1, T2:2, T3:3};
 
 const labelInfo = l => LABELS[l] || [str(l).replace(/_/g, ' '), 'Detector label.'];
@@ -623,7 +644,7 @@ const dt = s => s ? str(s).replace('T', ' ').replace('Z', ' UTC') : 'unknown';
 const mid = a => { a = str(a); return a.length > 18 ? a.slice(0, 8) + '…' + a.slice(-6) : a; };
 const plural = (n, one, many) => fmtN(n) + ' ' + (n === 1 ? one : (many || one + 's'));
 const pct = x => Math.round(num(x) * 100) + '%';
-const isNative = d => /^0x0{40}$/i.test(str(d.token));
+const isNative = d => /^0x0{40}$/i.test(str(d.token)) || str(d.token) === 'T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb';
 const sym = d => isNative(d) ? (d.symbol && d.symbol !== '?' ? d.symbol : (NATIVE[d.chain] || 'native')) : (d.symbol || 'token');
 
 function explorer(chain){
@@ -644,13 +665,16 @@ function copyBtn(v){
   });
   return b;
 }
-// explorer link (address or tx); only hex identifiers are linked
+// explorer link (address or tx); only hex identifiers and base58 TRON addresses are linked
+const T_ADDR = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
 function link(chain, v, kind, full){
   v = str(v);
   if(!v) return el('span', {class:'mut', text:'unknown'});
   const b = explorer(chain);
   const txt = full ? v : mid(v);
-  if(b && /^0x[0-9a-f]+$/i.test(v)) return el('a', {class:'m', href: b + '/' + (kind === 'tx' ? 'tx' : 'address') + '/' + encodeURIComponent(v), target:'_blank', rel:'noopener noreferrer', title:v, text:txt});
+  const ch = obj(D.chains[chain]);
+  const txp = typeof ch.tx_path === 'string' && /^[a-z]+$/.test(ch.tx_path) ? ch.tx_path : 'tx';
+  if(b && (/^0x[0-9a-f]+$/i.test(v) || T_ADDR.test(v) || (kind === 'tx' && /^[0-9a-f]{64}$/i.test(v)))) return el('a', {class:'m', href: b + '/' + (kind === 'tx' ? txp : 'address') + '/' + encodeURIComponent(v), target:'_blank', rel:'noopener noreferrer', title:v, text:txt});
   return el('span', {class:'m', title:v, text:txt});
 }
 const addrL = (c, v, f) => link(c, v, 'address', f);
@@ -675,10 +699,11 @@ function renderHeader(){
   const names = Object.keys(D.chains);
   names.forEach(c => {
     const ch = obj(D.chains[c]); const lag = ch.lag_blocks;
-    const bad = typeof lag === 'number' && lag > 500;
+    const bad = typeof lag === 'number' && lag * (num(ch.block_sec) || 12) > 1800;
     h.appendChild(el('span', {class:'head', title: chainName(c) + ': scanned up to block ' + fmtN(ch.cursor_block) + ' of ' + fmtN(ch.head_block) + (ch.last_scan_at ? ', last scan ' + dt(ch.last_scan_at) : '')},
       el('b', {text: chainName(c)}), el('span', {class:'blk', text: ch.cursor_block != null ? fmtBlock(ch.cursor_block) : 'not scanned'}),
-      typeof lag === 'number' ? el('span', {class:'lag' + (bad ? ' bad' : ''), text: lag === 0 ? 'at head' : plural(lag, 'block') + ' behind'}) : null));
+      typeof lag === 'number' ? el('span', {class:'lag' + (bad ? ' bad' : ''), text: lag === 0 ? 'at head' : plural(lag, 'block') + ' behind'}) : null,
+      num(ch.gap_blocks) > 0 ? el('span', {class:'lag bad', title: 'Blocks skipped to stay at the head (the scanner fell behind): ' + arr(ch.gaps).map(g => fmtN(g.from) + '-' + fmtN(g.to) + (g.at ? ' (' + dt(g.at) + ')' : '')).join('; '), text:'not scanned: ' + plural(num(ch.gap_blocks), 'block')}) : null));
   });
   const u = $('updated');
   u.textContent = D.generated_at ? 'updated ' + ago(D.generated_at) : 'no snapshot yet';
@@ -695,7 +720,7 @@ function renderSeis(){
   const t0 = ref - 86400000;
   const chains = Object.keys(D.chains);
   arr(D.drains).forEach(d => { if(d.chain && !chains.includes(d.chain)) chains.push(d.chain); });
-  if(!chains.length) chains.push('eth', 'bsc', 'base');
+  if(!chains.length) chains.push('eth', 'bsc', 'base', 'tron');
   SEIS.W = Math.max(760, Math.floor(box.clientWidth || 1240));
   const W = SEIS.W, L = SEIS.left, R = SEIS.right, plotW = W - L - R, lh = SEIS.laneH;
   const H = SEIS.top + chains.length * lh + SEIS.axisH;
@@ -1212,7 +1237,7 @@ function closeCase(){
   if(lastFocus && document.contains(lastFocus)) lastFocus.focus({preventScroll:true});
 }
 function fromHash(){
-  const m = /^#([a-z0-9_-]+):(0x[0-9a-fA-F]{40})$/.exec(location.hash || '');
+  const m = /^#([a-z0-9_-]+):(0x[0-9a-fA-F]{40}|T[1-9A-HJ-NP-Za-km-z]{33})$/.exec(location.hash || '');
   if(m && findC(m[1], m[2])) openCase(m[1], m[2], true);
 }
 function setupKeys(){

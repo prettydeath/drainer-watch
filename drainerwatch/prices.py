@@ -6,7 +6,7 @@ from .db import meta_get, meta_set
 from .util import http_json, now_ts
 
 log = logging.getLogger("drainerwatch.prices")
-IDS = {"ETH": "ethereum", "BNB": "binancecoin"}
+IDS = {"ETH": "ethereum", "BNB": "binancecoin", "TRX": "tron"}
 REFRESH_SEC = 600
 
 

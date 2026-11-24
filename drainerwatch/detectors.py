@@ -631,7 +631,7 @@ def window_hit(events, window=D3_WINDOW, need=D3_MIN_VICTIMS):
 
 # ---------- tiers / score ----------
 PULL_LABELS = {"eoa_spender_pull", "split_xtx", "split_pull", "multi_victim_pull", "owner_collect", "oneshot_hub",
-               "prefund_hub"}
+               "prefund_hub", "kit_pull"}
 
 
 def assign_tier(labels, victims, active):
@@ -655,6 +655,19 @@ def assign_tier(labels, victims, active):
     funder approved itself) = T3; kit_vanity (N9) never sets a tier (score only)."""
     if "seed" in labels or "approval_fingerprint" in labels:
         return "T1"
+    # TRON T-1..T-8: kit_pull through a kit dispatcher (verify_account etc.), Claimer split with the kit code,
+    # outflow signed by a hijacking controller key, mass permission hijack, AML kit approve+transfer x3 = T1
+    if "kit_pull" in labels and "kit_signature" in labels:
+        return "T1"
+    if "claimer_split" in labels and "kit_signature" in labels:
+        return "T1"
+    if "perm_hijack_drain" in labels:
+        return "T1"
+    if "aml_approve_transfer" in labels and victims >= 3:
+        return "T1"
+    if labels & {"approval_kit_shape", "approve_all_call", "aml_approve_transfer", "prefund_approve_multi",
+                 "claimer_split", "perm_hijack_multi", "fixed_fee_multi"}:
+        return "T2"
     if labels & {"kit_confirmed", "ms_cashback", "dust_approve_kit", "emergency_gas_kit"}:
         return "T1"
     if labels & {"batch_approval_drain", "kit_router_swap", "oneshot_multi"}:
@@ -682,7 +695,8 @@ def assign_tier(labels, victims, active):
     if labels & {"multi_victim_pull", "eoa_spender_pull", "spoof_split", "eip7702_sweeper", "redflag_payable",
                  "redflag_selectors", "family_match", "pays_inferred_operator", "split_xtx", "foreign_recipient_swap",
                  "kit_signature", "owner_gated_puller", "bait_withdraw", "prefund_hub", "cross_chain",
-                 "gen_back_transfer", "eip7702_operator", "emergency_gas_self"}:
+                 "gen_back_transfer", "eip7702_operator", "emergency_gas_self", "kit_pull", "increase_max",
+                 "prefund_approve", "perm_hijack", "fixed_fee", "poison_zero"}:
         return "T3"
     return None
 

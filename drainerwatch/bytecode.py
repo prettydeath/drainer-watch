@@ -1,7 +1,7 @@
 """EVM bytecode analysis: skeleton hash, 4-byte selector set, red-flag selectors, family matching, sweeper heuristic."""
 import hashlib
 
-from .constants import (BAIT_ADDR_SELECTORS, FAMILY_JACCARD, FAMILY_MIN_CODE, FAMILY_MIN_SELECTORS, GEN_BAIT_RUNTIME_KECCAK,
+from .constants import (BAIT_ADDR_SELECTORS, BUYTRON_FAMILIES, FAMILY_JACCARD, FAMILY_MIN_CODE, FAMILY_MIN_SELECTORS, GEN_BAIT_RUNTIME_KECCAK,
                         GEN_BAIT_SELECTORS, GEN_BAIT_SIZE, KIT_PUBLIC_RUNTIME_KECCAK, MS_COMPANION_SELECTORS, MS_MIN_BAIT, MS_MIN_COMPANION,
                         MS_NEW_COMPANION_SELECTORS, MS_NEW_MIN_BAIT, MS_NEW_MIN_COMPANION, MS_NEW_SELECTORS,
                         OWNER_COLLECTOR_MIN, OWNER_COLLECTOR_SELECTORS, REDFLAG_SELECTORS, SEL_TRANSFER_FROM,
@@ -14,6 +14,13 @@ OP_EQ, OP_CALLVALUE, OP_SLOAD, OP_CALL, OP_JUMPI = 0x14, 0x34, 0x54, 0xF1, 0x57
 OP_CALLER, OP_CALLDATALOAD = 0x33, 0x35
 OP_PUSH2, OP_SSTORE = 0x61, 0x55
 _META_MARKERS = (b"ipfs", b"bzzr", b"solc", b"experimental")
+# TVM (TRON) extensions, all single-byte (no immediates, so iter_ops needs no change): TRC-10 token calls / msg.tokenvalue /
+# msg.tokenid, isContract, staking and resource delegation. CALLTOKEN is a CALL that also moves a TRC-10 token.
+TVM_OPS = {0xD0: "CALLTOKEN", 0xD1: "TOKENBALANCE", 0xD2: "CALLTOKENVALUE", 0xD3: "CALLTOKENID", 0xD4: "ISCONTRACT",
+           0xD5: "FREEZE", 0xD6: "UNFREEZE", 0xD7: "FREEZEEXPIRETIME", 0xD8: "VOTEWITNESS", 0xD9: "WITHDRAWREWARD",
+           0xDA: "FREEZEBALANCEV2", 0xDB: "UNFREEZEBALANCEV2", 0xDC: "CANCELALLUNFREEZEV2", 0xDD: "WITHDRAWEXPIREUNFREEZE",
+           0xDE: "DELEGATERESOURCE", 0xDF: "UNDELEGATERESOURCE"}
+OP_CALLTOKEN = 0xD0
 
 
 def to_bytes(code) -> bytes:
@@ -73,10 +80,21 @@ def selectors_of(code: bytes) -> list[str]:
     return sorted(out)
 
 
-def analyze(code_hex) -> dict:
+def tvm_ops(code) -> list[str]:
+    """Names of TVM-only opcodes present in the runtime (empty for plain EVM code). Only meaningful for TRON code: on
+    EVM these byte values are undefined opcodes and never appear in compiled code."""
+    return sorted({TVM_OPS[op] for _, op, _ in iter_ops(strip_metadata(to_bytes(code))) if op in TVM_OPS})
+
+
+def analyze(code_hex, tvm=False) -> dict:
     code = to_bytes(code_hex)
     if not code:
         return dict(size=0, code_hash=None, skeleton=None, selectors=[], redflags=[])
+    if tvm:
+        out = analyze(code_hex)
+        out["tvm_ops"] = tvm_ops(code)
+        out["owner_gated_puller"] = owner_gated_puller(code, out["selectors"], tvm=True)
+        return out
     sels = selectors_of(code)
     code_hash = "0x" + keccak(code).hex()
     exact = GEN_BAIT_RUNTIME_KECCAK.get(code_hash)
@@ -92,9 +110,12 @@ def kit_family(selectors):
     contract) = Fee(address) + getFee() + changePercentage(uint8) + >=3 bait(address); `ms_drainer` = >=1 bait(address)
     + >=2 companion selectors; `verify_account` = >=2 of Verify20 / Verify10 / withdrawAllTrxTo; `ms_new` (K1) = >=3 MS_NEW 5-arg baits
     + >=2 of its companions (changePercentage, claimSalary, disableSalary, enableSalary, salaryStatus, setReceiver);
-    `owner_collector` (K9) = >=5 of the 6 OwnerCollector selectors incl. collectToOwner or collectAllFrom. None
+    `owner_collector` (K9) = >=5 of the 6 OwnerCollector selectors incl. collectToOwner or collectAllFrom;
+    `buytron_swap_trx` / `buytron_swap_proxy` = the exact dispatcher of the public TRON "buytron" kit contracts. None
     otherwise. The code-trait family `ms_generated` (K2) is decided in analyze()."""
     s = set(selectors)
+    if frozenset(s) in BUYTRON_FAMILIES:
+        return BUYTRON_FAMILIES[frozenset(s)]
     if len(s & set(MS_NEW_SELECTORS)) >= MS_NEW_MIN_BAIT and len(s & set(MS_NEW_COMPANION_SELECTORS)) >= MS_NEW_MIN_COMPANION:
         return "ms_new"
     if set(TRUSTY_V1_SELECTORS) <= s and len(s & set(BAIT_ADDR_SELECTORS)) >= TRUSTY_V1_MIN_BAIT:
@@ -157,12 +178,13 @@ def _owner_check(ops):
     return False
 
 
-def owner_gated_puller(code, sels=None) -> bool:
+def owner_gated_puller(code, sels=None, tvm=False) -> bool:
     """R-A2 static heuristic (case notes case A): a small non-token contract that
     (1) has an owner check (CALLER compared with SLOAD(slot)), (2) builds an external transferFrom call (PUSH4 0x23b872dd
     that is NOT a dispatcher comparison) with CALL, (3) reads calldata, and (4) carries no hard-coded address (no PUSH20
     other than the 0xff..ff mask, no PUSH32 holding a left-padded address = immutable): token, from, to and amount can
-    only come from the call parameters. Best effort; T3 alone."""
+    only come from the call parameters. Best effort; T3 alone. tvm=True: TRON code, where CALLTOKEN (a CALL that also
+    moves a TRC-10 token) counts as the external call."""
     code = to_bytes(code)
     if not code or len(code) > PULLER_MAX_CODE:
         return False
@@ -171,6 +193,8 @@ def owner_gated_puller(code, sels=None) -> bool:
         return False
     ops = list(iter_ops(strip_metadata(code)))
     have = {op for _, op, _ in ops}
+    if tvm and OP_CALLTOKEN in have:
+        have.add(OP_CALL)
     if not {OP_CALL, OP_CALLDATALOAD, OP_CALLER, OP_SLOAD} <= have:
         return False
     tf = bytes.fromhex(SEL_TRANSFER_FROM)

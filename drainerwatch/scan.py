@@ -10,7 +10,7 @@ from .constants import (ALLOWLIST, ALLOWLIST_CSV, APPROVAL_KEEP_SEC, APPROVE_SEL
                         MALICIOUS_CATEGORIES, CHAINS, CONFIRMATIONS, D8_MAX_LOOKUPS, D8_MAX_SPENDER_NONCE,
                         D8_MIN_VICTIM_NONCE, DUST_APPROVE_MAX_WEI, EMERGENCY_GAS_KEEP, EMERGENCY_GAS_MAX_USD,
                         EMERGENCY_GAS_WINDOW_SEC, GEN_BACK_WINDOW, KIT_PUBLIC_CONTRACTS, KIT_ROUTER_XTX_SEC,
-                        GEN_FRESH_SEC, GEN_MAX_USES, INITIAL_BLOCKS, KIT_APPROVAL_AMOUNTS, KIT_DEPOSIT_GAS,
+                        GEN_FRESH_SEC, GEN_MAX_USES, INITIAL_BLOCKS, MAX_GAPS, KIT_APPROVAL_AMOUNTS, KIT_DEPOSIT_GAS,
                         KIT_DEPOSIT_MAX_NONCE, KIT_DEPOSIT_MIN_SHARE, MIN_USD, MS_NEW_SELECTORS, MS_WITHDRAW_SELECTORS,
                         ONESHOT_FUND_WINDOW, ONESHOT_MAX_NONCE, ONESHOT_RETURN_GASES, ONESHOT_RETURN_WINDOW,
                         PERMIT2, PERMIT_SELECTORS, REDFLAG_SELECTORS, SEL_MS_NEW_DEPOSIT, SEL_MULTICALL_DEADLINE,
@@ -34,6 +34,7 @@ MAX_DELEGATE_CODES = 40
 
 class Ctx:
     """Everything a chunk needs. Small enough to fake in tests."""
+    tvm = False                           # TRON subclass: TVM-aware bytecode analysis
 
     def __init__(self, conn, chain, rpc, seeds, labels, prices, deadline=None, code_cache=None, family_index=None):
         self.conn, self.chain, self.rpc = conn, chain, rpc
@@ -158,7 +159,7 @@ class Ctx:
         c = self.code_hex.get(addr)
         if c is None:
             return None
-        info = bytecode.analyze(c)
+        info = bytecode.analyze(c, tvm=self.tvm)
         if bytecode.is_delegated_eoa(c):
             return info
         self.conn.execute("INSERT OR REPLACE INTO codes(chain,address,code_hash,size,skeleton,selectors) "
@@ -1186,6 +1187,41 @@ def d10(ctx, swaps):
 
 
 # ---------- per-chain driver ----------
+def plan_range(conn, chain, head, max_blocks, now=None):
+    """Head-first block range for one run: [cursor + 1, cursor + max_blocks] while the scanner keeps up; when the lag
+    exceeds one run's worth of blocks the cursor jumps to head - max_blocks and the skipped range is recorded as a gap
+    (meta gaps:<chain>, newest last, capped at MAX_GAPS) so the dashboard can say honestly what was not scanned.
+    Fresh databases start INITIAL_BLOCKS behind the head (not a gap)."""
+    tip = head - CONFIRMATIONS
+    cur = meta_get(conn, f"cursor:{chain}")
+    if not cur:
+        start = max(1, head - INITIAL_BLOCKS)
+        return start, min(tip, start + max_blocks - 1)
+    start = int(cur) + 1
+    if tip - start + 1 > max_blocks:
+        new_start = tip - max_blocks + 1
+        add_gap(conn, chain, start, new_start - 1, now)
+        log.warning("%s: lag %d blocks > %d per run; skipping %d-%d (recorded as a gap)", chain, tip - start + 1,
+                    max_blocks, start, new_start - 1)
+        start = new_start
+    return start, min(tip, start + max_blocks - 1)
+
+
+def add_gap(conn, chain, a, b, now=None):
+    if b < a:
+        return
+    gaps = load_gaps(conn, chain)
+    gaps.append({"from": a, "to": b, "at": now or now_ts()})
+    meta_set(conn, f"gaps:{chain}", json.dumps(gaps[-MAX_GAPS:]))
+
+
+def load_gaps(conn, chain):
+    try:
+        return list(json.loads(meta_get(conn, f"gaps:{chain}", "[]") or "[]"))
+    except ValueError:
+        return []
+
+
 def scan_chain(conn, chain, seeds, labels, prices, max_blocks=None, deadline=None, rpc=None, start=None, end=None,
                persist_cursor=True, source=None, code_cache=None, family_index=None):
     """Scan from the stored cursor (or [start, end] for backtest). Returns a stats dict.
@@ -1198,9 +1234,7 @@ def scan_chain(conn, chain, seeds, labels, prices, max_blocks=None, deadline=Non
     ctx = Ctx(conn, chain, rpc, seeds, labels, prices, deadline, code_cache=code_cache, family_index=family_index)
     head = rpc.block_number()
     if start is None:
-        cur = meta_get(conn, f"cursor:{chain}")
-        start = int(cur) + 1 if cur else max(1, head - INITIAL_BLOCKS)
-        end = min(head - CONFIRMATIONS, start + (max_blocks or cfg["max_blocks"]) - 1)
+        start, end = plan_range(conn, chain, head, max_blocks or cfg["max_blocks"])
     meta_set(conn, f"head:{chain}", head)
     st = ctx.stats
     st["head"], st["start"] = head, start

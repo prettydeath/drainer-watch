@@ -67,3 +67,20 @@ def test_secrets_are_redacted_and_keys_rotate():
     first = kp.next()
     kp.mark_bad(first)
     assert kp.next() != first
+
+
+def test_template_script_parses(tmp_path):
+    """The dashboard script must be valid JS (an unescaped apostrophe in a label string breaks the whole page)."""
+    import re
+    import shutil
+    import subprocess
+    import pytest
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    from drainerwatch.constants import TEMPLATE
+    js = "\n".join(re.findall(r"<script[^>]*>(.*?)</script>", TEMPLATE.read_text(encoding="utf-8"), re.S))
+    f = tmp_path / "t.js"
+    f.write_text(js, encoding="utf-8")
+    r = subprocess.run([node, "--check", str(f)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[:500]

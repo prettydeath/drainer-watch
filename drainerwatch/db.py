@@ -78,6 +78,16 @@ CREATE TABLE IF NOT EXISTS flows (                -- subject -> X transfers awai
     ts INTEGER, token TEXT, amount TEXT, usd REAL, UNIQUE (chain, subject, x, tx)
 );
 CREATE INDEX IF NOT EXISTS ix_flows_x ON flows(chain, x);
+-- TRON: contract info cache (getcontractinfo: runtime analysis + origin = creator) and recent small TRX fundings (T-4)
+CREATE TABLE IF NOT EXISTS tron_contracts (
+    address TEXT PRIMARY KEY, is_contract INTEGER, size INTEGER, kit TEXT, puller INTEGER, origin TEXT, name TEXT,
+    selectors TEXT, checked_at INTEGER
+);
+CREATE TABLE IF NOT EXISTS tron_fund (
+    funder TEXT NOT NULL, recipient TEXT NOT NULL, amount INTEGER, tx TEXT NOT NULL, ts INTEGER, block INTEGER,
+    UNIQUE (tx)
+);
+CREATE INDEX IF NOT EXISTS ix_tron_fund_rcpt ON tron_fund(recipient, ts);
 CREATE TABLE IF NOT EXISTS alerted (chain TEXT NOT NULL, address TEXT NOT NULL, tier TEXT, sent_at INTEGER,
     PRIMARY KEY (chain, address));
 """

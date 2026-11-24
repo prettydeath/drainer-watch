@@ -11,12 +11,13 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-from .constants import (CHAINS, ETHERSCAN_V2, LABELS_REFRESH_SEC, SWEEP_WINDOW, VASP_CATEGORIES, WA_LOCAL_DEFAULT,
+from .constants import (CHAINS, ETHERSCAN_V2, EVM_CHAINS, LABELS_REFRESH_SEC, SWEEP_WINDOW, VASP_CATEGORIES, WA_LOCAL_DEFAULT,
                         WA_RAW, ZERO)
 from .db import meta_get, meta_set
 from .tokens import fmt_amount
 from .util import HttpError, http_json, http_text, iso, key_pool, looks_rate_limited, norm_addr, now_ts, redact
 
+EVM_SQL = ",".join(f"'{c}'" for c in EVM_CHAINS)     # Etherscan / eth_getCode enrichment: EVM chains only
 log = logging.getLogger("drainerwatch.enrich")
 
 MAX_DEPLOYER_LOOKUPS = 50
@@ -44,7 +45,7 @@ def _wa_text(chain):
 def parse_labels(text, chain):
     rows = []
     for r in csv.DictReader(io.StringIO(text)):
-        a = norm_addr(r.get("address"))
+        a = norm_addr(r.get("address"), chain if chain == "tron" else "evm")
         cat = (r.get("category") or "").strip().lower()
         if not a or not cat:
             continue
@@ -179,17 +180,16 @@ def cross_chain_check(conn, rpcs=None, cap=MAX_XCHAIN_CODES):
     a (chain, address) already in `codes` is not fetched again). Same opcode skeleton -> `cross_chain` evidence on both
     sides (detail: linked chain and its tier). Returns the number of links."""
     from . import bytecode
-    from .constants import CHAINS
     from .db import add_evidence
     from .rpc import Rpc
     have = {(r["chain"], r["address"]) for r in conn.execute("SELECT chain,address FROM codes")}
     src = [r for r in conn.execute("SELECT c.chain,c.address,c.tier,k.skeleton FROM contracts c JOIN codes k ON "
                                    "k.chain=c.chain AND k.address=c.address WHERE c.tier IN ('T1','T2') AND "
-                                   "k.skeleton IS NOT NULL AND k.size>=100")]
+                                   "k.skeleton IS NOT NULL AND k.size>=100") if r["chain"] in EVM_CHAINS]
     todo = defaultdict(list)
     n = 0
     for r in src:
-        for ch in CHAINS:
+        for ch in EVM_CHAINS:
             if ch != r["chain"] and (ch, r["address"]) not in have and n < cap:
                 todo[ch].append(r)
                 n += 1
@@ -378,8 +378,8 @@ def resolve_deployers(conn, es, rpcs, labels, budget=MAX_DEPLOYER_LOOKUPS):
     now = now_ts()
     todo = conn.execute(
         "SELECT c.chain,c.address FROM contracts c LEFT JOIN contract_deployer d ON d.chain=c.chain AND "
-        "d.address=c.address WHERE c.tier IN ('T1','T2') AND (d.address IS NULL OR (d.via='unknown' AND d.resolved_at<?)) "
-        "ORDER BY c.tier, c.last_seen DESC LIMIT ?", (now - 86400, budget)).fetchall()
+        "d.address=c.address WHERE c.tier IN ('T1','T2') AND c.chain IN (%s) AND (d.address IS NULL OR (d.via='unknown' AND d.resolved_at<?)) "
+        "ORDER BY c.tier, c.last_seen DESC LIMIT ?" % EVM_SQL, (now - 86400, budget)).fetchall()
     searches = {}
     for r in todo:
         chain, addr = r["chain"], r["address"]
@@ -427,8 +427,8 @@ def resolve_deployers(conn, es, rpcs, labels, budget=MAX_DEPLOYER_LOOKUPS):
     # funders
     deps = conn.execute(
         "SELECT DISTINCT d.chain,d.deployer FROM contract_deployer d LEFT JOIN deployer_info i ON i.chain=d.chain AND "
-        "i.address=d.deployer WHERE d.deployer IS NOT NULL AND (i.address IS NULL OR (i.funder IS NULL AND i.resolved_at<?)) "
-        "LIMIT ?", (now - 86400, budget)).fetchall()
+        "i.address=d.deployer WHERE d.deployer IS NOT NULL AND d.chain IN (%s) AND (i.address IS NULL OR (i.funder IS NULL AND i.resolved_at<?)) "
+        "LIMIT ?" % EVM_SQL, (now - 86400, budget)).fetchall()
     for r in deps:
         chain, dep = r["chain"], r["deployer"]
         base = dict(address=dep, startblock=0, endblock=99999999, page=1, offset=5, sort="asc")
@@ -455,7 +455,7 @@ def walk_payouts(conn, es, labels, prices, budget=MAX_WALK_CALLS):
     used = 0
     now = now_ts()
     rows = conn.execute("SELECT DISTINCT p.chain,p.wallet FROM payouts p JOIN contracts c ON c.chain=p.chain AND "
-                        "c.address=p.drainer WHERE c.tier='T1' ORDER BY c.usd DESC LIMIT 60").fetchall()
+                        "c.address=p.drainer WHERE c.tier='T1' AND c.chain IN (%s) ORDER BY c.usd DESC LIMIT 60" % EVM_SQL).fetchall()
 
     def tokentx(chain, addr):
         nonlocal used

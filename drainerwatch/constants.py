@@ -15,17 +15,27 @@ TEMPLATE = Path(__file__).resolve().parent / "template.html"
 
 CHAINS = {
     "eth": dict(id=1, rpc_env="ETH_RPC_URL", rpc="https://ethereum-rpc.publicnode.com",
-                explorer="https://etherscan.io", native="ETH", max_blocks=100, block_sec=12, source="receipts", chunk=20, wa="ethereum", cg="ethereum"),
+                explorer="https://etherscan.io", native="ETH", max_blocks=100, block_sec=12, source="receipts", chunk=20, wa="ethereum", cg="ethereum", share=0.25),
     "bsc": dict(id=56, rpc_env="BSC_RPC_URL", rpc="https://bsc-rpc.publicnode.com",
-                explorer="https://bscscan.com", native="BNB", max_blocks=800, block_sec=0.75, source="logs", chunk=100, wa="bsc", cg="binancecoin"),
+                explorer="https://bscscan.com", native="BNB", max_blocks=2000, block_sec=0.45, source="logs", chunk=100, wa="bsc", cg="binancecoin", share=0.5),
     "base": dict(id=8453, rpc_env="BASE_RPC_URL", rpc="https://base-rpc.publicnode.com",
-                 explorer="https://basescan.org", native="ETH", max_blocks=400, block_sec=2, source="receipts", chunk=60, wa="base", cg="ethereum"),
+                 explorer="https://basescan.org", native="ETH", max_blocks=450, block_sec=2, source="receipts", chunk=60, wa="base", cg="ethereum", share=0.1),
+    # TRON (TronGrid HTTP API, not JSON-RPC): own ingestion in tron_scan.py; ~3 s blocks -> ~200-300 blocks per 10-15 min
+    "tron": dict(id=None, kind="tron", rpc_env="TRON_API_URL", rpc="https://api.trongrid.io",
+                 explorer="https://tronscan.org/#", tx_path="transaction", native="TRX", max_blocks=300, block_sec=3,
+                 source="blocks", chunk=20, wa="tron", cg="tron", share=0.15),
 }
+# share: fraction of the run's scan budget; slices are cumulative in run order, so time a chain leaves unused goes to the
+# chains after it. Measured 2026-11-24 (warm cache): ETH 75 blocks ~70 s, Base 411 ~27 s, TRON 300 ~35 s, BSC (getLogs +
+# D2/D3 tx lookups) ~0.44 s per block, i.e. about real time: BSC runs last, takes what is left and records gaps.
+DEFAULT_CHAIN_ORDER = "eth,base,tron,bsc"
+EVM_CHAINS = [c for c, cfg in CHAINS.items() if cfg.get("kind", "evm") == "evm"]
 # default block source per chain (measured 2026-11-23, 20 blocks each, see README "Block source"): receipts on ETH/Base
 # (enables D8 / R-A1 and removes capped tx lookups); BSC stays on getLogs (receipts + D8 lookups: ~16x wall time per
 # block, 800 blocks/run would not fit the budget). Env DRAINERWATCH_SOURCE / --source override all chains.
 INITIAL_BLOCKS = 300
 CONFIRMATIONS = 2
+MAX_GAPS = 50                  # head-first scanning: skipped block ranges kept per chain (meta gaps:<chain>)
 
 SCAMSNIFFER_URL = "https://raw.githubusercontent.com/scamsniffer/scam-database/main/blacklist/address.json"
 SEEDS_REFRESH_SEC = 6 * 3600
@@ -65,6 +75,12 @@ VERIFY_ACCOUNT_NAMES = ["Verify20(address,address,address,uint256)", "Verify10(a
                         "withdrawAllTrxTo(address)"]
 VERIFY_ACCOUNT_SELECTORS = {selector(n): n for n in VERIFY_ACCOUNT_NAMES}
 VERIFY_ACCOUNT_MIN = 2
+# "buytron" TRON kit (PhishDestroy gist 2026-02-09, public): fake TRX purchase, unlimited USDT approval to a small contract
+# whose admin pulls with a stored token address. Exact dispatcher sets of its two published contracts.
+BUYTRON_FAMILIES = {
+    frozenset({selector("pullFunds(address,address,uint256)"), selector("admin()"), selector("token()")}): "buytron_swap_trx",
+    frozenset({selector("transferFrom(address,address,uint256)"), selector("usdt()"), selector("owner()")}): "buytron_swap_proxy",
+}
 REDFLAG_SELECTORS = {selector(n): n for n in REDFLAG_NAMES}
 REDFLAG_SELECTORS.update(BAIT_ADDR_SELECTORS)
 REDFLAG_SELECTORS.update(VERIFY_ACCOUNT_SELECTORS)
@@ -298,6 +314,8 @@ WRAPPED_NATIVE = {  # token -> native symbol (priced as that coin)
     "eth": {"0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2": "ETH"},
     "bsc": {"0xbb4cdb9cbd36b01bd1cbaebf2de08d9173bc095c": "BNB", "0x2170ed0880ac9a755fd29b2688956bd959f933f8": "ETH"},
     "base": {"0x4200000000000000000000000000000000000006": "ETH"},
+    # WTRX; the TRON zero address stands for native TRX in drains rows
+    "tron": {"TNUC9Qb1rRpS5CbWLmNMxXBjyFoydXjWFR": "TRX", "T9yD14Nj9j7xAB4dbGeiX9h8unkKHxuWwb": "TRX"},
 }
 STABLES = {  # priced 1.0 by ADDRESS (not by symbol: scam tokens copy symbols)
     "eth": {"0xdac17f958d2ee523a2206206994597c13d831ec7", "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
@@ -307,6 +325,8 @@ STABLES = {  # priced 1.0 by ADDRESS (not by symbol: scam tokens copy symbols)
             "0xe9e7cea3dedca5984780bafc599bd69add087d56", "0xc5f0f7b66764f6ec8c8dff7ba683102295e16409"},
     "base": {"0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", "0xd9aaec86b65d86f6a7b5b1b0c42ffa531710b6ca",
              "0x50c5725949a6f0c72e6c4a641f24049a917db0cb", "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2"},
+    # USDT-TRC20, USDC-TRC20 (issuer contracts; tronscan token pages)
+    "tron": {"TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t", "TEkxiTehnzSmSe2XqrBj4w32RUN966rdz8"},
 }
 
 # Labels from wallet-attribution
@@ -335,6 +355,35 @@ AMM_FACTORIES = {
 }
 POOL_SELECTORS = {"0dfe1681", "d21220a7"}      # token0(), token1(): AMM pair/pool dispatcher
 
+# ---- TRON rules T-1..T-8 (case notes case A, kit notes K10/K11, web research 2026-11-23 sec. 2) ----
+TRON_USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+TRON_SUN = 1_000_000
+TRON_KIT_AMOUNTS = {10 ** 46: "tron_1e46"}          # K10: approve(spender, toSun("1e40")) = 10^46 units
+TRON_KIT_FEE_LIMIT = 35 * TRON_SUN                  # ... sent with feeLimit 35 TRX
+TRON_AML_FEE_LIMIT = 300 * TRON_SUN                 # K10 AML kit: approve(exact balance) with feeLimit 300 TRX
+TRON_APPROVE_ALL_SELECTOR = "daea85c5"              # K10 kasumi "ApproveAll": daea85c5(address) on the token
+TRON_CLAIMER_KEEP_SUN = 50 * TRON_SUN               # K11 Claimer: callValue = min(bal - 50 TRX, 0.8 * bal)
+TRON_CLAIMER_SHARE, TRON_CLAIMER_TOL = 0.8, 0.02
+TRON_PREFUND_MIN, TRON_PREFUND_MAX = 5 * TRON_SUN, 100 * TRON_SUN   # R-A5: whole-TRX gas pre-funding (case A: 20 TRX)
+TRON_PREFUND_WINDOW = 6 * 3600                      # funding -> approval of the funder's spender
+TRON_PREFUND_KEEP = 6 * 3600
+TRON_PREFUND_T2 = 3                                 # >= 3 funded approvers with the same amount: T2
+TRON_PREFUND_MIN_GAP = 3                            # funding and approval in the same block: sponsored-tx relayer
+TRON_HUB_MAX_FUNDED = 30                            # a funder of > 30 wallets in 6 h is a distribution service
+TRON_PERM_MIN_AGE_SEC = 30 * 86400                  # T-6: change >= 30 days after the account's first activity
+TRON_PERM_T2 = 3                                    # accounts under one controller key: T2 (T1 needs a signed drain)
+TRON_FEE_MIN_SUN = 5 * TRON_SUN                     # T-7 fixed TRX fee after a pull (TRXDrop: 30 TRX)
+TRON_FEE_MAX_SUN = 100 * TRON_SUN                   # larger whole-TRX transfers after a pull are payments, not fees
+TRON_FEE_WINDOW = 60
+TRON_FEE_MIN_HITS = 2
+TRON_POISON_MIN = 3                                 # T-8: zero-value transferFrom legs per subject per chunk
+TRON_MAX_CONTRACT_LOOKUPS = 250                     # getcontractinfo per run (cached in tron_contracts)
+TRON_MAX_ACCOUNT_LOOKUPS = 120                      # getaccount per run
+# TRON benign allowlist (base58). Sources in comments; operator additions: data/allowlist.csv with chain=tron.
+TRON_ALLOWLIST = {
+    "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t": "USDT-TRC20 token contract",
+}
+
 # score weights (additive, capped at 100)
 SCORE = {"seed": 50, "approval_fingerprint": 50, "bait_payable": 35, "kit_signature": 25, "split_xtx": 35,
          "foreign_recipient_swap": 15, "foreign_swap_multi": 20, "foreign_swap_kit": 30, "owner_gated_puller": 10,
@@ -347,4 +396,9 @@ SCORE = {"seed": 50, "approval_fingerprint": 50, "bait_payable": 35, "kit_signat
          "kit_router_swap": 50, "owner_collect": 30, "eip7702_operator": 10, "cross_chain": 10,
          # kit notes N1-N11 rules
          "kit_confirmed": 50, "ms_cashback": 15, "dust_approve": 25, "dust_approve_kit": 50, "emergency_gas": 25,
-         "emergency_gas_kit": 50, "emergency_gas_self": 10, "kit_vanity": 5}
+         "emergency_gas_kit": 50, "emergency_gas_self": 10, "kit_vanity": 5,
+         # TRON rules T-1..T-8
+         "kit_pull": 40, "approval_kit_shape": 30, "aml_approve_transfer": 35, "approve_all_call": 30,
+         "increase_max": 5, "prefund_approve": 15, "prefund_approve_multi": 25, "claimer_split": 40,
+         "perm_hijack": 20, "perm_hijack_multi": 35, "perm_hijack_drain": 50, "fixed_fee": 20, "fixed_fee_multi": 30,
+         "poison_zero": 5}

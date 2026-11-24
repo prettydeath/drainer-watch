@@ -5,7 +5,8 @@ from collections import defaultdict
 
 from . import bytecode
 from .constants import (ALLOWLIST, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, KIT_PUBLIC_CONTRACTS,
-                        KIT_VANITY_RE, MALICIOUS_CATEGORIES, MIN_USD, ONESHOT_T1_WORKERS, POOL_SELECTORS)
+                        KIT_VANITY_RE, MALICIOUS_CATEGORIES, MIN_USD, ONESHOT_T1_WORKERS, POOL_SELECTORS, TRON_ALLOWLIST, TRON_FEE_MIN_HITS,
+                        TRON_PERM_T2, TRON_PREFUND_T2)
 from .detectors import assign_tier, score_of, window_hit
 from .seeds import load_allowlist
 from .util import iso, now_ts
@@ -13,7 +14,8 @@ from .util import iso, now_ts
 ACTIVITY_TYPES = {"seed_activity", "split_pull", "pays_known_operator", "redflag_payable", "multi_victim_pull",
                   "eoa_spender_pull", "approval_fingerprint", "bait_payable", "bait_withdraw", "split_xtx",
                   "foreign_recipient_swap", "owner_collect", "oneshot_spender", "ms_deadline", "batch_approval_drain",
-                  "kit_router_swap", "kit_deposit", "gen_back_transfer", "dust_approve", "emergency_gas"}
+                  "kit_router_swap", "kit_deposit", "gen_back_transfer", "dust_approve", "emergency_gas",
+                  "kit_pull", "tron_approval", "prefund_approve", "perm_hijack_drain", "fixed_fee"}
 # labels that come from code alone (no on-chain behaviour): never enough for cluster tier inheritance
 STATIC_LABELS = {"redflag_selectors", "family_match", "kit_signature", "owner_gated_puller", "wa_scam", "kit_exact",
                  "cross_chain", "cross_chain_t1", "eip7702_operator", "kit_public", "kit_vanity"}
@@ -35,7 +37,8 @@ UNPRICED_NEUTRAL = {"redflag_selectors", "cross_chain", "spoof_split"}
 
 def allow_sets():
     """chain -> benign addresses: built-in ALLOWLIST + data/allowlist.csv (global and per chain)."""
-    return {ch: set(ALLOWLIST) | load_allowlist(ch) for ch in CHAINS}
+    return {ch: (set(TRON_ALLOWLIST) if CHAINS[ch].get("kind") == "tron" else set(ALLOWLIST)) | load_allowlist(ch)
+            for ch in CHAINS}
 
 
 def purge_allowlisted(conn, allow):
@@ -90,7 +93,8 @@ def rollup(conn, seeds, labels, now=None):
     per = defaultdict(lambda: dict(types=defaultdict(list), victims=set(), mvp=[], esp=[], tx_d4=set(), tx_d4w=set(), spoof=False, real_split=False, fam=None,
                                    redflags=False, ts=[], kit=None, puller=False, frs=[], frs_all=[], frs_kit=False,
                                    osp=[], msd_pulled=False, op7702=False, kit_exact=None, xchain=[], kit_public=None,
-                                   bait_public=False, cashback=False, cashback_shape=False, dust=[], egas=[]))
+                                   bait_public=False, cashback=False, cashback_shape=False, dust=[], egas=[],
+                                   tron_kinds=set(), prefund=[], claimer=False, hijack=set(), fees=[], poison=False))
     for r in conn.execute("SELECT chain,address,type,tx,ts,detail FROM evidence"):
         p = per[(r["chain"], r["address"])]
         d = json.loads(r["detail"] or "{}")
@@ -165,6 +169,27 @@ def rollup(conn, seeds, labels, now=None):
             p["victims"].add(d.get("victim"))
         elif t == "cross_chain":
             p["xchain"].append(d)
+        # TRON rules T-1..T-8
+        elif t == "kit_pull":
+            p["victims"].add(d.get("victim"))
+        elif t == "tron_approval":
+            p["victims"].add(d.get("victim"))
+            p["tron_kinds"].add(d.get("kind"))
+        elif t == "prefund_approve":
+            p["prefund"].append((d.get("victim"), d.get("amount_trx")))
+            p["victims"].add(d.get("victim"))
+        elif t == "perm_hijack":
+            p["hijack"].add(d.get("victim"))
+            p["victims"].add(d.get("victim"))
+        elif t == "perm_hijack_drain":
+            p["victims"].add(d.get("victim"))
+        elif t == "fixed_fee":
+            p["fees"].append((d.get("amount_trx"), d.get("victim"), d.get("pull_tx")))
+            p["victims"].add(d.get("victim"))
+        elif t == "zero_transfer_spoof":
+            p["poison"] = True
+        if t == "bait_payable" and d.get("claimer_shape"):
+            p["claimer"] = True
 
     dr = {}
     for r in conn.execute("SELECT chain,drainer,COUNT(*) n,COALESCE(SUM(usd),0) usd FROM drains GROUP BY chain,drainer"):
@@ -263,6 +288,39 @@ def rollup(conn, seeds, labels, now=None):
                 lb.add("foreign_swap_multi")
             if p["frs_kit"]:
                 lb.add("foreign_swap_kit")
+        # TRON rules T-1..T-8
+        if "kit_pull" in p["types"]:
+            lb.add("kit_pull")
+        for kind, label in (("kit_amount", "approval_kit_shape"), ("approve_all", "approve_all_call"),
+                            ("aml_exact", "aml_approve_transfer"), ("increase_max", "increase_max")):
+            if kind in p["tron_kinds"]:
+                lb.add(label)
+        if p["prefund"]:
+            lb.add("prefund_approve")
+            by_amt = defaultdict(set)
+            for v, amt in p["prefund"]:
+                by_amt[amt].add(v)
+            if any(len(vs) >= TRON_PREFUND_T2 for vs in by_amt.values()):
+                lb.add("prefund_approve_multi")
+        if p["claimer"]:
+            lb.add("claimer_split")
+        if p["hijack"]:
+            lb.add("perm_hijack")
+            if len(p["hijack"]) >= TRON_PERM_T2:
+                lb.add("perm_hijack_multi")
+        if "perm_hijack_drain" in p["types"]:
+            lb.add("perm_hijack_drain")
+        if p["fees"]:
+            by_amt = defaultdict(lambda: (set(), set()))
+            for amt, v, ptx in p["fees"]:
+                by_amt[amt][0].add(v)
+                by_amt[amt][1].add(ptx)
+            if any(len(txs) >= TRON_FEE_MIN_HITS for _, txs in by_amt.values()):
+                lb.add("fixed_fee")
+                if any(len(vs) >= 3 for vs, _ in by_amt.values()):
+                    lb.add("fixed_fee_multi")
+        if p["poison"]:
+            lb.add("poison_zero")
         if KIT_VANITY_RE.match(addr) and (p["kit"] or p["kit_public"] or p["xchain"]):
             lb.add("kit_vanity")                  # N9: score booster with a kit fingerprint / K14 twin, never alone
         victims = {v for v in p["victims"] | drain_victims.get((chain, addr), set()) | {v for _, v in p["mvp"]}
@@ -283,6 +341,9 @@ def rollup(conn, seeds, labels, now=None):
                 and not lb - UNPRICED_CAPPABLE - UNPRICED_NEUTRAL:
             tier = "T3"                    # one victim, nothing priced, no other evidence: token fee/tax router shape
             lb.add("unpriced_capped")
+        if chain == "tron" and tier in ("T1", "T2") and lb & {"split_pull", "split_xtx"} and len(victims) < 3                 and not lb & {"kit_signature", "owner_gated_puller", "kit_pull", "family_match", "seed"}:
+            tier = "T3"                    # TRON has no source verification here: payment splitters / forwarders look the same
+            lb.add("tron_split_capped")
         c = codes.get((chain, addr))
         ts = p["ts"] or [now]
         src = seeds.get(chain, addr)[1] if "seed" in lb else "detector"

@@ -105,10 +105,16 @@ def addr_of_topic(t: str) -> str:
     return "0x" + t[-40:].lower()
 
 
-def norm_addr(a):
+def norm_addr(a, chain=None):
+    """EVM: lower-case 0x address. chain='tron' (or a base58 T... value with chain None): the base58 address as is
+    (case-sensitive, checksum verified). None if malformed."""
     if not a:
         return None
-    a = str(a).strip().lower()
+    a = str(a).strip()
+    if chain == "tron" or (chain is None and a[:1] == "T"):
+        from .tron import is_tron_addr
+        return a if is_tron_addr(a) else None
+    a = a.lower()
     if re.fullmatch(r"0x[0-9a-f]{40}", a):
         return a
     return None
