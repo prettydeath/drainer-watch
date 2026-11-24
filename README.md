@@ -86,6 +86,38 @@ each run a `next` job waits until ~9 min after the run started and dispatches th
 | N11 | generated bait (K2): the main receiver's nonce at scan time is recorded (`main_receiver_nonce`, `main_receiver_fresh`); its later split is not followed | detail only |
 | R-A4 clusters | flagged subjects sharing a payout wallet (split payout, D8 collector or MS customer) form one `operator_cluster` (`cluster` on contracts, `clusters` list in data.json). A member inherits the cluster's best own tier (`cluster_inherited`) only if both it and the better member have behavioural (non-bytecode) evidence and the link is not a single weak one (2+ shared wallets or 2+ payout txs, not customer-only) | inheritance as described |
 
+### Web-research rules (W1-W13)
+
+Generic rules derived from public vendor reports and academic papers on drainer-as-a-service kits (2023-2026). None of
+them gives T1 on its own: T1 needs two different W rules on one subject, or a vanity drainer address (W2) with
+independent behaviour and 2+ victims. Most need the receipts source (ETH, Base); W3 / W8a run in the ETH full-block pass.
+
+| id | rule | tier effect |
+|----|------|-------------|
+| W1 `deploy_drain` | (a) a top-level contract creation whose own tx moves a third party's tokens; (b) a permit executed and used in one tx by a spender that had no code before that tx (node state at block - 1, else Etherscan `getcontractcreation` = this tx), the in-tx deploy-and-drain shape. Strong only when the victim got nothing back in the tx and its tokens ended at an EOA (`deploy_drain`); otherwise `deploy_drain_weak` (smart-account onboarding and flash-loan adapters create a contract and use the user's permit in one tx too). Subjects: the new contract and, for (b), the creating contract; deployer = payout role `deployer` | strong T2, weak T3; verified source capped at T3 |
+| W1c `ghost_forward` | tokens (priced, non-spoof) leave an address that today has no code and never sent a tx, in a tx it did not send, with no Approval by it and no EIP-3009 authorization in that tx: code that existed only inside the tx (pre-computed CREATE2 address deployed, forwarded, destroyed). Subject = `tx.to`. Counterfactual deposit forwarders of payment processors produce the same shape (all multi-address hits in a live window were verified `Factory` / `Sweeper` contracts) | T3 only; verified source capped |
+| W2 `vanity_drainer` | address with >= 4 leading AND >= 4 trailing zero nibbles (`^0x0000[0-9a-f]{32}0000$`, the style of several kits' fake-token / receiver contracts), not allowlisted (`LEGIT_VANITY`: Seaport conduit / zone / ConduitController, Multicall3, Permit2, EntryPoint, all Etherscan-verified), with approvals / Permit2 permits from 3+ EOAs or any bait / pull behaviour | T2; with independent behaviour and 2+ victims T1 |
+| W3 `bait_forward` (ETH) | value > 0 call with a bait selector (now also `Verify()` 0x143087ee and `Gift()`, caught by a payable fallback; `Claim()` 0x3158952e already listed) or any call to a vanity contract; >= 95 % of `msg.value` left the contract to third addresses in the same tx (Etherscan internal transfers of the tx, capped per run; else the contract balance delta over the block while the node still has that state). A documented DaaS share forwarded with the rest kept by the contract (W11) is recorded as `kept_share` | 1 victim T3; 2+ victims T2 (`bait_forward_multi`); verified source capped |
+| W4 `token_spender_pull` | a third party's tokens pulled through a contract whose own dispatcher is ERC-20-like (4+ of transfer / transferFrom / approve / balanceOf / totalSupply / allowance) and whose runtime contains DELEGATECALL (owner-gated delegatecall multicall in a "token" the victims approved); no mint/burn in the tx (vault deposits) | 1 victim T3; 2+ T2 |
+| W5 `owner_takeover` | `OwnershipTransferred` (not from zero), DSProxy `LogSetOwner`, or Safe `AddedOwner` together with `RemovedOwner` / threshold 1, where the new owner is an EOA that did not sign the change; within 1 h the new owner (nonce <= 50) moves tokens out of that contract | T2 (subject = new owner) |
+| W6 `safe_spender` | a Safe proxy (runtime: masterCopy() PUSH32 + DELEGATECALL, < 300 B) is the approve / Permit2 spender of 3+ EOAs; `safe_spender_pull` when it also pulls a third party's tokens (Etherscan verification of Safe proxies is not a legitimacy signal here) | T3; with a pull T2 |
+| W7 `seaport_zero` / `nft_operator_pull` | Seaport `OrderFulfilled` where the offerer gives NFTs and receives no native / ERC-20 consideration at all (zero-price listing), subject = recipient; `setApprovalForAll` to an EOA followed within 1 h by ERC-721 transfers of that owner sent by that EOA | seaport 1 victim T3, 2+ T2; NFT operator T2 |
+| W8a `eip7702_batch` (ETH) | more than 5 EIP-7702 authorizations to one delegate in one tx (mass delegation of many keys: leaked-key sweeping), legitimate wallet delegates excluded (`LEGIT_7702_DELEGATES`); `eip7702_chain0` when an authorization uses chainId 0 (replayable on every chain) | T3; with the D6 sweeper heuristic or chainId 0 T2 |
+| W8b `batch7702_approve` | a delegated EOA calls itself (tx.from == tx.to) and the batch approves an EOA and moves tokens out (2+ legs, nothing comes back): the phishing batch through a legitimate delegator; subject = the approved EOA | T2 |
+| W10 `poison_zero` | 3+ zero-value `transferFrom` legs of a real stablecoin (by address) out of wallets that did not send the tx, through one bundler contract in a chunk; lookalikes (same first 3 and last 4 hex characters as a real counterparty of the victim in the last 20 min) are counted | T3 only, no victims or drains |
+| W11 `share_grid` / `kept_share` | split share within +-0.5 points of 70 / 80 / 85 / 90 % (D2 / R-A1), or the bait contract keeping the documented fee (W3) | score only |
+| W12 `operator_wallet` | an address (not a known contract, not legitimate) recorded as payout wallet of 2+ flagged subjects; `operator_wallet_multi` when 3+ of them have their own behavioural T1/T2 | T3; multi T2 |
+| W13 `serial_deployer` | a deployer / factory of 2+ flagged contracts with behavioural evidence (top-level creations, resolved deployers, W1); `serial_deployer_multi` when 3+ have their own behavioural T1/T2 | T3; multi T2 |
+
+Not implemented: on-chain config-storage watching (intel, not drain detection), Blur bulk-order signatures, tiny-amount
+(< 10 USD) lookalike transfers (only the zero-value form, W10), Permit2 amount / expiration fingerprints (K4 covers the
+millisecond deadline). W1b, W3 and the archive checks are best effort: a public node keeps only recent state, so on
+older blocks they depend on Etherscan lookups (capped per run) or stay unknown.
+
+Code families keep their hash in `family` and get a readable `family_name` with its `family_name_source`: kit name,
+the contract's own verified / TRON name (impersonations of well-known protocols are marked "self-named"), token name,
+the most distinctive dispatcher functions (public openchain signature database, cached), or "Unnamed code family".
+
 `data.json` per contract also carries payout wallets (operator/affiliate split is **inferred** from the shares;
 kit roles `customer`, `worker`, `collector`, `kit_fee`, `kit_wallet`, `submitter`), the deployer block, the VASP
 links and `cross_chain` twins. Kit signatures come from static study of drainer kits (MS Drainer
@@ -116,6 +148,17 @@ CALLTOKEN / CALLTOKENVALUE are single-byte; CALLTOKEN counts as an external call
 Shared collectors (R-A4 clusters) work across TRON subjects the same way as on EVM. The VerifyAccount runtimes and the
 buytron contracts are regression fixtures in `tests/fixtures_kits/`; real-transaction regressions are kept private.
 
+## Freezable now
+
+`freezable` in data.json lists issuer-freezable stablecoin balances (>= 100 USD) currently held by T1/T2 subjects and
+their payout wallets (operator, affiliate, collector, customer, worker, funder; an address linked to several subjects keeps
+its best-tier link): USDT on Ethereum and TRON (Tether, blacklist `isBlackListed(address)` 0xe47d6060, checked on both
+contracts) and USDC on Ethereum and Base (Circle, `isBlacklisted(address)` 0xfe575a87). Each row: chain, address, role,
+drainer, drainer_tier, token, symbol, issuer, balance, usd, already_frozen, checked_at; `freezable_total` sums the USD
+not yet frozen per issuer. Balances come from batched `eth_call` (TRON: `triggerconstantcontract`), at most 300 addresses
+per run, cached 30 min, time-boxed inside the run budget; failures never stop a run. BSC "USDT" (Binance-Peg BSC-USD)
+is not a Tether token and has no issuer freeze, so BSC is skipped.
+
 ## Deployer and VASP links
 
 * Labels: [wallet-attribution](https://github.com/prettydeath/wallet-attribution) CSVs, refreshed every 24 h.
@@ -145,7 +188,8 @@ buytron contracts are regression fixtures in `tests/fixtures_kits/`; real-transa
 * **Head-first scanning.** When a chain falls more than one run's `max_blocks` behind (for example after the schedule
   stalled), the next run jumps to the head and records the skipped range; `data.json` `chains[c].gaps` / `gap_blocks`
   and the dashboard top bar ("not scanned: N blocks") show it. Skipped ranges are not back-filled automatically.
-* **No traces.** Everything comes from logs and top-level transactions. Factory/CREATE2 (internal) creations are not visible
+* **No traces.** Everything comes from logs and top-level transactions (W3 asks Etherscan for the internal transfers of
+  the few bait txs, capped per run). Factory/CREATE2 (internal) creations are not visible
   on any chain, contract creations are scanned on ETH only (none on BSC/Base), and native-coin internal splits are
   not visible; native drains are therefore under-counted. Only ERC-20 `Transfer`
   legs are analysed; ERC-721/1155 are ignored (ApprovalForAll is used only to match seeds).
@@ -167,14 +211,18 @@ buytron contracts are regression fixtures in `tests/fixtures_kits/`; real-transa
   in the case file. Unpriced single-victim cap: a split_pull / split_xtx subject with exactly one victim, no priced amount
   (USD 0 / unknown) and no other behavioural or kit evidence is capped at T3 (`unpriced_capped`): fee-on-transfer and
   tax-router tokens split every transfer the same way. This matters most on BSC, where source verification is not
-  available on our Etherscan plan.
+  available on our Etherscan plan. On chains without source verification for us (BSC, Base) a split with a single victim
+  stays T2 only with a kit fingerprint, a kit share (W11) or other behaviour (`unverified_split_capped`). A capped subject
+  (`unpriced_capped`, `verified_capped`, `tron_split_capped`, `unverified_split_capped`) is never re-raised by a K14
+  cross-chain twin or by cluster inheritance, and a twin without its own behavioural evidence is lifted to T2 at most.
 * **Tiers.** T1 confirmed (seed with activity; D2 with 3+ victims; D2 + family match; D9 kit approval amount; bait
   contract with 3+ victims; R-A1 with 3+ victims; D10 multi-victim + kit deadline; K7/K8 batch or kit-router drain;
   K5 hub with 3+ one-shot workers; K4 ms-deadline + pull; K9 owner-collector with 3+ victims; N3 victim of a kit public
   contract; N1 cashback flag with a kit dispatcher; N4 / N5 with the kit amount; N7 router allowance + swap). T2 strong (D2 with 1-2 victims;
   D4; D8 3+ victims; bait contract 1-2 victims; R-A1 2 victims; D10 multi-victim or kit deadline; family / kit
   signature / owner-gated puller with activity; K4 alone; K5 hub; K12 3+ funded workers; K9; K2 exact runtime; K6;
-  K14 twin of a T1; N2 exact public runtime; N1 calldata only; N4 dust approval; N5 emergency gas). T3 suspect (D3 alone; D6; D7 no-arg; D8 1-2 victims; R-A1 1 victim;
+  K14 twin of a T1; N2 exact public runtime; N1 calldata only; N4 dust approval; N5 emergency gas; W1-W13 as listed in
+  their table). T3 suspect (D3 alone; D6; D7 no-arg; D8 1-2 victims; R-A1 1 victim;
   D10 single; red-flag selectors; family / kit signature / puller without activity). The
   score is an additive documented weight (`constants.SCORE`); the tier is the published field. Tiers are leads for
   investigation, not findings of fact. Operator/affiliate roles and `deposit_sweep` links are inferences.

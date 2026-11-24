@@ -97,6 +97,29 @@ Deps: `requests`, `pycryptodome` (keccak for selectors/topics). Python >=3.11.
   TRON K10/K11 pending. Tiers in `detectors.assign_tier`. Calldata/gas/nonce rules (K1-K8) run in the ETH full-block
   pass only; K9 needs the receipts source.
 
+## Web-research rules W1-W13 (wrules.py pure functions, wscan.py wiring, roll-up W11-W13)
+- Receipts source keeps extra topics (`constants.EXTRA_TOPICS`): OwnershipTransferred, DSProxy LogSetOwner, Safe
+  AddedOwner / RemovedOwner / ChangedThreshold, Seaport OrderFulfilled, Permit2 Permit / Approval, EIP-3009
+  AuthorizationUsed; ERC-721 (4-topic) Transfers are parsed for W7.
+- W1 `deploy_drain` (top-level creation moving third-party tokens; in-tx permit used by a spender without code at
+  block - 1 / Etherscan creation tx = this tx; strong only when the victim gets nothing back and tokens end at an EOA,
+  else `deploy_drain_weak`), W1c `ghost_forward` (T3), W2 `vanity_drainer` (`vanity_approval` evidence, approvals stored),
+  W3 `bait_forward` (Etherscan txlistinternal by tx hash, <= 30 per run, else balance delta; >= 95 % or a W11 grid share
+  forwarded), W4 `token_spender_pull`, W5 `owner_takeover` (pending owner changes kept 1 h), W6 `safe_approval` /
+  `safe_pull`, W7 `seaport_zero` / `nft_operator_pull`, W8a `eip7702_batch` (block pass), W8b `batch7702_approve`, W10
+  `poison_zero`, W11 `share_grid` / `kept_share` (score), W12 `operator_wallet`, W13 `serial_deployer` (new subject rows).
+- Tiers (`detectors.W_T2` / `W_T3`): one W rule never gives T1; two different W rules, or W2 + independent behaviour with
+  2+ victims, give T1. Verified-source cap extends to deploy_drain, ghost_forward, bait_forward, token_spender_pull.
+
+## Family names (famname.py)
+`family` stays the skeleton hash (or kit id); `family_name` / `family_name_source` are resolved in this order: kit
+fingerprint (`kit`); the most common name the members give themselves, Etherscan-verified ContractName (EVM, cached
+verified lookups) or the TRON contract `name`, marked `self-named "X" (not the real Y)` when it imitates a well-known
+protocol (`contract_name`); ERC-20 name()/symbol() (`token_name`, <= 40 eth_calls per run); the 1-2 most frequent
+non-standard dispatcher functions resolved through the public openchain signature database (`functions`, <= 200
+selectors per run, cached in `sig_names`, misses re-checked after 14 days); else "Unnamed code family <hash>" (`hash`).
+Render reads caches only; `cli run` fills them.
+
 ## Deployer & VASP links (operator request — first-class feature)
 - Labels: wallet-attribution dataset (public, MIT) — raw
   `https://raw.githubusercontent.com/prettydeath/wallet-attribution/main/data/{ethereum,bsc,base}.csv`
@@ -177,7 +200,8 @@ Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on 
                      "gaps": [{"from": 0, "to": 0, "at": "2026-11-24T10:00:00Z"}]}},
   "totals": {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0},
   "contracts": [{"chain": "eth", "address": "0x…", "tier": "T1", "score": 90, "source": "detector|scamsniffer|local",
-                 "family": "f_ab12cd or null", "labels": ["split_pull", "seed"], "first_seen": "", "last_seen": "",
+                 "family": "f_ab12cd or null", "family_name": "VerifyAccount / self-named \"X\" (not the real Y) / A/B contract / Unnamed code family ab12cd",
+                 "family_name_source": "kit|contract_name|token_name|functions|hash", "labels": ["split_pull", "seed"], "first_seen": "", "last_seen": "",
                  "victims": 0, "drains": 0, "usd": 0, "code_size": 0, "verified": null, "contract_name": null,
                  "is_contract": "true|false|null (null = code not looked up)",
                  "payouts": [{"wallet": "0x…", "role": "operator|affiliate", "share": 0.2, "txs": 0}],
@@ -194,11 +218,15 @@ Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on 
   "drains": [{"chain": "eth", "tx": "0x…", "ts": "", "victim": "0x…", "drainer": "0x…", "token": "0x…",
               "symbol": "USDT", "amount": "123.45", "usd": 123.45, "recipient": "0x…"}],
   "operators": [{"chain": "eth", "wallet": "0x…", "drainers": 0, "affiliates": 0, "usd": 0}],
-  "families": [{"family": "f_ab12cd", "members": 0, "seed_members": 0, "chains": ["eth"]}],
+  "families": [{"family": "f_ab12cd", "family_name": "...", "family_name_source": "functions", "members": 0, "seed_members": 0, "chains": ["eth"]}],
   "deployers": [{"chain": "eth", "address": "0x…", "contracts": 0, "funder_entity": null}],
   "vasps": [{"entity": "Binance", "category": "exchange", "links": 0, "usd": 0, "subjects": 0,
              "deposit_addresses": ["0x…"], "chains": ["eth"]}],
   "daily": [{"date": "2026-11-23", "usd": 0, "victims": 0, "new_contracts": 0}],
+  "freezable": [{"chain": "eth", "address": "0x…", "role": "drainer|operator|affiliate|collector|customer|worker|funder",
+                 "drainer": "0x…", "drainer_tier": "T1", "token": "0x…", "symbol": "USDT", "issuer": "Tether|Circle",
+                 "balance": "5000.00", "usd": 5000.0, "already_frozen": false, "checked_at": 0}],
+  "freezable_total": {"Tether": 5000.0},
   "clusters": [{"cluster": "op_ab12cd34ef", "chain": "eth", "members": ["0x…"], "shared_wallets": ["0x…"],
                 "max_tier": "T1", "tiers": {"T1": 1, "T3": 1}}]
 }

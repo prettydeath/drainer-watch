@@ -136,20 +136,26 @@ def assign_splits(rows, dev_pct=6):
     return rows
 
 
-def build(conn, out_path, wa_path=None, target_seeds=60, per_seed=4, max_seeds_scanned=1500, budget_sec=3600):
+def build(conn, out_path, wa_path=None, target_seeds=60, per_seed=4, max_seeds_scanned=1500, budget_sec=3600,
+          seed_src=None, startblock=START_BLOCK_2025, split=None):
+    """seed_src: {address: source} to use instead of ScamSniffer + wallet-attribution (an explicit seed list, e.g. from
+    published reports); startblock: earliest block for the Etherscan candidate lists; split: force one split value."""
     t0 = time.monotonic()
     es = Etherscan(calls_cap=10_000)
     if not es.enabled:
         raise SystemExit("ETHERSCAN_API_KEYS is not set")
     rpc = Rpc("eth")
     tokens = Tokens(conn, rpc, "eth")
-    ss = seedmod.fetch_scamsniffer()
-    src = {a: "scamsniffer" for a in ss}
-    if wa_path:
-        for a, lb in wa_seed_rows(wa_path):
-            src.setdefault(a, "wallet-attribution:" + lb)
+    if seed_src is not None:
+        src = dict(seed_src)
+    else:
+        ss = seedmod.fetch_scamsniffer()
+        src = {a: "scamsniffer" for a in ss}
+        if wa_path:
+            for a, lb in wa_seed_rows(wa_path):
+                src.setdefault(a, "wallet-attribution:" + lb)
     order = seed_order(src)
-    log.info("incident seeds: %d (scamsniffer %d)", len(order), len(ss))
+    log.info("incident seeds: %d", len(order))
     code_cache = {}
 
     def is_eoa_many(addrs):
@@ -164,7 +170,7 @@ def build(conn, out_path, wa_path=None, target_seeds=60, per_seed=4, max_seeds_s
         if seeds_hit >= target_seeds or scanned >= max_seeds_scanned or time.monotonic() - t0 > budget_sec:
             break
         scanned += 1
-        base = dict(address=seed, startblock=START_BLOCK_2025, endblock=99_999_999, page=1, offset=100, sort="desc")
+        base = dict(address=seed, startblock=startblock, endblock=99_999_999, page=1, offset=100, sort="desc")
         tt = es.call("eth", dict(base, module="account", action="tokentx")) or []
         tl = es.call("eth", dict(base, module="account", action="txlist")) or []
         cand = {}
@@ -232,6 +238,9 @@ def build(conn, out_path, wa_path=None, target_seeds=60, per_seed=4, max_seeds_s
         r["ts"] = iso(bts.get(r["block"]))
     set_actor(rows)
     assign_splits(rows)
+    if split:
+        for r in rows:
+            r["split"] = split
     rows.sort(key=lambda r: (r["split"], r["seed_address"], r["block"]))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", newline="", encoding="utf-8") as f:
@@ -246,7 +255,7 @@ def build(conn, out_path, wa_path=None, target_seeds=60, per_seed=4, max_seeds_s
 
 def load(path, split=None):
     with open(path, newline="", encoding="utf-8") as f:
-        rows = [dict(r, block=int(r["block"])) for r in csv.DictReader(f)]
+        rows = [dict(r, block=int(r["block"])) for r in csv.DictReader(f) if (r.get("block") or "").strip()]   # rows without a block (notes, other chains) are skipped
     return [r for r in rows if split in (None, "all") or r["split"] == split]
 
 

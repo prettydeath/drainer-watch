@@ -57,7 +57,10 @@ ZERO = "0x" + "0" * 40
 
 # Red-flag (drainer kit) function names; only capitalised kit names (plain claim() is far too common).
 REDFLAG_NAMES = ["Claim()", "ClaimReward()", "ClaimRewards()", "SecurityUpdate()", "Connect()", "Execute()",
-                 "Multicall()", "NetworkMerge()", "ClaimAirdrop()"]
+                 "Multicall()", "NetworkMerge()", "ClaimAirdrop()",
+                 # W3: no-arg bait names caught by the payable fallback of fake-token drainers (Verify() 0x143087ee,
+                 # Claim() 0x3158952e, public vendor reports 2025) and the "ClaimReward" template's Gift()
+                 "Verify()", "Gift()"]
 # MS Drainer "Beta" bait functions (MS Drainer kit notes S1): payable, the argument is the kit CUSTOMER's payout
 # wallet (the contract is multi-tenant: balance[arg] += msg.value, the customer later calls withdraw).
 BAIT_ADDR_NAMES = ["Claim(address)", "ClaimReward(address)", "ClaimRewards(address)", "SecurityUpdate(address)",
@@ -306,6 +309,15 @@ ALLOWLIST = {
     "0x0000000000000068f116a894984e2db1123eb395": "Seaport 1.6",
     "0x00000000000000adc04c56bf30ac9d3c0aaf14dc": "Seaport 1.5",
     "0x000000000000ad05ccc4f10045630fb830b95127": "Blur Marketplace",
+    "0x00000000006c3852cbef3e08e8df289169ede581": "Seaport 1.1",
+    "0x00000000000001ad428e4906ae43d8f9852d0dd6": "Seaport 1.4",
+    "0x00000000f9490004c11cef243f5400493c00ad63": "Seaport ConduitController",
+    "0x1e0049783f008a0085193e00003d00cd54003c71": "OpenSea Seaport conduit",
+    "0x004c00500000ad104d7dbd00e3ae0a5c00560c00": "OpenSea Seaport PausableZone",
+    "0xca11bde05977b3631167028862be2a173976ca11": "Multicall3 (github.com/mds1/multicall)",
+    # CoW Protocol flash-loan router (Etherscan verified ContractName FlashLoanRouter): deploys a per-order adapter that
+    # uses the user's permit in the same tx (collateral swaps), the deploy-and-drain shape of W1b
+    "0x9da8b48441583a2b93e2ef8213aad0ec0b392c69": "CoW FlashLoanRouter",
     # canonical bridges
     "0x3154cf16ccdb4c6d922629664174b904d80f2c35": "Base L1StandardBridge",
     "0x99c9fc46f92e8a1c0dec1b1747d010903e884be1": "Optimism L1StandardBridge",
@@ -384,6 +396,72 @@ TRON_ALLOWLIST = {
     "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t": "USDT-TRC20 token contract",
 }
 
+# ---- web-research rules W1-W13 (public vendor reports and papers on drainer kits, 2023-2026) ----
+# extra receipt log topics kept by the receipts source (getLogs chains do not fetch them)
+TOPIC_LOG_SET_OWNER = topic("LogSetOwner(address)")                          # DSProxy setOwner
+TOPIC_OWNERSHIP_TRANSFERRED = topic("OwnershipTransferred(address,address)")
+TOPIC_SAFE_ADDED_OWNER = topic("AddedOwner(address)")                        # Safe 1.3 (data) / 1.4 (indexed)
+TOPIC_SAFE_REMOVED_OWNER = topic("RemovedOwner(address)")
+TOPIC_SAFE_CHANGED_THRESHOLD = topic("ChangedThreshold(uint256)")
+TOPIC_SEAPORT_FULFILLED = topic("OrderFulfilled(bytes32,address,address,address,(uint8,address,uint256,uint256)[],"
+                                "(uint8,address,uint256,uint256,address)[])")
+TOPIC_P2_PERMIT = topic("Permit(address,address,address,uint160,uint48,uint48)")   # Permit2 AllowanceTransfer
+TOPIC_P2_APPROVAL = topic("Approval(address,address,address,uint160,uint48)")
+TOPIC_AUTH_USED = topic("AuthorizationUsed(address,bytes32)")                # EIP-3009 transferWithAuthorization
+EXTRA_TOPICS = [TOPIC_LOG_SET_OWNER, TOPIC_OWNERSHIP_TRANSFERRED, TOPIC_SAFE_ADDED_OWNER, TOPIC_SAFE_REMOVED_OWNER,
+                TOPIC_SAFE_CHANGED_THRESHOLD, TOPIC_SEAPORT_FULFILLED, TOPIC_P2_PERMIT, TOPIC_P2_APPROVAL, TOPIC_AUTH_USED]
+# W2 vanity drainer addresses: >= 4 leading AND >= 4 trailing zero nibbles (fake-token / receiver contracts of several
+# DaaS families). A prior only: it needs approvals from several EOAs, a bait payable call or a pull to become a label.
+VANITY_RE = re.compile(r"^0x0000[0-9a-f]{32}0000$")
+VANITY_MIN_APPROVERS = 3
+# legitimate vanity-style infrastructure (Etherscan-verified ContractName in brackets); none of the known ones has the
+# full 4+4 shape today, the list guards the rule against future deployments. Also in ALLOWLIST. Extend in allowlist.csv.
+LEGIT_VANITY = {
+    "0x00000000f9490004c11cef243f5400493c00ad63": "Seaport ConduitController (ConduitController)",
+    "0x1e0049783f008a0085193e00003d00cd54003c71": "OpenSea Seaport conduit (Conduit)",
+    "0x004c00500000ad104d7dbd00e3ae0a5c00560c00": "OpenSea Seaport zone (PausableZone)",
+    "0xca11bde05977b3631167028862be2a173976ca11": "Multicall3 (Multicall3)",
+    "0x00000000006c3852cbef3e08e8df289169ede581": "Seaport 1.1 (Seaport)",
+    "0x00000000000001ad428e4906ae43d8f9852d0dd6": "Seaport 1.4 (Seaport)",
+    "0x000000000022d473030f116ddee9f6b43ac78ba3": "Permit2",
+    "0x0000000071727de22e5e9d8baf0edac6f37da032": "ERC-4337 EntryPoint v0.7",
+}
+# legitimate EIP-7702 delegate implementations (wallet vendors' published deployments): batches through them are
+# normal; W8b looks at WHAT the batch does, W8a never flags them
+LEGIT_7702_DELEGATES = {
+    "0x63c0c19a282a1b52b07dd5a65b58948a07dae32b": "MetaMask EIP7702StatelessDeleGator",
+    "0xd2e28229f6f2c235e57de2ebc727025a1d0530fb": "Trust Wallet 7702 delegate",
+    "0x5a7fc11397e9a8ad41bf10bf13f22b0a63f96f6d": "Ambire 7702 account",
+}
+# W1 deploy-and-drain: Etherscan getcontractcreation lookups per run for in-tx permit spenders (archive getCode first)
+DEPLOY_DRAIN_MAX_LOOKUPS = 20
+# W3 bait forward: share of msg.value that left the contract to a third address in the same tx (Etherscan internal
+# transfers of the tx, else the contract balance delta over the block when the node still has that state)
+BAIT_FORWARD_MIN = 0.95
+BAIT_FORWARD_MAX_LOOKUPS = 30
+# W4 token-like spender: ERC-20 dispatcher selectors (transfer, transferFrom, approve, balanceOf, totalSupply, allowance)
+ERC20_SELECTORS = {"a9059cbb", "23b872dd", "095ea7b3", "70a08231", "18160ddd", "dd62ed3e"}
+ERC20_MIN_SELECTORS = 4
+# W5 owner takeover: owner-change event, then an outflow from the same contract sent by the new owner within N blocks
+TAKEOVER_WINDOW_SEC = 3600
+TAKEOVER_MAX_NEW_OWNER_NONCE = 50
+# W7 NFT: setApprovalForAll to an EOA, then NFT transfers of the owner sent by that EOA within N seconds
+NFT_OPERATOR_WINDOW_SEC = 3600
+# W8a EIP-7702 batch authorizations: more than 5 authorities per tx to one delegate = mass use of leaked keys
+AUTH_BATCH_MIN = 6
+# W10 zero-value transferFrom poisoning on real stablecoins: lookalike = same first 3 and last 4 hex chars of an
+# address the victim really transacted with in the last 20 minutes (CMU address-poisoning study, 2025)
+POISON_MIN_LEGS = 3
+POISON_PREFIX, POISON_SUFFIX = 3, 4
+POISON_WINDOW_SEC = 20 * 60
+# W11 documented DaaS split shares (affiliate share): 70/30, 80/20, 85/15, 90/10; +-0.5 percentage points
+SHARE_GRID = (0.70, 0.80, 0.85, 0.90)
+SHARE_GRID_TOL = 0.005
+# W12 operator wallet: an EOA paid by >= K distinct flagged drainers (own T1/T2 evidence)
+OPERATOR_WALLET_T2 = 3
+# W13 serial deployer: >= K flagged one-shot contracts from one deployer / factory
+SERIAL_DEPLOYER_T2 = 3
+
 # score weights (additive, capped at 100)
 SCORE = {"seed": 50, "approval_fingerprint": 50, "bait_payable": 35, "kit_signature": 25, "split_xtx": 35,
          "foreign_recipient_swap": 15, "foreign_swap_multi": 20, "foreign_swap_kit": 30, "owner_gated_puller": 10,
@@ -401,4 +479,10 @@ SCORE = {"seed": 50, "approval_fingerprint": 50, "bait_payable": 35, "kit_signat
          "kit_pull": 40, "approval_kit_shape": 30, "aml_approve_transfer": 35, "approve_all_call": 30,
          "increase_max": 5, "prefund_approve": 15, "prefund_approve_multi": 25, "claimer_split": 40,
          "perm_hijack": 20, "perm_hijack_multi": 35, "perm_hijack_drain": 50, "fixed_fee": 20, "fixed_fee_multi": 30,
-         "poison_zero": 5}
+         "poison_zero": 5,
+         # web-research rules W1-W13
+         "vanity_drainer": 25, "deploy_drain": 40, "deploy_drain_weak": 15, "ghost_forward": 35, "ghost_forward_multi": 15, "bait_forward": 30,
+         "bait_forward_multi": 10, "token_spender_pull": 20, "token_spender_multi": 15, "owner_takeover": 40,
+         "owner_takeover_multi": 15, "safe_spender": 15, "safe_spender_pull": 20, "seaport_zero": 20, "seaport_zero_multi": 15,
+         "nft_operator_pull": 35, "batch7702_approve": 40, "eip7702_batch": 10, "eip7702_chain0": 10, "share_grid": 10,
+         "kept_share": 10, "operator_wallet": 30, "operator_wallet_multi": 15, "serial_deployer": 20, "serial_deployer_multi": 15}

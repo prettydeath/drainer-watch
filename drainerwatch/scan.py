@@ -4,7 +4,7 @@ import logging
 import time
 from collections import Counter, defaultdict
 
-from . import bytecode, detectors, enrich
+from . import bytecode, detectors, enrich, wrules, wscan
 from .auth7702 import authority_of
 from .constants import (ALLOWLIST, ALLOWLIST_CSV, APPROVAL_KEEP_SEC, APPROVE_SELECTORS, BAIT_CAPTURE,
                         MALICIOUS_CATEGORIES, CHAINS, CONFIRMATIONS, D8_MAX_LOOKUPS, D8_MAX_SPENDER_NONCE,
@@ -454,6 +454,9 @@ def process_chunk(ctx, a, b, logs, txmeta=None):
                                                                                 strong=t["to"] in ctx.strong_wallets))
             ctx.d5(t["frm"], t["tx"], t["block"])
 
+    # web-research rules W1-W10 (most need the receipts source)
+    wscan.web_chunk(ctx, logs, tr, ap, txmeta)
+
     ctx.flush()
     refresh_known(ctx)
     try:
@@ -619,7 +622,9 @@ def eth_block_pass(ctx, a, b, txmeta=None):
     rpc, conn = ctx.rpc, ctx.conn
     chain_id = CHAINS[ctx.chain]["id"]
     delegates = defaultdict(lambda: dict(n=0, delegators=[], tx=None, block=None))
+    auth_per_tx, auth_chain0 = defaultdict(lambda: defaultdict(int)), defaultdict(int)     # W8a
     creations, redflag, withdraws, swaps, permits, pulls, approves = [], [], [], [], [], [], []
+    vcalls = []                       # W3: value > 0 calls to vanity-address contracts with a non-bait selector
     ap_txs = {a["tx"] for a in ctx.chunk_ap if a["kind"] == "approval"}
     inputs = {}                       # tx -> input for txs with Approval logs (K8 detail)
     bait_set = load_bait_set(ctx)
@@ -642,6 +647,9 @@ def eth_block_pass(ctx, a, b, txmeta=None):
                     for au in t.get("authorizationList") or []:
                         if hx(au.get("chainId")) not in (0, chain_id):
                             continue
+                        auth_per_tx[au["address"].lower()][t["hash"]] += 1
+                        if hx(au.get("chainId")) == 0:
+                            auth_chain0[au["address"].lower()] += 1
                         d = delegates[au["address"].lower()]
                         d["n"] += 1
                         d["tx"] = d["tx"] or t["hash"]
@@ -662,6 +670,8 @@ def eth_block_pass(ctx, a, b, txmeta=None):
                         inputs[t["hash"]] = inp
                     if hx(t.get("value")) > 0 and sel in BAIT_CAPTURE:
                         redflag.append((t["hash"], to, sel, hx(t["value"]), frm, bn, inp, meta))
+                    elif hx(t.get("value")) > 0 and wrules.is_vanity(to):
+                        vcalls.append((t["hash"], to, sel, hx(t["value"]), frm, bn, inp, meta))
                     elif sel in MS_WITHDRAW_SELECTORS:      # kept only if `to` is a bait contract (checked after D7)
                         withdraws.append((t["hash"], to, sel, frm, bn, inp))
                     elif sel in APPROVE_SELECTORS:          # N4 dust-value approvals / N7 kit-amount router approvals
@@ -686,6 +696,9 @@ def eth_block_pass(ctx, a, b, txmeta=None):
                 elif to and hx(t.get("value")) > 0 and t.get("input", "0x") in ("0x", ""):
                     # plain native transfer: K5 fund / leftover return, K12 prefunding, K2 deployer "back" transfer
                     ctx.plain.append((t["from"].lower(), to, t["hash"], bn, hx(t.get("gas")), hx(t.get("value"))))
+                    if wrules.is_vanity(to):          # W3: plain value to a vanity contract (receive / fallback bait)
+                        vcalls.append((t["hash"], to, "", hx(t["value"]), t["from"].lower(), bn, "0x",
+                                       dict(nonce=hx(t.get("nonce")), gas=hx(t.get("gas")), bts=bts)))
     ctx.stats["creations"] += len(creations)
 
     # D5 on top-level creations
@@ -725,12 +738,17 @@ def eth_block_pass(ctx, a, b, txmeta=None):
         if code and code != "0x":
             ctx.d5(d, v["tx"], v["block"], extra=dict(delegate=True))
     ctx.stats["delegates"] += len(delegates)
+    wscan.auth_batches(ctx, auth_per_tx, auth_chain0, {d: (v["tx"], v["block"]) for d, v in delegates.items()})
 
     # D7 red-flag payable + bait(address) customers, withdraw callers; D10 foreign-recipient swaps
     ok = tx_status(ctx, [r[0] for r in redflag] + [x["tx"] for x in swaps] + [x["tx"] for x in permits]
-                   + [x[0] for x in pulls] + [x["tx"] for x in approves], txmeta)
+                   + [x[0] for x in pulls] + [x["tx"] for x in approves] + [r[0] for r in vcalls], txmeta)
     if redflag:
         d7(ctx, [r for r in redflag if ok.get(r[0], True)])
+    try:
+        wscan.bait_forward(ctx, [r for r in redflag + vcalls if ok.get(r[0], True)])
+    except Exception as e:  # noqa: BLE001 - best effort (Etherscan / recent-state lookups)
+        log.warning("%s: bait forward failed: %s", ctx.chain, e)
     withdraws = [x for x in withdraws if x[1] in bait_set]
     ok.update(tx_status(ctx, [x[0] for x in withdraws], txmeta))
     for h, to, sel, frm, bn, inp in withdraws:

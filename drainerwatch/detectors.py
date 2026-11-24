@@ -634,6 +634,14 @@ PULL_LABELS = {"eoa_spender_pull", "split_xtx", "split_pull", "multi_victim_pull
                "prefund_hub", "kit_pull"}
 
 
+# web-research rules W1-W13 (see assign_tier)
+W_T2 = {"deploy_drain", "bait_forward_multi", "token_spender_multi", "owner_takeover",
+        "safe_spender_pull", "seaport_zero_multi", "nft_operator_pull", "batch7702_approve", "operator_wallet_multi",
+        "serial_deployer_multi"}
+W_T3 = {"ghost_forward", "ghost_forward_multi", "deploy_drain_weak", "bait_forward", "token_spender_pull", "safe_spender", "seaport_zero", "eip7702_batch",
+        "operator_wallet", "serial_deployer"}
+
+
 def assign_tier(labels, victims, active):
     """labels: set of detector labels. Returns tier 'T1'|'T2'|'T3'|None.
     T1 confirmed: seed with observed activity; D2 with >=3 victims; D2 + family match to a seed.
@@ -654,6 +662,13 @@ def assign_tier(labels, victims, active):
     (N1 calldata only), dust_approve (N4), emergency_gas (N5, flagged spender) = T2; emergency_gas_self (N5, the
     funder approved itself) = T3; kit_vanity (N9) never sets a tier (score only)."""
     if "seed" in labels or "approval_fingerprint" in labels:
+        return "T1"
+    # web-research rules W1-W13: never T1 from one heuristic. T1 = a vanity drainer address with independent behaviour
+    # (2+ victims), or two different W rules on the same subject
+    w2 = labels & W_T2
+    if "vanity_drainer" in labels and victims >= 2 and (w2 or labels & (W_T3 | PULL_LABELS | {"bait_payable"})):
+        return "T1"
+    if len(w2) >= 2:
         return "T1"
     # TRON T-1..T-8: kit_pull through a kit dispatcher (verify_account etc.), Claimer split with the kit code,
     # outflow signed by a hijacking controller key, mass permission hijack, AML kit approve+transfer x3 = T1
@@ -684,6 +699,8 @@ def assign_tier(labels, victims, active):
         return "T1"
     if {"foreign_swap_multi", "foreign_swap_kit"} <= labels:
         return "T1"
+    if w2 or "vanity_drainer" in labels or ("eip7702_batch" in labels and labels & {"eip7702_sweeper", "eip7702_chain0"}):
+        return "T2"
     if labels & {"split_pull", "pays_known_operator", "eoa_spender_multi", "bait_payable", "foreign_swap_multi",
                  "foreign_swap_kit", "ms_deadline", "oneshot_hub", "prefund_multi", "owner_collect", "kit_exact",
                  "kit_deposit", "cross_chain_t1", "kit_public", "ms_cashback_shape", "dust_approve", "emergency_gas"}:
@@ -692,11 +709,11 @@ def assign_tier(labels, victims, active):
         return "T2"
     if labels & {"family_match", "kit_signature", "owner_gated_puller"} and active:
         return "T2"
-    if labels & {"multi_victim_pull", "eoa_spender_pull", "spoof_split", "eip7702_sweeper", "redflag_payable",
+    if labels & ({"multi_victim_pull", "eoa_spender_pull", "spoof_split", "eip7702_sweeper", "redflag_payable",
                  "redflag_selectors", "family_match", "pays_inferred_operator", "split_xtx", "foreign_recipient_swap",
                  "kit_signature", "owner_gated_puller", "bait_withdraw", "prefund_hub", "cross_chain",
                  "gen_back_transfer", "eip7702_operator", "emergency_gas_self", "kit_pull", "increase_max",
-                 "prefund_approve", "perm_hijack", "fixed_fee", "poison_zero"}:
+                 "prefund_approve", "perm_hijack", "fixed_fee", "poison_zero"} | W_T3):
         return "T3"
     return None
 

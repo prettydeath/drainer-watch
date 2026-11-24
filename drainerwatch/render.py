@@ -10,6 +10,7 @@ import shutil
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from . import famname, freeze
 from .constants import CHAINS, DATA_DIR, ROOT, SITE_DIR, TEMPLATE
 from .scan import load_gaps
 from .db import meta_get
@@ -169,6 +170,52 @@ def describe(type_, d):
                 f"{d.get('victim')} (pull tx {d.get('pull_tx')})")
     if type_ == "zero_transfer_spoof":
         return f"{d.get('legs')} zero-value USDT transferFrom legs from {d.get('victims')} wallet(s) in one chunk (address poisoning)"
+    # web-research rules W1-W10
+    if type_ == "vanity_approval":
+        return f"{d.get('victim')} approved this vanity-address spender ({d.get('kind')}) on {d.get('token')}"
+    if type_ == "deploy_drain":
+        if d.get("role") == "factory":
+            return (f"this contract's tx created {d.get('child')}, which used a permit of {', '.join(d.get('victims') or [])} "
+                    f"and moved its tokens in the same tx")
+        if d.get("via") == "factory":
+            return (f"created inside the tx (by {d.get('factory')}; check: {d.get('created_check')}) and in that tx used a "
+                    f"permit of {', '.join(d.get('victims') or [])} to move its tokens")
+        return (f"deployed by {d.get('deployer')} in a tx that moved tokens of {', '.join(d.get('victims') or [])} "
+                f"(deploy-and-drain in one tx)")
+    if type_ == "ghost_forward":
+        return (f"tokens left {d.get('ghost')}, an address that has no code and never sent a tx, in a tx through this "
+                f"contract (code that existed only inside the tx: pre-computed address deployed, forwarded, destroyed)")
+    if type_ == "bait_forward":
+        kept = f"; {d['kept_share']:.0%} kept by the contract" if d.get("kept_share") else ""
+        return (f"victim {d.get('victim')} paid {d.get('value_wei')} wei (selector 0x{d.get('selector') or ''}"
+                f"{'' if d.get('in_dispatch') else ', caught by the fallback'}); {d.get('forwarded_share', 0):.0%} left to "
+                f"third addresses in the same tx ({d.get('via')}){kept}")
+    if type_ == "token_spender_pull":
+        return (f"ERC-20-like contract with DELEGATECALL pulled {d.get('token')} from {d.get('victim')} (its approver) to "
+                f"{d.get('recipient')}; called by {d.get('caller')}")
+    if type_ == "owner_takeover":
+        return (f"became owner of {d.get('contract')} ({d.get('kind')}, tx {d.get('change_tx')} signed by {d.get('signer')}) "
+                f"and then moved tokens out of it (new owner nonce {d.get('new_owner_nonce')})")
+    if type_ == "safe_approval":
+        return f"{d.get('victim')} approved this Safe proxy ({d.get('kind')}) on {d.get('token')}"
+    if type_ == "safe_pull":
+        return f"this Safe proxy pulled {d.get('token')} from {d.get('victim')} to {d.get('recipient')}"
+    if type_ == "seaport_zero":
+        return (f"filled a Seaport order of {d.get('victim')} for {d.get('n_nfts')} NFT(s) while the offerer received "
+                f"nothing (zero-price listing)")
+    if type_ == "nft_operator_pull":
+        return (f"{d.get('victim')} set this EOA as operator for all its NFTs (tx {d.get('approval_tx')}); it then moved "
+                f"{d.get('n_nfts')} NFT(s) of that wallet")
+    if type_ == "batch7702_approve":
+        via = d.get("legit_delegate") or d.get("delegate")
+        return (f"{d.get('victim')} sent a batch to itself through its EIP-7702 account ({via}) that approved this EOA "
+                f"and moved tokens out; nothing came back")
+    if type_ == "eip7702_batch":
+        return (f"{d.get('max_per_tx')} authorizations to this delegate in one tx ({d.get('authorizations')} in "
+                f"{d.get('txs')} tx(s), {d.get('chain0')} with chainId 0): mass delegation of many keys")
+    if type_ == "poison_zero":
+        return (f"{d.get('legs')} zero-value stablecoin transferFrom legs out of {d.get('victims')} wallet(s) in one chunk, "
+                f"{d.get('lookalikes')} to lookalikes of their recent counterparties (address poisoning)")
     if type_ == "foreign_recipient_swap":
         kit = "; deadline = block time + ~99 990 s (MS Drainer kit)" if d.get("kit") else ""
         return (f"victim {d.get('victim')} signed {d.get('fn')} on {d.get('router')} selling {d.get('amount_in')} of "
@@ -289,6 +336,9 @@ def build_payload(conn, now=None):
         ops.append(dict(chain=r["chain"], wallet=r["wallet"], drainers=r["dr"], affiliates=r["aff"] or 0, usd=_num(u)))
     ops.sort(key=lambda o: (-o["usd"], -o["drainers"]))
 
+    fnames = famname.names_for(conn, contracts)          # family_name / family_name_source (caches only)
+    for c in contracts:
+        c["family_name"], c["family_name_source"] = fnames.get(c["family"], (None, None)) if c["family"] else (None, None)
     fam = defaultdict(lambda: dict(members=0, seed_members=0, chains=set()))
     for c in contracts:
         if c["family"]:
@@ -296,7 +346,8 @@ def build_payload(conn, now=None):
             f["members"] += 1
             f["seed_members"] += 1 if "seed" in c["labels"] else 0
             f["chains"].add(c["chain"])
-    families = [dict(family=k, members=v["members"], seed_members=v["seed_members"], chains=sorted(v["chains"]))
+    families = [dict(family=k, family_name=fnames.get(k, (None, None))[0], family_name_source=fnames.get(k, (None, None))[1],
+                     members=v["members"], seed_members=v["seed_members"], chains=sorted(v["chains"]))
                 for k, v in sorted(fam.items(), key=lambda kv: -kv[1]["members"])]
 
     dgroups = defaultdict(lambda: dict(contracts=0))
@@ -354,8 +405,10 @@ def build_payload(conn, now=None):
                      max_tier=min(g["tiers"], key=lambda t: TIER_ORDER.get(t, 9)), tiers=dict(g["tiers"]))
                 for cid, g in sorted(cl.items(), key=lambda kv: -len(kv[1]["members"]))]
 
+    frz, frz_total = freeze.payload(conn)
     return dict(generated_at=iso(now), chains=chains, totals=totals, contracts=contracts, drains=drains, operators=ops[:200],
-                families=families, deployers=deployers, vasps=vasps, daily=days, clusters=clusters)
+                families=families, deployers=deployers, vasps=vasps, daily=days, clusters=clusters,
+                freezable=frz, freezable_total=frz_total)
 
 
 def parse(s):

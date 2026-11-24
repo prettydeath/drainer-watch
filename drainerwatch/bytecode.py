@@ -1,7 +1,7 @@
 """EVM bytecode analysis: skeleton hash, 4-byte selector set, red-flag selectors, family matching, sweeper heuristic."""
 import hashlib
 
-from .constants import (BAIT_ADDR_SELECTORS, BUYTRON_FAMILIES, FAMILY_JACCARD, FAMILY_MIN_CODE, FAMILY_MIN_SELECTORS, GEN_BAIT_RUNTIME_KECCAK,
+from .constants import (BAIT_ADDR_SELECTORS, ERC20_MIN_SELECTORS, ERC20_SELECTORS, BUYTRON_FAMILIES, FAMILY_JACCARD, FAMILY_MIN_CODE, FAMILY_MIN_SELECTORS, GEN_BAIT_RUNTIME_KECCAK,
                         GEN_BAIT_SELECTORS, GEN_BAIT_SIZE, KIT_PUBLIC_RUNTIME_KECCAK, MS_COMPANION_SELECTORS, MS_MIN_BAIT, MS_MIN_COMPANION,
                         MS_NEW_COMPANION_SELECTORS, MS_NEW_MIN_BAIT, MS_NEW_MIN_COMPANION, MS_NEW_SELECTORS,
                         OWNER_COLLECTOR_MIN, OWNER_COLLECTOR_SELECTORS, REDFLAG_SELECTORS, SEL_TRANSFER_FROM,
@@ -12,6 +12,7 @@ from .util import keccak
 OP_PUSH1, OP_PUSH4, OP_PUSH20, OP_PUSH32 = 0x60, 0x63, 0x73, 0x7F
 OP_EQ, OP_CALLVALUE, OP_SLOAD, OP_CALL, OP_JUMPI = 0x14, 0x34, 0x54, 0xF1, 0x57
 OP_CALLER, OP_CALLDATALOAD = 0x33, 0x35
+OP_DELEGATECALL = 0xF4
 OP_PUSH2, OP_SSTORE = 0x61, 0x55
 _META_MARKERS = (b"ipfs", b"bzzr", b"solc", b"experimental")
 # TVM (TRON) extensions, all single-byte (no immediates, so iter_ops needs no change): TRC-10 token calls / msg.tokenvalue /
@@ -102,7 +103,20 @@ def analyze(code_hex, tvm=False) -> dict:
     return dict(size=len(code), code_hash=code_hash, skeleton=skeleton_hash(code), selectors=sels,
                 redflags=[REDFLAG_SELECTORS[s] for s in sels if s in REDFLAG_SELECTORS], kit=kit,
                 kit_exact=exact, kit_public=KIT_PUBLIC_RUNTIME_KECCAK.get(code_hash), ms_variant=ms_variant(code, kit, sels),
-                owner_gated_puller=owner_gated_puller(code, sels))
+                owner_gated_puller=owner_gated_puller(code, sels), erc20_like=len(set(sels) & ERC20_SELECTORS) >= ERC20_MIN_SELECTORS,
+                delegatecall=has_delegatecall(code), safe_proxy=is_safe_proxy(code))
+
+
+def has_delegatecall(code) -> bool:
+    """W4: the runtime contains DELEGATECALL (0xf4) as an opcode (not inside PUSH data)."""
+    return any(op == OP_DELEGATECALL for _, op, _ in iter_ops(strip_metadata(to_bytes(code))))
+
+
+def is_safe_proxy(code) -> bool:
+    """W6: Safe (Gnosis Safe) proxy runtime (1.3.0 / 1.4.1 ProxyFactory): < 300 B, compares the call selector with
+    masterCopy() 0xa619486e as a PUSH32 word and forwards everything else with DELEGATECALL to the singleton in slot 0."""
+    code = to_bytes(code)
+    return 0 < len(code) < 300 and bytes.fromhex("7fa619486e") in code and has_delegatecall(code)
 
 
 def kit_family(selectors):

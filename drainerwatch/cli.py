@@ -5,7 +5,7 @@ import sys
 import time
 from collections import Counter
 
-from . import alerts, enrich, rollup, scan, seeds as seedmod
+from . import alerts, enrich, famname, freeze, rollup, scan, seeds as seedmod
 from .constants import CHAINS, DATA_DIR, DEFAULT_CHAIN_ORDER, WA_LOCAL_DEFAULT
 from .db import connect
 from .prices import Prices
@@ -77,8 +77,18 @@ def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
         enrich.cross_chain_check(conn, rpcs)
         enrich.lookup_verified(conn, es, rows)
         rows = rollup.rollup(conn, sd, labels)
+        famname.resolve(conn, rpcs)                      # family names: token name()/symbol(), signature database
     except Exception as e:  # noqa: BLE001 - enrichment is best effort
         log.warning("enrichment failed: %s", redact(e))
+    try:                                                 # freezable stablecoin balances of T1/T2 infrastructure
+        frpcs = {c: r for c, r in rpcs.items() if c in freeze.FREEZABLE}
+        if "tron" in chains:
+            from .tron import TronRpc
+            frpcs["tron"] = TronRpc()
+        left = budget_sec - (time.monotonic() - t0)
+        freeze.refresh(conn, frpcs, time_box=max(5, min(freeze.FREEZE_TIME_BOX, left)))
+    except Exception as e:  # noqa: BLE001 - best effort
+        log.warning("freezable balances failed: %s", redact(e))
     try:
         alerts.notify(conn)
     except Exception as e:  # noqa: BLE001

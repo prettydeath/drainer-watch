@@ -305,7 +305,8 @@ def test_cluster_shared_collector_and_inheritance():
     p = build_payload(c)
     (cl,) = p["clusters"]
     assert cl["members"] == sorted([a(0xA1), a(0xB1)]) and cl["shared_wallets"] == [a(0x77)] and cl["max_tier"] == "T1"
-    assert {x["address"]: x["cluster"] for x in p["contracts"]} == {a(0xA1): cl["cluster"], a(0xB1): cl["cluster"]}
+    assert {x["address"]: x["cluster"] for x in p["contracts"] if "operator_wallet" not in x["labels"]} ==         {a(0xA1): cl["cluster"], a(0xB1): cl["cluster"]}
+    assert [x["labels"] for x in p["contracts"] if x["address"] == a(0x77)] == [["operator_wallet"]]   # W12 hub, T3
 
 
 def test_cluster_no_inheritance_from_single_weak_link_or_static_member():

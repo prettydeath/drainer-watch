@@ -2,7 +2,7 @@
 import logging
 import time
 
-from .constants import CHAINS, LOG_TOPICS
+from .constants import CHAINS, EXTRA_TOPICS, LOG_TOPICS
 from .util import HttpError, env, http_json, hx
 
 log = logging.getLogger("drainerwatch.rpc")
@@ -82,6 +82,12 @@ class Rpc:
         failures come back as None and the callers treat the check as unknown)."""
         res = self.batch([("eth_getBalance", [a, hex(b)]) for a, b in pairs], chunk=50, strict=False)
         return {p: (hx(r) if r is not None else None) for p, r in zip(pairs, res)}
+
+    def code_at(self, pairs):
+        """pairs: [(addr, block)] -> {(addr, block): code hex|None} (historical state: None when the node no longer has
+        it, i.e. outside the recent-state window of a non-archive node)."""
+        res = self.batch([("eth_getCode", [a, hex(b)]) for a, b in pairs], chunk=50, strict=False)
+        return {p: r for p, r in zip(pairs, res)}
 
     def storage_many(self, pairs):
         """pairs: [(addr, slot)] -> {(addr, slot): int|None} at latest."""
@@ -206,8 +212,8 @@ class Rpc:
 
 
 def split_receipts(receipts):
-    """Block receipts -> (logs filtered to LOG_TOPICS, txmeta)."""
-    topics = set(LOG_TOPICS)
+    """Block receipts -> (logs filtered to LOG_TOPICS + EXTRA_TOPICS (web-research rules W5-W10), txmeta)."""
+    topics = set(LOG_TOPICS) | set(EXTRA_TOPICS)
     logs, meta = [], {}
     for rc in receipts:
         h = rc["transactionHash"]

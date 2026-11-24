@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <title>Drainer Watch</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='#1A2330'/%3E%3Cpath d='M3.5 19.5h6l2.5-4 3 9' fill='none' stroke='#E9EDF1' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M15 24.5l4-18.5 3.2 13.5' fill='none' stroke='#F06A8B' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M22.2 19.5h6.3' fill='none' stroke='#E9EDF1' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
 <meta name="description" content="Near-real-time monitor of suspected crypto drainer contracts on Ethereum, BNB Chain, Base and TRON, with evidence, tiers and the exchanges where the money surfaced.">
 <script>
 (function(){ try{ var t = localStorage.getItem('dw-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){} })();
@@ -549,8 +550,34 @@ const LABELS = {
   perm_hijack_drain:['Drain by a takeover key','Funds left a taken-over account in a transaction signed by this controller key.'],
   fixed_fee:['Fixed fee per pull','Received the same whole TRX amount right after pulls of tokens of other people, two or more times.'],
   fixed_fee_multi:['Fixed fee, three or more victims','The same fixed TRX fee followed pulls from three or more victims.'],
-  poison_zero:['Zero-value poisoning','Moved 0 USDT out of wallets of other people to look-alike addresses (address poisoning). Never above T3.'],
-  verified_capped:['Verified source, capped at T3','Etherscan shows verified source code and the only evidence is a split or multi-victim pull; drainers are almost never verified.']
+  poison_zero:['Zero-value poisoning','Moved 0 USDT / USDC / DAI out of wallets of other people to look-alike addresses (address poisoning). Never above T3.'],
+  unverified_split_capped:['One-victim split, capped at T3','A split pull of a single victim on a chain where source verification is not available to us, with no kit fingerprint or kit share: payment splitters look the same.'],
+  vanity_drainer:['Vanity drainer address','The address starts and ends with four zeros, like fake-token and receiver contracts of several drainer kits, and many wallets approved it or it took bait payments or pulled tokens.'],
+  deploy_drain:['Deploy and drain in one transaction','A contract was created in the same transaction that used a victim\'s permit or moved the victim\'s tokens; nothing came back to the victim and the tokens ended at a plain wallet.'],
+  deploy_drain_weak:['Created and used a permit in one transaction','A contract created in the same transaction moved a wallet\'s tokens, but the wallet got something back or the tokens stayed in contracts (smart-account onboarding looks the same). Lead only.'],
+  ghost_forward:['Pre-computed address forwarded','Tokens left an address that has no code and never sent a transaction: code existed there only inside this transaction. Payment processors\' deposit forwarders look the same. Never above T3.'],
+  ghost_forward_multi:['Pre-computed addresses, repeated','Two or more such addresses were emptied through this contract (still T3: deposit forwarders do the same).'],
+  bait_forward:['Bait payment forwarded','A victim paid a bait function (or any function of a vanity contract) and at least 95% of the payment left the contract in the same transaction.'],
+  bait_forward_multi:['Bait payment forwarded, 2+ victims','Two or more victims paid and the money was forwarded each time.'],
+  kept_share:['Fee kept by the contract','The contract forwarded 70-90% of a bait payment and kept the rest, the profit-sharing split of drainer kits.'],
+  token_spender_pull:['Token-like puller','A contract that looks like an ERC-20 token and uses DELEGATECALL pulled the tokens of a wallet that had approved it.'],
+  token_spender_multi:['Token-like puller, 2+ victims','The token-like contract pulled from two or more wallets.'],
+  owner_takeover:['Owner takeover','Became the new owner of a proxy, smart account or Safe that it did not sign for, and then moved tokens out of it.'],
+  owner_takeover_multi:['Owner takeover, repeated','Took over two or more contracts.'],
+  safe_spender:['Safe as spender of many wallets','A Safe proxy was approved (or given a Permit2 permit) by three or more wallets.'],
+  safe_spender_pull:['Safe spender pulled','That Safe proxy also pulled the tokens of a wallet.'],
+  seaport_zero:['Zero-price NFT order','Filled a Seaport order in which the seller received nothing for its NFTs.'],
+  seaport_zero_multi:['Zero-price NFT orders, 2+ sellers','Filled zero-price orders of two or more sellers.'],
+  nft_operator_pull:['NFT operator pull','A wallet approved this plain wallet for all its NFTs and this wallet then moved them.'],
+  batch7702_approve:['Phishing batch through a 7702 account','A victim sent a batch to itself through its EIP-7702 smart account that approved this wallet and moved tokens out; nothing came back.'],
+  eip7702_batch:['Mass EIP-7702 delegation','More than five accounts delegated to this contract in one transaction: many keys used at once.'],
+  eip7702_chain0:['Replayable 7702 delegation','An authorization to this delegate used chainId 0, valid on every chain.'],
+  share_grid:['Kit split share','The split matches a documented drainer-kit share (70, 80, 85 or 90%). Raises the score only.'],
+  operator_wallet:['Operator wallet','Received payouts from two or more flagged drainers.'],
+  operator_wallet_multi:['Operator wallet of 3+ drainers','Received payouts from three or more drainers that are flagged T1/T2 on their own evidence.'],
+  serial_deployer:['Serial deployer','Deployed two or more flagged contracts.'],
+  serial_deployer_multi:['Serial deployer, 3+ strong','Deployed three or more contracts flagged T1/T2 on their own evidence.'],
+  verified_capped:['Verified source, capped at T3','Etherscan shows verified source code and the only evidence is a split, multi-victim, forwarding or deploy-and-drain pattern; drainers are almost never verified.']
 };
 const FAMILIES = {
   ms_drainer:['MS Drainer','Bait function taking the customer wallet, plus the kit\'s companion functions.'],
@@ -921,7 +948,9 @@ function renderLedgerHead(){
 }
 function whyShort(c){
   const ls = c.labels.filter(l => !['cross_chain','cluster_inherited','eip7702_operator','wa_scam','verified_capped'].includes(l));
-  const sup = {oneshot_hub:'oneshot_multi', prefund_hub:'prefund_multi', eoa_spender_pull:'eoa_spender_multi', foreign_recipient_swap:'foreign_swap_multi', ms_deadline:'ms_deadline_pull'};
+  const sup = {oneshot_hub:'oneshot_multi', prefund_hub:'prefund_multi', eoa_spender_pull:'eoa_spender_multi', foreign_recipient_swap:'foreign_swap_multi', ms_deadline:'ms_deadline_pull',
+               ghost_forward:'ghost_forward_multi', bait_forward:'bait_forward_multi', token_spender_pull:'token_spender_multi', owner_takeover:'owner_takeover_multi',
+               safe_spender:'safe_spender_pull', seaport_zero:'seaport_zero_multi', operator_wallet:'operator_wallet_multi', serial_deployer:'serial_deployer_multi'};
   const pool = (ls.length ? ls : c.labels).filter(l => !(sup[l] && c.labels.includes(sup[l]))).filter(l => !(c.family && (l === 'family_match' || l === 'kit_signature')));
   const all = [...new Set(pool.map(l => labelInfo(l)[0].toLowerCase()))];
   const names = all.filter(n => !all.some(m => m !== n && m.startsWith(n))).slice(0, 2);

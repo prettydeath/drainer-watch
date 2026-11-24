@@ -31,7 +31,13 @@ DETECTOR_LABELS = ["seed", "split_pull", "multi_victim_pull", "eoa_spender_pull"
                    "prefund_hub", "prefund_multi", "batch_approval_drain", "kit_router_swap", "kit_exact", "kit_deposit",
                    "gen_back_transfer", "eip7702_operator", "cross_chain", "cross_chain_t1", "kit_public",
                    "kit_confirmed", "ms_cashback", "ms_cashback_shape", "dust_approve", "dust_approve_kit", "emergency_gas",
-                   "emergency_gas_kit", "emergency_gas_self", "kit_vanity", "unpriced_capped"]
+                   "emergency_gas_kit", "emergency_gas_self", "kit_vanity", "unpriced_capped",
+                   # web-research rules W1-W13
+                   "vanity_drainer", "deploy_drain", "deploy_drain_weak", "ghost_forward", "ghost_forward_multi", "bait_forward",
+                   "bait_forward_multi", "kept_share", "token_spender_pull", "token_spender_multi", "owner_takeover",
+                   "owner_takeover_multi", "safe_spender", "safe_spender_pull", "seaport_zero", "seaport_zero_multi",
+                   "nft_operator_pull", "batch7702_approve", "eip7702_batch", "eip7702_chain0", "poison_zero",
+                   "share_grid", "operator_wallet", "operator_wallet_multi", "serial_deployer", "serial_deployer_multi"]
 
 
 def components(rows):
@@ -113,7 +119,7 @@ class Classifier:
 
 def run(incidents_path, split, blind=True, window=1, budget_sec=7200, cache_path=None, max_components=None):
     t0 = time.monotonic()
-    all_rows = incidents.load(incidents_path)
+    all_rows = [r for r in incidents.load(incidents_path) if (r.get("chain") or "eth") == "eth"]   # ETH pipeline only
     rows = [r for r in all_rows if r["split"] == split]
     cache = connect(cache_path)
     enrich.refresh_labels(cache, ["eth"])
@@ -155,7 +161,10 @@ def run(incidents_path, split, blind=True, window=1, budget_sec=7200, cache_path
             for k in ("d2_candidates", "d2_confirmed", "d3_candidates", "d3_confirmed", "d8_candidates", "d8_confirmed", "d8_truncated", "d9_confirmed", "d7_bait", "d10_confirmed", "xsplit_groups", "xsplit_confirmed",
                       "k4_ms_deadline", "k5_oneshot", "k6_kit_deposit", "k9_owner_collect", "k7k8_batch_approval_drain",
                       "k7k8_kit_router_swap", "d7_ms_new", "d7_ms_generated", "n4_dust_approve", "n5_emergency_gas",
-                      "n7_kit_router_xtx",
+                      "n7_kit_router_xtx", "w1_deploy_drain", "w1_factory_drain", "w1_unknown", "w1_ghost_forward",
+                      "w2_vanity_approval", "w3_bait_forward", "w3_unknown", "w4_token_spender", "w5_owner_takeover",
+                      "w6_safe_approval", "w6_safe_pull", "w7_seaport_zero", "w7_nft_operator", "w8_batch7702",
+                      "w8_auth_batch", "w10_poison_zero", "w_errors",
                       "tx_lookups", "code_lookups", "nonce_lookups"):
                 stats[k] += st.get(k, 0)
         rows0 = rollup.rollup(conn, det_seeds, labels)
