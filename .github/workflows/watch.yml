@@ -41,13 +41,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           C: ${{ matrix.chain }}
         run: |
+          . scripts/release_state.sh
           mkdir -p data _rel
-          if gh release download data-latest -p "drainerwatch-$C.sqlite.gz" -D _rel 2>/dev/null; then
+          # a transient API error fails the job (never start from empty state and overwrite the shard)
+          rc=0; rel_get "drainerwatch-$C.sqlite.gz" "_rel/drainerwatch-$C.sqlite.gz" || rc=$?
+          if [ $rc -eq 0 ]; then
             gunzip -c "_rel/drainerwatch-$C.sqlite.gz" > "data/drainerwatch-$C.sqlite" && echo "shard from release"
-          elif gh release download data-latest -p drainerwatch.sqlite.gz -D _rel 2>/dev/null; then
-            gunzip -c _rel/drainerwatch.sqlite.gz > "data/drainerwatch-$C.sqlite" && echo "shard migrated from the single database"
+          elif [ $rc -eq 2 ]; then
+            rc=0; rel_get drainerwatch.sqlite.gz _rel/drainerwatch.sqlite.gz || rc=$?
+            if [ $rc -eq 0 ]; then
+              gunzip -c _rel/drainerwatch.sqlite.gz > "data/drainerwatch-$C.sqlite" && echo "shard migrated from the single database"
+            elif [ $rc -eq 2 ]; then echo "no previous state"
+            else echo "::error::release unreachable"; exit 1; fi
           else
-            echo "no previous state"
+            echo "::error::release unreachable"; exit 1
           fi
 
       - uses: actions/setup-python@v5
@@ -74,8 +81,9 @@ jobs:
         run: |
           gh release view data-latest >/dev/null 2>&1 || gh release create data-latest --prerelease \
             --title "data (rolling)" --notes "Rolling scanner state, overwritten by every watch run. Not a software release." || true
+          . scripts/release_state.sh
           gzip -c "data/drainerwatch-$C.sqlite" > "drainerwatch-$C.sqlite.gz"
-          gh release upload data-latest "drainerwatch-$C.sqlite.gz" --clobber
+          rel_put "drainerwatch-$C.sqlite.gz"
 
   # merge the shards into the main database, then roll-up, enrichment, exposure, alerts and render
   merge:
@@ -99,17 +107,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          . scripts/release_state.sh
           mkdir -p data _rel _shards
-          if gh release download data-latest -p drainerwatch.sqlite.gz -D _rel 2>/dev/null; then
+          # a transient API error fails the job: a rebuilt database must never replace the real one
+          rc=0; rel_get drainerwatch.sqlite.gz _rel/drainerwatch.sqlite.gz || rc=$?
+          if [ $rc -eq 0 ]; then
             gunzip -c _rel/drainerwatch.sqlite.gz > data/drainerwatch.sqlite && echo "db from release"
+          elif [ $rc -ne 2 ]; then
+            echo "::error::release unreachable"; exit 1
           elif [ -f _data/data/drainerwatch.sqlite ]; then
             cp _data/data/drainerwatch.sqlite data/ && echo "db from data branch (migration)"
           else
             echo "no previous db"
           fi
           for c in eth base bsc tron; do
-            gh release download data-latest -p "drainerwatch-$c.sqlite.gz" -D _rel --clobber 2>/dev/null \
-              && gunzip -c "_rel/drainerwatch-$c.sqlite.gz" > "_shards/drainerwatch-$c.sqlite" || echo "no shard for $c"
+            rc=0; rel_get "drainerwatch-$c.sqlite.gz" "_rel/drainerwatch-$c.sqlite.gz" || rc=$?
+            if [ $rc -eq 0 ]; then gunzip -c "_rel/drainerwatch-$c.sqlite.gz" > "_shards/drainerwatch-$c.sqlite"
+            elif [ $rc -eq 2 ]; then echo "no shard for $c"
+            else echo "::error::release unreachable"; exit 1; fi
           done
           cp data/drainerwatch.sqlite _db_before.sqlite 2>/dev/null || true
 
@@ -142,7 +157,8 @@ jobs:
           mkdir -p _up
           gzip -c data/drainerwatch.sqlite > _up/drainerwatch.sqlite.gz
           for f in contracts.csv drains.csv; do [ -f "data/$f" ] && gzip -c "data/$f" > "_up/$f.gz"; done
-          gh release upload data-latest _up/* --clobber
+          . scripts/release_state.sh
+          for f in _up/*; do rel_put "$f"; done
           ls -la _up
 
       - name: Publish light files to the data branch (single orphan commit)
@@ -192,5 +208,8 @@ jobs:
           queued=$(gh api "repos/$GH_REPO/actions/workflows/watch.yml/runs?per_page=20" \
             --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.status=="queued" or .status=="waiting" or .status=="pending" or .status=="requested")] | length')
           if [ "$queued" -gt 0 ]; then echo "another watch run is already queued ($queued); not dispatching"; exit 0; fi
-          gh workflow run watch.yml --ref "${{ github.ref_name }}"
-          echo "dispatched the next run"
+          for i in 1 2 3 4 5 6; do
+            gh workflow run watch.yml --ref "${{ github.ref_name }}" && { echo "dispatched the next run"; exit 0; }
+            sleep $((i * 20))
+          done
+          exit 1
