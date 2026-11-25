@@ -382,3 +382,19 @@ def test_generic_proxy_never_forms_a_family():
     assert bytecode.is_generic_proxy(proxy)
     assert not bytecode.is_generic_proxy("0x6080604052" + "f4" + "00" * 60)       # delegatecall, no standard slot
     assert not bytecode.is_generic_proxy("0x60806040" + "7f" + slot + "00" * 60)  # slot constant, no delegatecall
+
+
+def test_zero_address_is_never_a_payout_wallet():
+    from drainerwatch.constants import ZERO
+    ctx = make_ctx()
+    ctx.conn.execute("INSERT INTO payouts(chain,drainer,wallet,role,share) VALUES ('eth',?,?,'operator',0.3)", (a(1), ZERO))
+    ctx.conn.execute("INSERT INTO payouts(chain,drainer,wallet,role,share) VALUES ('eth',?,?,'affiliate',0.7)", (a(1), a(2)))
+    scan.refresh_known(ctx)
+    assert ZERO not in ctx.payout_wallets and a(2) in ctx.payout_wallets
+
+
+def test_safe_proxy_never_forms_a_family():
+    import inspect
+    from drainerwatch import rollup
+    assert 'info.get("safe_proxy")' in inspect.getsource(scan)
+    assert 'd.get("safe_proxy")' in inspect.getsource(rollup)

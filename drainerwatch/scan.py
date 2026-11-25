@@ -193,7 +193,7 @@ class Ctx:
             found["kit_public"] = info["kit_public"]
         if info.get("ms_variant"):
             found["ms_variant"] = info["ms_variant"]
-        m = None if info.get("generic_proxy") else             bytecode.match_family(info["skeleton"], info["selectors"], info["size"], self.seed_family_index())
+        m = None if (info.get("generic_proxy") or info.get("safe_proxy")) else             bytecode.match_family(info["skeleton"], info["selectors"], info["size"], self.seed_family_index())
         if m:
             found.update(family=m[0], via=m[1], matched_seed=self.seed_family_index()[m[2]]["address"])
         if found:
@@ -241,6 +241,7 @@ def refresh_known(ctx):
     ctx.payout_wallets = {r["wallet"] for r in conn.execute(
         "SELECT DISTINCT wallet FROM payouts WHERE chain=? AND role IN ('affiliate','operator')", (chain,))}
     ctx.payout_wallets |= set(ctx.seeds.addresses(chain))
+    ctx.payout_wallets.discard(ZERO)   # a split leg to 0x0 is a burn, never an operator wallet
     # strong operator wallets: seeds, and payout wallets of T1 contracts that are EOAs (no code)
     t1 = [r["wallet"] for r in conn.execute("SELECT DISTINCT p.wallet FROM payouts p JOIN contracts c ON c.chain=p.chain "
                                             "AND c.address=p.drainer WHERE p.chain=? AND c.tier='T1' AND p.role IN ('affiliate','operator')", (chain,))]

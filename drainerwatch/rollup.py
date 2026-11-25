@@ -158,7 +158,7 @@ def rollup(conn, seeds, labels, now=None):
         elif t == "bytecode":
             if d.get("redflags"):
                 p["redflags"] = True
-            if d.get("family") and not d.get("generic_proxy") and not (verified.get((r["chain"], r["address"])) or {}).get("proxy"):
+            if d.get("family") and not d.get("generic_proxy") and not d.get("safe_proxy") and not (verified.get((r["chain"], r["address"])) or {}).get("proxy"):
                 p["fam"] = d["family"]
             if d.get("kit"):
                 p["kit"] = d["kit"]
