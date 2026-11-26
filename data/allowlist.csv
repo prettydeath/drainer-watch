@@ -5,3 +5,4 @@ bsc,0x0000a8b6741441bb4ba0dfe313a2bc7b2cf10000,FlapTokenLocker (BscScan verified
 bsc,0xb5d2fc5628ae5537a9c62e9fca1c242b470d455a,MaxionNFTMarketplaceV2 (BscScan verified NFT marketplace)
 base,0x0000000000006ac72ed1d192fa28f0058d3f8806,Guest (BaseScan verified 0xsequence wallet Guest module for dispatching batched calls)
 bsc,0x000042108465206185a077edc3f3fd2b49060000,TransparentUpgradeableProxy of verified token-launchpad entry point Portal (impl 0xb0daa34a75bf736a82d092982a4fcd8932d124d9; BscScan verified; vanity address FP)
+bsc,0xab4c1f7d16e0474f06f61c154f3a6857d67e5776,MaxionNFTMarketplaceV2 (BscScan verified NFT marketplace; second deployment of 0xb5d2fc5628ae5537a9c62e9fca1c242b470d455a; split = sale settlement)
