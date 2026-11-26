@@ -124,6 +124,33 @@ Deps: `requests`, `pycryptodome` (keccak for selectors/topics). Python >=3.11.
   T2 + a W T2, or `phish_deploy` + `phish_multicall` with 2+ victims. Guards: allowlist additions, legitimate 7702
   delegates, optional FP lists (`DRAINERWATCH_FP_DIR`), CEX deposit-sweep cap (`enrich.victim_funding`, table
   `victim_funding`, label `cex_sweep_capped`).
+- Service-sweep guard (`fpguard.py`): a T1/T2 subject with >= 50 000 USD and no kit evidence is capped at T3
+  (`service_sweep_capped`) when >= 60 % of its drain USD comes from service-shaped legs: `fp_repeat_victim` (same victim
+  pulled 3+ times on 2+ UTC days; not counted for subjects with a split), `fp_same_owner` (victim funded the spender /
+  recipient or the reverse, from the first incoming native transfers in `addr_history`), `fp_deposit_address` (victim
+  token history: >= 10 outgoing transfers to <= 5 sinks and >= 5 incoming), `fp_round_amounts` (2+ pulls >= 100 000 USD
+  in multiples of 1000 with a fractional tag < 0.01). `addr_history` is filled after the roll-up for the 10 largest such
+  subjects (their 3 largest victims, the subject and its main recipient; Etherscan on EVM, TronGrid v1 on TRON, re-checked
+  weekly). Verified BitGo `WalletSimple` / `Forwarder*` contracts are capped as `custody_contract_capped`. Capped subjects
+  stay out of the headline totals and the operators table.
+  Recipient shapes (per leg, from the recipient's `addr_history`: last 200 token transfers, `in_senders`, `out_usd` in
+  stablecoins, `created_at` = first activity seen, `contract_name`): `fp_aggregator` (>= 100 distinct senders and >= 5x
+  the subject's victims into it), `fp_distributor` (>= 100 distinct receivers from <= 3 senders), `fp_pipeline` (>= 180
+  days older than the subject's first drain, `out_usd` >= 5x the subject's USD into it, <= 10 senders). `fp_dex_pool`:
+  a victim's pulls into AMM pairs / pools (token0()+token1() in `codes.selectors`, a verified Uniswap / Pancake / ... pair
+  or pool name, or a `dex` label) >= 5 times on >= 2 UTC days - also for subjects with a split. The two largest
+  recipients of each looked-up subject are fetched (TRON contract name via `/wallet/getcontract`, EVM via getsourcecode).
+- Arkham Intel layer (optional, `ARKHAM_API_KEY`): `POST https://api.arkm.com/intelligence/address/batch?chain=` (header
+  `API-Key`) for the 40 largest uncapped T1/T2 subjects >= 250 000 USD without kit evidence: the subject, its 2 main
+  recipients and 5 largest victims, cached in `arkham_cache` for 30 days (unattributed addresses too). Only the confirmed
+  `arkhamEntity` / `arkhamLabel` / `depositServiceID` are used, never `predictedEntity`. A subject attributed to a service
+  entity (`service: true` or type cex / otc / custodian / market maker / payments / fund / bridge / dex) is capped
+  (`fp_arkham_entity`, `service_sweep_capped`); a victim attributed to a service, or a recipient that is a service wallet
+  other than a deposit address, makes that leg service-shaped (`fp_arkham_entity`). A subject or recipient Arkham calls
+  malicious (scam / hacker / drainer / phishing / sanctioned / mixer ...) is never capped (`arkham_malicious`).
+  data.json `contracts[].arkham`: `[{address, role, entity, entity_type, label, service, deposit_service}]` for the subject,
+  payout wallets and largest victims with a cached attribution. The dashboard links every full address to
+  `https://intel.arkm.com/explorer/address/<address>`.
 
 ## Family names (famname.py)
 `family` stays the skeleton hash (or kit id); `family_name` / `family_name_source` are resolved in this order: kit

@@ -23,6 +23,9 @@ TIER_ORDER = {"T1": 0, "T2": 1, "T3": 2}
 MAX_CONTRACTS, MAX_DRAINS, MAX_EVIDENCE, MAX_LINKS = 2000, 500, 20, 50
 
 
+# service sweeps / custody contracts capped by fpguard: their payout wallets are service wallets, not operators
+_NOT_SERVICE = ("c.labels NOT LIKE '%\"service_sweep_capped\"%' AND c.labels NOT LIKE '%\"custody_contract_capped\"%'")
+
 def _strip(s):
     return re.sub(r'"generated_at":\s*"[^"]*"', '"generated_at":""', s)
 
@@ -330,12 +333,16 @@ def build_payload(conn, now=None):
     ops = []
     for r in conn.execute(
             "SELECT p.chain,p.wallet,COUNT(DISTINCT p.drainer) dr,SUM(p.role='affiliate') aff FROM payouts p "
-            "JOIN contracts c ON c.chain=p.chain AND c.address=p.drainer GROUP BY p.chain,p.wallet"):
-        u = conn.execute("SELECT COALESCE(SUM(usd),0) u FROM drains WHERE chain=? AND recipient=?",
+            "JOIN contracts c ON c.chain=p.chain AND c.address=p.drainer WHERE " + _NOT_SERVICE +
+            " GROUP BY p.chain,p.wallet"):
+        u = conn.execute("SELECT COALESCE(SUM(d.usd),0) u FROM drains d JOIN contracts c ON c.chain=d.chain "
+                         "AND c.address=d.drainer WHERE d.chain=? AND d.recipient=? AND " + _NOT_SERVICE,
                          (r["chain"], r["wallet"])).fetchone()["u"]
         ops.append(dict(chain=r["chain"], wallet=r["wallet"], drainers=r["dr"], affiliates=r["aff"] or 0, usd=_num(u)))
     ops.sort(key=lambda o: (-o["usd"], -o["drainers"]))
 
+    from .fpguard import arkham_for_contracts
+    arkham_for_contracts(conn, contracts)                # Arkham Intel attribution (cache only, filled with ARKHAM_API_KEY)
     allow_rows, pulled, exposure_total = exposure.payload(conn)
     for c in contracts:
         k = (c["chain"], c["address"])
