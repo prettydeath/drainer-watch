@@ -6,3 +6,6 @@ bsc,0xb5d2fc5628ae5537a9c62e9fca1c242b470d455a,MaxionNFTMarketplaceV2 (BscScan v
 base,0x0000000000006ac72ed1d192fa28f0058d3f8806,Guest (BaseScan verified 0xsequence wallet Guest module for dispatching batched calls)
 bsc,0x000042108465206185a077edc3f3fd2b49060000,TransparentUpgradeableProxy of verified token-launchpad entry point Portal (impl 0xb0daa34a75bf736a82d092982a4fcd8932d124d9; BscScan verified; vanity address FP)
 bsc,0xab4c1f7d16e0474f06f61c154f3a6857d67e5776,MaxionNFTMarketplaceV2 (BscScan verified NFT marketplace; second deployment of 0xb5d2fc5628ae5537a9c62e9fca1c242b470d455a; split = sale settlement)
+eth,0x3811d0f90bca614db35c5e21ea21d3d784c07bba,FP: EOA paid by another sender's UserOp in ERC-4337 bundle tx 0x8db42191f897cfc08187fb203869276b90310e0bbedc2b7a21f2349ff6fd0ccb (K7 now follows only the owner's outflow)
+eth,0xc703df721ffd79a22ad90bae519909e987b6c33b,FP: Trust Wallet 7702 EOA paid by another sender's UserOp in ERC-4337 bundle tx 0x8db42191f897cfc08187fb203869276b90310e0bbedc2b7a21f2349ff6fd0ccb
+eth,0xa6bfea38fdddefe2e2987b486957714256d3c970,FP: LI.FI integrator fee (~0.9%) on the owner's own bridge swap in ERC-4337 bundle tx 0x8db42191f897cfc08187fb203869276b90310e0bbedc2b7a21f2349ff6fd0ccb

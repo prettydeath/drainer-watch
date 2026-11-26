@@ -541,10 +541,19 @@ def k7k8_tx(approvals, transfers, kit_amounts, is_legit):
             continue                      # the owner got something back: an ordinary (self-paying) swap
         spenders = {a["spender"] for a in aps}
         tokens = {t["token"] for t in transfers}
+        reach = {owner}                   # only funds that flowed out of O (directly or via hops) count: a bundled tx
+        grew = True                       # (ERC-4337 EntryPoint, multicall) carries other senders' unrelated transfers
+        while grew:
+            grew = False
+            for t in transfers:
+                if t["value"] > 0 and t["frm"] in reach and t["to"] not in reach:
+                    reach.add(t["to"])
+                    grew = True
         rec = defaultdict(list)
         for t in transfers:
             r = t["to"]
-            if t["value"] == 0 or r in (owner, ZERO) or r in spenders or r in tokens or is_legit(r):
+            if t["value"] == 0 or t["frm"] not in reach or r in (owner, ZERO) or r in spenders or r in tokens \
+                    or is_legit(r):
                 continue
             rec[r].append(dict(token=t["token"], value=str(t["value"]), direct=t["frm"] == owner))
         if not rec:

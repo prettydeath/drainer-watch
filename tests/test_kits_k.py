@@ -335,6 +335,12 @@ def test_k7_batch_approvals_drain():
     pool = a(0x9002)                                          # pool contract (not allowlisted)
     logs3 = logs[:2] + [transfer_log(h, USDT, o, pool, 2_249_169, li=2), transfer_log(h, USDT, o, r, 307_583, li=3)]
     assert r not in run_blocks({100: [t]}, logs=logs3, codes={pool: CODE})[1]
+    # ERC-4337 bundle (live FP eth tx 0x8db42191…): another sender's UserOp pays an EOA in the same tx; that EOA is
+    # not reachable from the approving owner's outflow, so it is never credited to the owner
+    o2, r2 = a(0x0F0F02), a(0xEE0102)
+    logs4 = logs[:2] + [transfer_log(h, USDT, o, pool, 900 * 10 ** 6, li=2),
+                        transfer_log(h, USDT, o2, r2, 1200 * 10 ** 6, li=3)]
+    assert r2 not in run_blocks({100: [t]}, logs=logs4, codes={pool: CODE})[1]
 
 
 def exact_input_single_r02(tin, tout, fee, rcpt, amount_in, out_min):
