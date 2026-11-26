@@ -23,6 +23,8 @@ EXPOSURE_MAX_CHECKS = 200
 EXPOSURE_CACHE_SEC = 30 * 60
 EXPOSURE_TIME_BOX = 40
 MAX_CODE_CHECKS = 200
+CODE_TIME_BOX = 60              # seconds per run for code + nonce lookups (TRON fallback node: seconds per address)
+CODE_CHUNK = 10
 UNLIMITED = 10 ** 36            # far above any real supply: shown as 'unlimited' (uint256 max, kit amounts)
 ONESHOT_MAX_NONCE = 3
 
@@ -52,8 +54,9 @@ def approval_pairs(conn, tiers=("T1", "T2")):
     return list(dict.fromkeys(out))
 
 
-def resolve_codes(conn, rpcs, cap=MAX_CODE_CHECKS):
-    """eth_getCode for T1/T2 subjects without a code record; writes codes (size 0 for accounts) and contracts.is_contract."""
+def resolve_codes(conn, rpcs, cap=MAX_CODE_CHECKS, time_box=CODE_TIME_BOX):
+    """eth_getCode for T1/T2 subjects without a code record; writes codes (size 0 for accounts) and contracts.is_contract.
+    Looked up in chunks inside `time_box`; the rest stays without a code record and is picked up next run."""
     todo = conn.execute("SELECT c.chain,c.address FROM contracts c LEFT JOIN codes k ON k.chain=c.chain AND "
                         "k.address=c.address WHERE c.tier IN ('T1','T2') AND k.address IS NULL ORDER BY c.tier, "
                         "c.last_seen DESC LIMIT ?", (cap,)).fetchall()
@@ -63,12 +66,18 @@ def resolve_codes(conn, rpcs, cap=MAX_CODE_CHECKS):
             by[r["chain"]].append(r["address"])
     n = 0
     from .bytecode import analyze, is_delegated_eoa
+    t_end = time.monotonic() + time_box
     for ch, addrs in by.items():
-        try:
-            got = rpcs[ch].get_code_many(addrs)
-        except Exception as e:  # noqa: BLE001
-            log.info("%s: code lookups failed: %s", ch, e)
-            continue
+        got = {}
+        for i in range(0, len(addrs), CODE_CHUNK):
+            if time.monotonic() > t_end:
+                log.info("%s: code lookups: time box reached (%d/%d)", ch, i, len(addrs))
+                break
+            try:
+                got.update(rpcs[ch].get_code_many(addrs[i:i + CODE_CHUNK]))
+            except Exception as e:  # noqa: BLE001
+                log.info("%s: code lookups failed: %s", ch, e)
+                break
         for a, c in got.items():
             if c is None:
                 continue

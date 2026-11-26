@@ -101,7 +101,8 @@ def finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=True):
         if "tron" in chains:
             from .tron import TronRpc
             xr["tron"] = TronRpc()
-        exposure.resolve_codes(conn, xr)
+        left = budget_sec - (time.monotonic() - t0)
+        exposure.resolve_codes(conn, xr, time_box=max(5, min(exposure.CODE_TIME_BOX, left)))
         exposure.resolve_nonces(conn, xr)
         from .tokens import Tokens
         toks = {c: Tokens(conn, xr[c], c) for c in xr}

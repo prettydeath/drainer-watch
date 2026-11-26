@@ -81,3 +81,16 @@ def test_used_spender_is_not_oneshot_and_revoked_allowance_hidden():
     p = build_payload(c)
     assert p["contracts"][0]["open_allowances"] == [] and p["exposure_total_usd"] == 0
     assert famname.KIT_NAMES["ms_oneshot_spender"].startswith("MS Drainer")
+
+
+def test_resolve_codes_respects_time_box():
+    c, sp, v = _db()
+    calls = []
+
+    class SlowRpc:
+        def get_code_many(self, addrs):
+            calls.append(list(addrs))
+            return {}
+
+    assert exposure.resolve_codes(c, {"eth": SlowRpc()}, time_box=-1) == 0
+    assert calls == []
