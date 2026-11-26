@@ -202,12 +202,17 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          started=$(gh api "repos/$GH_REPO/actions/runs/${{ github.run_id }}" --jq .run_started_at)
-          elapsed=$(( $(date -u +%s) - $(date -u -d "$started" +%s) ))
+          # transient API/network errors must never break the chain: retry, then fall back to safe defaults
+          retry() { for i in 1 2 3 4 5; do out=$("$@") && { echo "$out"; return 0; }; sleep $((i * 10)); done; return 1; }
+          if started=$(retry gh api "repos/$GH_REPO/actions/runs/${{ github.run_id }}" --jq .run_started_at); then
+            elapsed=$(( $(date -u +%s) - $(date -u -d "$started" +%s) ))
+          else
+            echo "could not read run start time; assuming 5 min elapsed"; elapsed=300
+          fi
           wait=$(( 540 - elapsed )); [ $wait -gt 0 ] && sleep $wait
-          queued=$(gh api "repos/$GH_REPO/actions/workflows/watch.yml/runs?per_page=20" \
-            --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.status=="queued" or .status=="waiting" or .status=="pending" or .status=="requested")] | length')
-          if [ "$queued" -gt 0 ]; then echo "another watch run is already queued ($queued); not dispatching"; exit 0; fi
+          queued=$(retry gh api "repos/$GH_REPO/actions/workflows/watch.yml/runs?per_page=20" \
+            --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.status=="queued" or .status=="waiting" or .status=="pending" or .status=="requested")] | length') || queued=0
+          if [ "${queued:-0}" -gt 0 ]; then echo "another watch run is already queued ($queued); not dispatching"; exit 0; fi
           for i in 1 2 3 4 5 6; do
             gh workflow run watch.yml --ref "${{ github.ref_name }}" && { echo "dispatched the next run"; exit 0; }
             sleep $((i * 20))
