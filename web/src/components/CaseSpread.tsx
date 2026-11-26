@@ -228,6 +228,12 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
               <Timeline c={c} now={model.now} />
               <h4>Subjects</h4>
               <ul className="subjects">{subj.map(([k, v], i) => <li key={i}><span>{k}</span><FullId value={v} chain={c.chain} />{i > 0 && v && c.payouts.some(p => p.wallet === v) ? <WalletLink chain={c.chain} address={v} label="wallet file" /> : null}</li>)}</ul>
+              {c.arkham?.length ? (
+                <>
+                  <h4>Arkham attribution</h4>
+                  <ul className="links">{c.arkham.map(x => <li key={x.address + x.role}><span>{x.role}</span><Addr value={x.address} chain={c.chain} /><span className="muted small">{[x.entity, x.entity_type, x.label, x.deposit_service ? 'deposit address of ' + x.deposit_service : null].filter(Boolean).join(' · ') || 'no attribution'}</span></li>)}</ul>
+                </>
+              ) : null}
               <h4>Cluster</h4>
               {cl ? (
                 <ul className="links">

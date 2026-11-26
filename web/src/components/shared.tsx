@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { addrUrl, hasExplorer, txUrl } from '@/lib/model'
+import { addrUrl, arkhamUrl, hasExplorer, txUrl } from '@/lib/model'
 import { mid } from '@/lib/format'
 
 export const tv = (t: string | null | undefined) => (t ? 'var(--' + t.toLowerCase() + ')' : 'var(--flow)')
@@ -67,6 +67,9 @@ export function FullId({ value, chain, kind = 'address' }: { value: string | nul
         </button>
         {hasExplorer(chain) ? (
           <a className="iconbtn" href={kind === 'tx' ? txUrl(chain, value) : addrUrl(chain, value)} target="_blank" rel="noopener noreferrer" aria-label={'Open ' + value + ' in the explorer'}>explorer ↗</a>
+        ) : null}
+        {kind === 'address' ? (
+          <a className="iconbtn" href={arkhamUrl(value)} target="_blank" rel="noopener noreferrer" aria-label={'Open ' + value + ' in Arkham Intel'}>Arkham ↗</a>
         ) : null}
       </span>
     </span>

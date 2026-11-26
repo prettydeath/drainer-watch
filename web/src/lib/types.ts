@@ -79,6 +79,18 @@ export interface Contract {
   open_allowances?: OpenAllowance[]
   /** the spender has executed any pull */
   pulled?: boolean | null
+  /** Arkham Intel attribution of the subject, its payout wallets and largest victims (backend with ARKHAM_API_KEY) */
+  arkham?: ArkhamAttribution[]
+}
+
+export interface ArkhamAttribution {
+  address: string
+  role: string
+  entity: string | null
+  entity_type: string | null
+  label: string | null
+  service: boolean | null
+  deposit_service: string | null
 }
 
 export interface OpenAllowance {

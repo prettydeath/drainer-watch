@@ -83,6 +83,9 @@ def finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=True):
         enrich.cross_chain_check(conn, rpcs)
         enrich.lookup_verified(conn, es, rows)
         enrich.victim_funding(conn, es, rows, labels)
+        from . import fpguard
+        fpguard.lookup_history(conn, es, rows)          # funders / deposit-address history of the largest pulls
+        fpguard.lookup_arkham(conn, rows)               # Arkham Intel entities (only with ARKHAM_API_KEY)
         rows = rollup.rollup(conn, sd, labels)
         famname.resolve(conn, rpcs)                      # family names: token name()/symbol(), signature database
     except Exception as e:  # noqa: BLE001 - enrichment is best effort

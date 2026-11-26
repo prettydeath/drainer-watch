@@ -383,6 +383,10 @@ it at TronGrid without a key is throttled hard, so that mode scans at most 60 bl
 logs could not be fetched, and the dashboard says "reduced block coverage"),
 `DRAINERWATCH_CHAINS` (default `eth,bsc,base,tron`),
 `ETHERSCAN_API_KEYS` (comma list, Etherscan V2), `WA_DATA_DIR` (local wallet-attribution CSVs),
+`ARKHAM_API_KEY` (Arkham Intel, header `API-Key`: entity attribution of the largest T1/T2 subjects above 250 000 USD,
+their main recipients and largest victims, one batch call per chain, cached 30 days; a subject attributed to an exchange
+/ OTC desk / custodian, or whose money mostly comes from service wallets, is capped at T3 as a custodial sweep; no-op
+without it),
 `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` (alerts on new T1/T2; no-op without them), `DASHBOARD_URL`.
 
 Operator inputs in `data/`: `seeds.csv` (`chain,address,label,source`), `allowlist.csv` (`chain,address,note`).

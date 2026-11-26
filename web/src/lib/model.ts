@@ -55,6 +55,8 @@ export const txUrl = (ch: string, tx: string) =>
   explorer(ch) + '/' + (CHAINS[ch]?.tx_path || (isTron(ch) ? 'transaction' : 'tx')) + '/' + tx
 export const addrUrl = (ch: string, a: string) => explorer(ch) + '/address/' + a
 export const hasExplorer = (ch: string) => !!explorer(ch)
+/** Arkham Intel explorer page of an address (EVM and TRON): one click to the entity attribution */
+export const arkhamUrl = (a: string) => 'https://intel.arkm.com/explorer/address/' + a
 
 export const caseKey = (chain: string, address: string) => chain + ':' + address
 const norm = (s: string) => s.toLowerCase()

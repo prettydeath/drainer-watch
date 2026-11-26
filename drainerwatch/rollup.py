@@ -3,7 +3,7 @@ import hashlib
 import json
 from collections import defaultdict
 
-from . import bytecode, wrules
+from . import bytecode, fpguard, wrules
 from .constants import (ALLOWLIST, CODEHASH_CLUSTER_MIN, INTEL_CSV, TRON_PULL_MULTI, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, KIT_PUBLIC_CONTRACTS,
                         KIT_VANITY_RE, MALICIOUS_CATEGORIES, MIN_USD, ONESHOT_T1_WORKERS, POOL_SELECTORS, TRON_ALLOWLIST, TRON_FEE_MIN_HITS,
                         OPERATOR_WALLET_T2, SERIAL_DEPLOYER_T2, TRON_PERM_T2, TRON_PREFUND_T2, VANITY_MIN_APPROVERS)
@@ -63,7 +63,8 @@ UNPRICED_CAPPABLE = {"split_pull", "split_xtx"}
 UNVERIFIED_SPLIT_KEEP = {"kit_signature", "owner_gated_puller", "family_match", "seed", "approval_fingerprint",
                          "bait_payable", "kit_exact", "kit_public", "pays_known_operator", "ms_deadline", "vanity_drainer"}
 # own evidence that was capped: never re-raised by cross-chain twins (K14) or cluster inheritance
-CAPPED_LABELS = {"unpriced_capped", "verified_capped", "tron_split_capped", "unverified_split_capped"}
+CAPPED_LABELS = {"unpriced_capped", "verified_capped", "tron_split_capped", "unverified_split_capped",
+                 "service_sweep_capped", "custody_contract_capped"}
 UNPRICED_NEUTRAL = {"redflag_selectors", "cross_chain", "spoof_split", "share_grid", "poison_tiny", "poison_counterfeit",
                     "poison_batch", "poison_zero", "codehash_cluster", "full_balance_pull", "lookalike_contract",
                     "c2_config_intel"}
@@ -528,6 +529,7 @@ def rollup(conn, seeds, labels, now=None):
                          verified=None if not vf or vf["verified"] is None else int(vf["verified"]),
                          contract_name=vf["name"] if vf else None))
 
+    fpguard.apply_caps(conn, rows)        # custodial sweeps / custody contracts: T3 before twins and clusters
     cross_chain_rows(rows)
     operator_wallets(conn, rows, labels, allow, codes)
     serial_deployers(conn, rows, labels, allow, codes)

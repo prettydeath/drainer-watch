@@ -136,6 +136,7 @@ jobs:
       - name: Merge and finish
         env:
           ETHERSCAN_API_KEYS: ${{ secrets.ETHERSCAN_API_KEYS }}
+          ARKHAM_API_KEY: ${{ secrets.ARKHAM_API_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
