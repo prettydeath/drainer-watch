@@ -90,7 +90,7 @@ jobs:
     needs: scan
     if: ${{ always() }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     outputs:
       changed: ${{ steps.publish.outputs.changed }}
     steps:
@@ -193,7 +193,8 @@ jobs:
   # concurrency group; nothing is dispatched when another watch run is already queued (no pile-up, no tight loop).
   next:
     needs: merge
-    if: ${{ always() && needs.merge.result != 'cancelled' }}
+    # !cancelled(): a manual cancel stops the chain, a merge timeout does not
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     permissions:
