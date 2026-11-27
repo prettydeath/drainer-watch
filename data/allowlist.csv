@@ -9,3 +9,4 @@ bsc,0xab4c1f7d16e0474f06f61c154f3a6857d67e5776,MaxionNFTMarketplaceV2 (BscScan v
 eth,0x3811d0f90bca614db35c5e21ea21d3d784c07bba,FP: EOA paid by another sender's UserOp in ERC-4337 bundle tx 0x8db42191f897cfc08187fb203869276b90310e0bbedc2b7a21f2349ff6fd0ccb (K7 now follows only the owner's outflow)
 eth,0xc703df721ffd79a22ad90bae519909e987b6c33b,FP: Trust Wallet 7702 EOA paid by another sender's UserOp in ERC-4337 bundle tx 0x8db42191f897cfc08187fb203869276b90310e0bbedc2b7a21f2349ff6fd0ccb
 eth,0xa6bfea38fdddefe2e2987b486957714256d3c970,FP: LI.FI integrator fee (~0.9%) on the owner's own bridge swap in ERC-4337 bundle tx 0x8db42191f897cfc08187fb203869276b90310e0bbedc2b7a21f2349ff6fd0ccb
+base,0x03a520b32c04bf3beef7beb72e919cf822ed34f1,Uniswap V3 NonfungiblePositionManager on Base (Basescan verified; Uniswap deployment docs)
