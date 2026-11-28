@@ -259,9 +259,10 @@ def build_payload(conn, now=None):
         pay[(r["chain"], r["drainer"])].append(dict(wallet=r["wallet"], role=r["role"], share=round(r["share"] or 0, 4),
                                                     txs=r["txs"]))
     ev = defaultdict(list)
+    shown = {(r["chain"], r["address"]) for r in crow}
     for r in conn.execute("SELECT chain,address,type,tx,ts,detail FROM evidence ORDER BY ts DESC"):
         k = (r["chain"], r["address"])
-        if len(ev[k]) < MAX_EVIDENCE:
+        if k in shown and len(ev[k]) < MAX_EVIDENCE:
             ev[k].append(dict(type=r["type"], tx=r["tx"], ts=iso(r["ts"]) or "", detail=describe(
                 r["type"], json.loads(r["detail"] or "{}"))))
     dep = {(r["chain"], r["address"]): dict(r) for r in conn.execute("SELECT * FROM contract_deployer")}
