@@ -10,3 +10,5 @@ eth,0x3811d0f90bca614db35c5e21ea21d3d784c07bba,FP: EOA paid by another sender's 
 eth,0xc703df721ffd79a22ad90bae519909e987b6c33b,FP: Trust Wallet 7702 EOA paid by another sender's UserOp in ERC-4337 bundle tx 0x8db42191f897cfc08187fb203869276b90310e0bbedc2b7a21f2349ff6fd0ccb
 eth,0xa6bfea38fdddefe2e2987b486957714256d3c970,FP: LI.FI integrator fee (~0.9%) on the owner's own bridge swap in ERC-4337 bundle tx 0x8db42191f897cfc08187fb203869276b90310e0bbedc2b7a21f2349ff6fd0ccb
 base,0x03a520b32c04bf3beef7beb72e919cf822ed34f1,Uniswap V3 NonfungiblePositionManager on Base (Basescan verified; Uniswap deployment docs)
+base,0x36a7cd5b1f475122a2b52580fc8e170a2cd312ef,Orchestrator (BaseScan verified; Ithaca/Porto EIP-7702 account orchestrator - relayer gas-compensated batched execution)
+bsc,0x5567954cd026cebfe486062cb75848e0f1c12e58,RelayApprovalProxy (BscScan verified; Relay bridge approval proxy - IRelayRouter + permit2-relay)
