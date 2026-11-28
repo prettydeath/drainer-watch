@@ -1,0 +1,51 @@
+name: diag
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  # read-only size diagnostics of the state in the data-latest release (never uploads anything)
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [drainerwatch, drainerwatch-eth, drainerwatch-base, drainerwatch-bsc, drainerwatch-tron]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Stats
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          . scripts/release_state.sh
+          mkdir -p _rel
+          rel_get "${{ matrix.db }}.sqlite.gz" "_rel/${{ matrix.db }}.sqlite.gz"
+          gunzip -c "_rel/${{ matrix.db }}.sqlite.gz" > "_rel/${{ matrix.db }}.sqlite"
+          ls -la _rel
+          python -c "import sqlite3; c=sqlite3.connect(':memory:'); print(sqlite3.sqlite_version, [r[0] for r in c.execute('pragma compile_options') if 'DBSTAT' in r[0]])"
+          python -m drainerwatch stats "_rel/${{ matrix.db }}.sqlite"
+          python - "_rel/${{ matrix.db }}.sqlite" <<'PY'
+          import sqlite3, sys
+          c = sqlite3.connect(sys.argv[1])
+          q = lambda s: c.execute(s).fetchall()
+          print("approvals top spenders:", q("SELECT chain,spender,COUNT(*) n FROM approvals GROUP BY 1,2 ORDER BY n DESC LIMIT 10"))
+          print("g_funds top recipients:", q("SELECT chain,recipient,COUNT(*) n FROM g_funds GROUP BY 1,2 ORDER BY n DESC LIMIT 10") if q("SELECT 1 FROM sqlite_master WHERE name='g_funds'") else None)
+          print("codes by size=0:", q("SELECT chain, size=0, COUNT(*), SUM(length(skeleton)), SUM(length(selectors)) FROM codes GROUP BY 1,2"))
+          print("evidence per subject top:", q("SELECT chain,address,type,COUNT(*) n FROM evidence GROUP BY 1,2,3 ORDER BY n DESC LIMIT 15"))
+          print("evidence age days:", q("SELECT type, (strftime('%s','now')-ts)/86400 d, COUNT(*) FROM evidence WHERE type IN ('pays_known_operator','multi_victim_pull','poison_tiny') GROUP BY 1,2 ORDER BY 1,2"))
+          print("contracts by tier:", q("SELECT chain,tier,COUNT(*) FROM contracts GROUP BY 1,2"))
+          print("drains per drainer top:", q("SELECT chain,drainer,COUNT(*) n FROM drains GROUP BY 1,2 ORDER BY n DESC LIMIT 10"))
+          print("payouts:", q("SELECT chain,role,COUNT(*) FROM payouts GROUP BY 1,2"))
+          print("meta keys:", q("SELECT k, length(v) FROM meta ORDER BY 2 DESC LIMIT 15"))
+          print("freelist/page:", q("PRAGMA freelist_count"), q("PRAGMA page_count"), q("PRAGMA page_size"))
+          PY
