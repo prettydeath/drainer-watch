@@ -647,3 +647,32 @@ def test_endpoint_choice_and_key_scope(monkeypatch):
     assert r.url == TRON_API_DEFAULT and r.pool.next() in ("k1", "k2")
     r = TronRpc(url="https://tron-rpc.publicnode.com")
     assert r.pool.next() is None                         # a TronGrid key never goes to another host
+
+
+def test_credit_limit_switch_gets_fresh_attempts(monkeypatch):
+    # with 3+ keys the switch threshold equals the retry budget; the keyless endpoint must still be tried
+    from drainerwatch import tron as tmod
+    monkeypatch.delenv("TRON_API_URL", raising=False)
+    monkeypatch.setenv("TRONGRID_API_KEYS", "k1,k2,k3")
+    monkeypatch.setattr(tmod.time, "sleep", lambda s: None)
+    r = tmod.TronRpc()
+    seen = []
+
+    class Resp:
+        def __init__(self, code, data=None):
+            self.status_code, self._d = code, data
+            self.text = "" if data else "credit limit"
+            self.content = b"{}"
+
+        def json(self):
+            return self._d
+
+    def fake_post(url, json=None, headers=None, timeout=None):
+        seen.append(url)
+        if "trongrid" in url:
+            return Resp(429)
+        return Resp(200, {"block_header": {"raw_data": {"number": 7}}})
+
+    monkeypatch.setattr(r._session, "post", fake_post)
+    assert r.block_number() == 7
+    assert seen[-1].startswith(tmod.TRON_API_KEYLESS)

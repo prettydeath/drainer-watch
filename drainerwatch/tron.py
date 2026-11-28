@@ -154,7 +154,7 @@ class TronRpc:
                         log.warning("tron: TronGrid keys hit the credit limit, switching to %s for this run", TRON_API_KEYLESS)
                         self.url, self.trongrid, self.keyless = TRON_API_KEYLESS, False, False
                         self.pool = key_pool("_NO_KEYS_")
-                        continue
+                        return self.post(path, body, retries, timeout)    # fresh attempts on the new endpoint
                     if self.keyless or len(self.pool) <= 1:
                         time.sleep(wait + 0.5)
                     continue
