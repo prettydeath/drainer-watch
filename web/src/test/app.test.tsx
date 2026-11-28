@@ -36,6 +36,16 @@ describe('app', () => {
     expect(screen.getByText('Why it is flagged')).toBeTruthy()
   })
 
+  it('lists address poisoning apart from the case files', () => {
+    const addr = '0x' + 'ab'.repeat(20)
+    const data: DataJson = { ...fixture, totals: { ...fixture.totals, poisoning: 1 },
+      poisoning: [{ chain: 'eth', address: addr, labels: ['spoof_split'], victims: 4, first_seen: '', last_seen: '',
+        cluster: null, code_class: 'poisoner', contract_name: null }] }
+    render(<App data={data} />)
+    expect(screen.getByRole('heading', { name: 'Address poisoning' })).toBeTruthy()
+    expect(document.querySelectorAll('#poisoning tbody tr').length).toBe(1)
+  })
+
   it('renders empty data gracefully', () => {
     render(<App data={empty} />)
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/No confirmed or strong drainer/)

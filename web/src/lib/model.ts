@@ -110,6 +110,7 @@ export function buildModel(raw: DataJson): Model {
     chains: raw.chains || {},
     totals: raw.totals || { tiers: { T1: 0, T2: 0, T3: 0 }, victims_24h: 0, usd_24h: 0, usd_7d: 0, drains_24h: 0 },
     contracts: raw.contracts || [],
+    poisoning: Array.isArray(raw.poisoning) ? raw.poisoning : [],
     drains: raw.drains || [],
     operators: raw.operators || [],
     families: raw.families || [],
