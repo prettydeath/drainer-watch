@@ -145,6 +145,8 @@ jobs:
           TRONGRID_API_KEYS: ${{ secrets.TRONGRID_API_KEYS }}
           DASHBOARD_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
+          # size diagnostics (rows / bytes per table, evidence by type) of the shards and the main database
+          python -m drainerwatch stats _shards/*.sqlite data/drainerwatch.sqlite || true
           if ls _shards/*.sqlite >/dev/null 2>&1; then python -m drainerwatch merge _shards/*.sqlite; fi
           python -m drainerwatch finish --budget-sec 240
 

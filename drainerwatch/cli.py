@@ -73,21 +73,43 @@ def scan_chains(conn, chains, max_blocks, budget_sec, source=None, t0=None, shar
     return stats, rpcs, sd, labels, prices
 
 
+def _ticker(t0):
+    """Log the time spent in each finish step (and the total so far)."""
+    last = [time.monotonic()]
+
+    def tick(name):
+        now = time.monotonic()
+        log.info("finish: %-16s %6.1f s (total %6.1f s)", name, now - last[0], now - t0)
+        last[0] = now
+    return tick
+
+
 def finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=True):
     """Everything after the scan: roll-up, enrichment, freezable balances, exposure, alerts, render."""
+    tick = _ticker(t0)
     rows = rollup.rollup(conn, sd, labels)
+    tick("rollup")
     try:
         es = enrich.Etherscan()
         enrich.resolve_deployers(conn, es, rpcs, labels)
+        tick("resolve_deployers")
         enrich.walk_payouts(conn, es, labels, prices)
+        tick("walk_payouts")
         enrich.cross_chain_check(conn, rpcs)
+        tick("cross_chain_check")
         enrich.lookup_verified(conn, es, rows)
+        tick("lookup_verified")
         enrich.victim_funding(conn, es, rows, labels)
+        tick("victim_funding")
         from . import fpguard
         fpguard.lookup_history(conn, es, rows)          # funders / deposit-address history of the largest pulls
+        tick("fp history")
         fpguard.lookup_arkham(conn, rows)               # Arkham Intel entities (only with ARKHAM_API_KEY)
+        tick("arkham")
         rows = rollup.rollup(conn, sd, labels)
+        tick("rollup 2")
         famname.resolve(conn, rpcs)                      # family names: token name()/symbol(), signature database
+        tick("famname")
     except Exception as e:  # noqa: BLE001 - enrichment is best effort
         log.warning("enrichment failed: %s", redact(e))
     try:                                                 # freezable stablecoin balances of T1/T2 infrastructure
@@ -97,6 +119,7 @@ def finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=True):
             frpcs["tron"] = TronRpc()
         left = budget_sec - (time.monotonic() - t0)
         freeze.refresh(conn, frpcs, time_box=max(5, min(freeze.FREEZE_TIME_BOX, left)))
+        tick("freeze")
     except Exception as e:  # noqa: BLE001 - best effort
         log.warning("freezable balances failed: %s", redact(e))
     try:                                                 # code status of T1/T2, one-shot spenders, open allowances
@@ -106,20 +129,26 @@ def finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=True):
             xr["tron"] = TronRpc()
         left = budget_sec - (time.monotonic() - t0)
         exposure.resolve_codes(conn, xr, time_box=max(5, min(exposure.CODE_TIME_BOX, left)))
+        tick("exposure codes")
         exposure.resolve_nonces(conn, xr)
+        tick("exposure nonces")
         from .tokens import Tokens
         toks = {c: Tokens(conn, xr[c], c) for c in xr}
         left = budget_sec - (time.monotonic() - t0)
         exposure.refresh(conn, xr, tokens_of=toks.get, prices=prices, time_box=max(5, min(exposure.EXPOSURE_TIME_BOX, left)))
+        tick("exposure refresh")
         rollup.rollup(conn, sd, labels)
+        tick("rollup 3")
     except Exception as e:  # noqa: BLE001 - best effort
         log.warning("exposure checks failed: %s", redact(e))
     try:
         alerts.notify(conn)
+        tick("alerts")
     except Exception as e:  # noqa: BLE001
         log.warning("alerts failed: %s", redact(e))
     if render:
         render_all(conn, web_dist=WEB_DIST)
+        tick("render")
 
 
 def do_run(chains, max_blocks, budget_sec, render=True, conn=None, source=None):
@@ -186,6 +215,16 @@ def cmd_loop(a):
         except Exception as e:  # noqa: BLE001
             log.error("run failed: %s", redact(e))
         time.sleep(a.interval)
+
+
+def cmd_stats(a):
+    from . import dbstats
+    for x in a.dbs:
+        if not Path(x).exists():
+            continue
+        conn = connect(Path(x))
+        print(dbstats.report(conn, x), flush=True)
+        conn.close()
 
 
 def cmd_render(a):
@@ -281,6 +320,9 @@ def main(argv=None):
     s.add_argument("--budget-sec", type=int, default=240)
     s.add_argument("--env-file", default=None)
     s.set_defaults(fn=cmd_finish)
+    s = sub.add_parser("stats", help="rows and bytes per table of the given databases")
+    s.add_argument("dbs", nargs="+")
+    s.set_defaults(fn=cmd_stats)
     sub.add_parser("render").set_defaults(fn=cmd_render)
     sub.add_parser("seeds").set_defaults(fn=cmd_seeds)
     s = sub.add_parser("backtest")
