@@ -10,6 +10,7 @@ with 336 k funders), flows 251 MB. Rules, in order of safety:
      expiry keys on the newest approval.
    * pays_known_operator: per subject and strong/weak flag the earliest and latest rows only. The roll-up needs >= 2
      distinct txs per flag (D4_MIN_TXS), first/last seen and the newest MAX_EVIDENCE rows for the site.
+   * flows: rows older than the 72 h sweep window (lossless); at most FLOWS_MAX_PER_SUBJECT per subject.
    * g_funds: the newest G2_MAX_ROWS rows per recipient. A recipient with that many funders inside the window is an
      exchange / service sink; G2 (funders_hit) looks at the newest row per funder anyway.
 2. Public spenders: a spender with > PUBLIC_SPENDER_OWNERS distinct approvers inside the approval window that is not
@@ -35,7 +36,8 @@ log = logging.getLogger("drainerwatch.retention")
 KEEP_FIRST, KEEP_LAST = 5, 20                # MAX_EVIDENCE (render) = 20 newest rows per subject on the site
 PKO_FIRST, PKO_LAST = 2, 20
 G2_MAX_ROWS = 500
-PUBLIC_SPENDER_OWNERS = 1000
+PUBLIC_SPENDER_OWNERS = 300
+FLOWS_MAX_PER_SUBJECT = 2000
 T3_TTL_SEC = 14 * 86400
 UNTIERED_TTL_SEC = 7 * 86400
 PROTECT_FILE = DATA_DIR / "protect.json"
@@ -130,6 +132,21 @@ def cap_g_funds(conn, chain):
         (chain, chain, G2_MAX_ROWS)).rowcount)
 
 
+def prune_flows(conn, chain, now=None):
+    """flows (subject -> X, awaiting a forward to an exchange): rows older than SWEEP_WINDOW can never match a sweep
+    (lossless), and at most FLOWS_MAX_PER_SUBJECT newest rows per subject (a subject paying more distinct addresses
+    than that inside 72 h is a service). The table is re-read by every scanned chunk, so its size is scan time."""
+    from .constants import SWEEP_WINDOW
+    now = now or now_ts()
+    n = max(0, conn.execute("DELETE FROM flows WHERE chain=? AND ts IS NOT NULL AND ts < ?",
+                            (chain, now - SWEEP_WINDOW)).rowcount)
+    n += max(0, conn.execute(
+        "DELETE FROM flows WHERE chain=? AND rowid IN (SELECT rowid FROM (SELECT rowid, ROW_NUMBER() OVER ("
+        "PARTITION BY subject ORDER BY ts DESC, rowid DESC) rn FROM flows WHERE chain=?) WHERE rn > ?)",
+        (chain, chain, FLOWS_MAX_PER_SUBJECT)).rowcount)
+    return n
+
+
 def _protected_temp(conn, keys):
     conn.execute("CREATE TEMP TABLE IF NOT EXISTS _protect(chain TEXT, address TEXT, PRIMARY KEY (chain, address))")
     conn.execute("DELETE FROM _protect")
@@ -190,6 +207,7 @@ def run(conn, chain, seeds=None, protect=None, now=None):
     st["public_spenders"] = len(public_spenders(conn, chain, keep, now))
     st["pko_pruned"] = compact_pko(conn, chain)
     st["g_funds_pruned"] = cap_g_funds(conn, chain)
+    st["flows_pruned"] = prune_flows(conn, chain, now)
     if protect is not None:
         st["subjects_expired"] = expire_subjects(conn, chain, keep, now)
         st["evidence_pruned"] = compact_unprotected(conn, chain, keep)

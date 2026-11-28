@@ -332,13 +332,15 @@ def build_payload(conn, now=None):
                   usd_7d=_num(u7), drains_24h=t["n"], drains_24h_all=n_all)
 
     ops = []
+    # one grouped pass (a per-wallet query over drains without a recipient index took 6 min at 30 k payout wallets)
+    op_usd = {(r["chain"], r["recipient"]): r["u"] for r in conn.execute(
+        "SELECT d.chain,d.recipient,COALESCE(SUM(d.usd),0) u FROM drains d JOIN contracts c ON c.chain=d.chain "
+        "AND c.address=d.drainer WHERE d.recipient IS NOT NULL AND " + _NOT_SERVICE + " GROUP BY d.chain,d.recipient")}
     for r in conn.execute(
             "SELECT p.chain,p.wallet,COUNT(DISTINCT p.drainer) dr,SUM(p.role='affiliate') aff FROM payouts p "
             "JOIN contracts c ON c.chain=p.chain AND c.address=p.drainer WHERE " + _NOT_SERVICE +
             " GROUP BY p.chain,p.wallet"):
-        u = conn.execute("SELECT COALESCE(SUM(d.usd),0) u FROM drains d JOIN contracts c ON c.chain=d.chain "
-                         "AND c.address=d.drainer WHERE d.chain=? AND d.recipient=? AND " + _NOT_SERVICE,
-                         (r["chain"], r["wallet"])).fetchone()["u"]
+        u = op_usd.get((r["chain"], r["wallet"]), 0)
         ops.append(dict(chain=r["chain"], wallet=r["wallet"], drainers=r["dr"], affiliates=r["aff"] or 0, usd=_num(u)))
     ops.sort(key=lambda o: (-o["usd"], -o["drainers"]))
 

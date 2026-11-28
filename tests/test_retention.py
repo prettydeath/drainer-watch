@@ -169,3 +169,15 @@ def test_merge_keeps_shard_only_tables_out_and_upserts_caches(tmp_path):
     assert main.execute("SELECT COUNT(*) FROM evidence").fetchone()[0] == 1
     # the tables still exist (empty) with their indexes
     assert main.execute("SELECT 1 FROM sqlite_master WHERE name='ix_appr_owner'").fetchone()
+
+
+def test_flows_outside_the_sweep_window_and_over_cap_pruned(tmp_path):
+    from drainerwatch.constants import SWEEP_WINDOW
+    c = connect(tmp_path / "s.sqlite")
+    rows = [("eth", a(1), "drainer", a(0x100 + i), tx_hash(i), 1, NOW - 60 * i) for i in range(retention.FLOWS_MAX_PER_SUBJECT + 10)]
+    rows += [("eth", a(2), "payout", a(0x9000), tx_hash(10 ** 6), 1, NOW - SWEEP_WINDOW - 1),
+             ("eth", a(2), "payout", a(0x9001), tx_hash(10 ** 6 + 1), 1, NOW - SWEEP_WINDOW + 60)]
+    c.executemany("INSERT INTO flows(chain,subject,role,x,tx,block,ts) VALUES(?,?,?,?,?,?,?)", rows)
+    assert retention.prune_flows(c, "eth", NOW) == 11
+    assert c.execute("SELECT COUNT(*) FROM flows WHERE subject=?", (a(1),)).fetchone()[0] == retention.FLOWS_MAX_PER_SUBJECT
+    assert [r[0] for r in c.execute("SELECT x FROM flows WHERE subject=?", (a(2),))] == [a(0x9001)]

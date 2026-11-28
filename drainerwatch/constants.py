@@ -15,17 +15,18 @@ TEMPLATE = Path(__file__).resolve().parent / "template.html"
 
 CHAINS = {
     "eth": dict(id=1, rpc_env="ETH_RPC_URL", rpc="https://ethereum-rpc.publicnode.com",
-                explorer="https://etherscan.io", native="ETH", max_blocks=100, block_sec=12, source="receipts", chunk=20, wa="ethereum", cg="ethereum", share=0.25),
+                explorer="https://etherscan.io", native="ETH", max_blocks=150, block_sec=12, source="receipts", chunk=20, wa="ethereum", cg="ethereum", share=0.25),
     "bsc": dict(id=56, rpc_env="BSC_RPC_URL", rpc="https://bsc-rpc.publicnode.com",
                 explorer="https://bscscan.com", native="BNB", max_blocks=2400, block_sec=0.45, source="logs", chunk=100, wa="bsc", cg="binancecoin", share=0.5),
     "base": dict(id=8453, rpc_env="BASE_RPC_URL", rpc="https://base-rpc.publicnode.com",
                  explorer="https://basescan.org", native="ETH", max_blocks=4500, block_sec=0.2, source="receipts", chunk=60, receipts_chunk=20, wa="base", cg="ethereum", share=0.1),
     # TRON (TronGrid HTTP API, not JSON-RPC): own ingestion in tron_scan.py; ~3 s blocks -> ~200-300 blocks per 10-15 min
     "tron": dict(id=None, kind="tron", rpc_env="TRON_API_URL", rpc="https://api.trongrid.io (keys) / tron-rpc.publicnode.com",
-                 explorer="https://tronscan.org/#", tx_path="transaction", native="TRX", max_blocks=300, max_blocks_keyless=60, block_sec=3,
+                 explorer="https://tronscan.org/#", tx_path="transaction", native="TRX", max_blocks=600, max_blocks_keyless=60, block_sec=3,
                  source="blocks", chunk=20, wa="tron", cg="tron", share=0.15),
 }
-# max_blocks: blocks per run (~15 min of chain; Base 0.2 s and BSC 0.45 s blocks measured 2026-11-24). A run stops at
+# max_blocks: blocks per run (~15 min of chain, ETH 30 min and TRON 30 min: room to catch up after a slow cycle; Base
+# 0.2 s and BSC 0.45 s blocks measured 2026-11-24). A run stops at
 # its time budget and the next run continues from the cursor; a gap is recorded only when the lag exceeds
 # GAP_AFTER_SEC of chain time (the scanner fell behind for good), not merely one run's max_blocks.
 # share: fraction of the run's scan budget; slices are cumulative in run order, so time a chain leaves unused goes to the

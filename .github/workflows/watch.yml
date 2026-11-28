@@ -16,9 +16,9 @@ on:
 permissions:
   contents: write
 
-concurrency:
-  group: drainerwatch
-  cancel-in-progress: false
+# No workflow-level concurrency: the merge of run N overlaps the scans of run N+1 (cycle = scan time, not scan + merge).
+# Job-level groups keep one writer per state file: one scan job per chain shard, one merge job for the main database.
+# A pending job waiting on its group is replaced by a newer pending one (the newer one has the fresher shards).
 
 env:
   GH_REPO: ${{ github.repository }}
@@ -29,6 +29,9 @@ jobs:
   scan:
     runs-on: ubuntu-latest
     timeout-minutes: 16
+    concurrency:
+      group: drainerwatch-scan-${{ matrix.chain }}
+      cancel-in-progress: false
     strategy:
       fail-fast: false
       matrix:
@@ -99,6 +102,9 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    concurrency:
+      group: drainerwatch-merge
+      cancel-in-progress: false
     outputs:
       changed: ${{ steps.publish.outputs.changed }}
     steps:
@@ -159,6 +165,7 @@ jobs:
           BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
           TRONGRID_API_KEYS: ${{ secrets.TRONGRID_API_KEYS }}
+          DRAINERWATCH_PROFILE: "1"
           DASHBOARD_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
           # size diagnostics (rows / bytes per table, evidence by type) of the shards and the main database
@@ -207,11 +214,12 @@ jobs:
       id-token: write
     uses: ./.github/workflows/pages.yml
 
-  # Self re-dispatch: keeps the cadence without relying on cron. The next run is queued behind this one by the
-  # concurrency group; nothing is dispatched when another watch run is already queued (no pile-up, no tight loop).
+  # Self re-dispatch as soon as the scans are done (the merge keeps running): keeps the cadence without relying on cron.
+  # Nothing is dispatched when a newer watch run exists that has not finished (a cron heartbeat or an earlier dispatch
+  # already carries the chain: no second chain, no pile-up); a floor of 480 s from run start avoids a tight loop.
   next:
-    needs: merge
-    # !cancelled(): a manual cancel stops the chain, a merge timeout does not
+    needs: scan
+    # !cancelled(): a manual cancel stops the chain, a failed scan does not
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -229,10 +237,10 @@ jobs:
           else
             echo "could not read run start time; assuming 5 min elapsed"; elapsed=300
           fi
-          wait=$(( 540 - elapsed )); [ $wait -gt 0 ] && sleep $wait
-          queued=$(retry gh api "repos/$GH_REPO/actions/workflows/watch.yml/runs?per_page=20" \
-            --jq '[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.status=="queued" or .status=="waiting" or .status=="pending" or .status=="requested")] | length') || queued=0
-          if [ "${queued:-0}" -gt 0 ]; then echo "another watch run is already queued ($queued); not dispatching"; exit 0; fi
+          wait=$(( 480 - elapsed )); [ $wait -gt 0 ] && sleep $wait
+          newer=$(retry gh api "repos/$GH_REPO/actions/workflows/watch.yml/runs?per_page=20" \
+            --jq '[.workflow_runs[] | select(.id > ${{ github.run_id }}) | select(.status != "completed")] | length') || newer=0
+          if [ "${newer:-0}" -gt 0 ]; then echo "a newer watch run is already active ($newer); not dispatching"; exit 0; fi
           for i in 1 2 3 4 5 6; do
             gh workflow run watch.yml --ref "${{ github.ref_name }}" && { echo "dispatched the next run"; exit 0; }
             sleep $((i * 20))
