@@ -244,7 +244,9 @@ def test_verify_account_flow_one_victim():
 
 def test_prefund_hub_three_victims_is_t2():
     rows = tiers(verify_account_flow(3))
-    assert rows[OPERATOR]["tier"] == "T2" and "prefund_approve_multi" in rows[OPERATOR]["labels"]
+    assert rows[OPERATOR]["rule_tier"] == "T2" and "prefund_approve_multi" in rows[OPERATOR]["labels"]
+    # policy.py: prefund_approve(_multi) measured 0 TP / 9 FP on the live site (deposit sweeps): a T3 signal now
+    assert rows[OPERATOR]["tier"] == "T3" and rows[CONTRACT]["tier"] == "T1"
     assert rows[CONTRACT]["victims"] == 3
 
 
@@ -387,7 +389,10 @@ def test_perm_hijack_then_signed_drain_t1():
     run(ctx, ([blk(20, [trx(txid, VICTIM, BIG, 300 * SUN, sig=signed(txid, priv))])], {20: [info(txid)]}))
     (a2, d2), = ev(ctx, "perm_hijack_drain")
     assert a2 == ctrl and d2["victim"] == VICTIM and d2["amount_trx"] == 300
-    assert tiers(ctx)[ctrl]["tier"] == "T1"
+    # the detector rule says T1; policy.py (precision audit: 10 TP / 11 FP, the FPs self-migrations and organisational
+    # multisigs) keeps a lone controller at T3 and gives T2 only to crews sharing a collector (tests/test_policy.py)
+    r = tiers(ctx)[ctrl]
+    assert r["rule_tier"] == "T1" and r["tier"] == "T3"
 
 
 def test_perm_change_noise_ignored():

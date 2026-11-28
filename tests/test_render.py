@@ -6,7 +6,7 @@ from drainerwatch.util import KeyPool, redact
 from tests.helpers import a, make_ctx
 
 TOP_KEYS = {"generated_at", "chains", "totals", "contracts", "drains", "operators", "families", "deployers", "vasps", "daily",
-            "clusters", "freezable", "freezable_total", "exposure_total_usd", "wallets"}
+            "clusters", "freezable", "freezable_total", "exposure_total_usd", "wallets", "poisoning"}
 
 
 def test_embed_escapes_script_terminators():
@@ -22,7 +22,8 @@ def test_empty_payload_has_every_key():
     ctx = make_ctx()
     p = render.build_payload(ctx.conn)
     assert set(p) == TOP_KEYS
-    assert p["totals"] == {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0, "drains_24h_all": 0}
+    assert p["totals"] == {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0, "drains_24h_all": 0,
+                           "poisoning": 0}
     assert p["contracts"] == [] and p["chains"] == {}
 
 

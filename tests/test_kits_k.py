@@ -254,11 +254,13 @@ def test_k4_ms_deadline_tiers():
     op = a(0x0909)
     t = tx(tx_hash(60), op, USDT, permit2612(V(1), op, MS))
     _, rows = run_blocks({100: [t]})
-    assert rows[op]["tier"] == "T2" and rows[op]["labels"] == ["ms_deadline"]
+    # policy.py: ms_deadline measured 0 TP / 3 FP on the live site -> the rule tier stays, the final tier is T3
+    assert rows[op]["rule_tier"] == "T2" and rows[op]["labels"] == ["ms_deadline", "weak_only_capped"] \
+        and rows[op]["tier"] == "T3"
     pull = tx(tx_hash(61), op, USDT, "0x" + selector("transferFrom(address,address,uint256)") + w(V(1)) + w(a(0xC0)) + w(5 * 10 ** 6))
     logs = [transfer_log(tx_hash(61), USDT, V(1), a(0xC0), 5 * 10 ** 6, block=100)]
     _, rows = run_blocks({100: [t, pull]}, logs=logs)
-    assert rows[op]["tier"] == "T1" and "ms_deadline_pull" in rows[op]["labels"]
+    assert rows[op]["rule_tier"] == "T1" and "ms_deadline_pull" in rows[op]["labels"] and rows[op]["tier"] == "T3"
     own = tx(tx_hash(62), V(1), USDT, permit2612(V(1), op, MS))                 # owner submits its own permit
     assert run_blocks({100: [own]})[1] == {}
     sec = tx(tx_hash(63), op, USDT, permit2612(V(1), op, TS0 + 3600))           # normal seconds deadline
@@ -324,7 +326,8 @@ def test_k7_batch_approvals_drain():
     logs = [approval_log(h, USDT, o, s1, UINT256_MAX, li=0), approval_log(h, tk2, o, s2, KIT_AMOUNT, li=1),
             transfer_log(h, USDT, o, r, 900 * 10 ** 6, li=2)]
     _, rows = run_blocks({100: [t]}, logs=logs)
-    assert rows[r]["tier"] == "T1" and "batch_approval_drain" in rows[r]["labels"]
+    # policy.py: batch_approval_drain measured 0 TP / 2 FP (gasless batches, self-migrations): a T3 signal now
+    assert rows[r]["rule_tier"] == "T1" and "batch_approval_drain" in rows[r]["labels"] and rows[r]["tier"] == "T3"
     # victim receives the output itself: ordinary batch swap
     logs2 = logs + [transfer_log(h, WETH, a(0x9001), o, 10 ** 17, li=3)]
     assert r not in run_blocks({100: [t]}, logs=logs2, codes={a(0x9001): CODE})[1]
@@ -429,9 +432,12 @@ def test_k14_cross_chain_rows_and_payload():
     c.commit()
     rows = {(r["chain"], r["address"]): r for r in rollup.rollup(c, SeedSet(), {})}
     assert rows[("eth", x)]["tier"] == "T1" and "cross_chain" in rows[("eth", x)]["labels"]
-    assert rows[("bsc", x)]["tier"] == "T2" and {"cross_chain", "cross_chain_t1"} <= set(rows[("bsc", x)]["labels"])
+    # policy.py: cross_chain / cross_chain_t1 measured 0 TP / 8 FP -> a twin keeps its own tier (here kit code without
+    # an observed pull: T3)
+    bsc = rows[("bsc", x)]
+    assert bsc["rule_tier"] == "T2" and {"cross_chain", "cross_chain_t1"} <= set(bsc["labels"]) and bsc["tier"] == "T3"
     p = {(q["chain"], q["address"]): q for q in build_payload(c)["contracts"]}
-    assert p[("eth", x)]["cross_chain"] == [dict(chain="bsc", tier="T2")]
+    assert p[("eth", x)]["cross_chain"] == [dict(chain="bsc", tier="T3")]
 
 
 def test_k14_enrich_cross_chain_check():
@@ -445,7 +451,8 @@ def test_k14_enrich_cross_chain_check():
     n = enrich.cross_chain_check(c, {"bsc": FakeRpc(codes={x: CODE}), "base": FakeRpc()})
     assert n == 1
     rows = {(r["chain"], r["address"]): r for r in rollup.rollup(c, SeedSet(), {})}
-    assert rows[("bsc", x)]["tier"] == "T2" and "cross_chain_t1" in rows[("bsc", x)]["labels"]
+    assert rows[("bsc", x)]["rule_tier"] == "T2" and "cross_chain_t1" in rows[("bsc", x)]["labels"]
+    assert rows[("bsc", x)]["tier"] == "T3"                 # policy.py: a twin alone is a T3 signal
     assert ("base", x) not in rows
     assert enrich.cross_chain_check(c, {"bsc": FakeRpc(codes={x: CODE}), "base": FakeRpc()}) == 0   # cached
 

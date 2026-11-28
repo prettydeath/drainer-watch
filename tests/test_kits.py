@@ -200,7 +200,9 @@ def test_d10_tiers_and_guards():
     assert (r["address"], r["tier"]) == (a(0xEEEEEE), "T1") and {"foreign_swap_multi", "foreign_swap_kit"} <= set(r["labels"])
     assert ctx.conn.execute("SELECT COUNT(*), SUM(usd) FROM drains").fetchone()[:] == (3, 3.0)
     (r,), _ = _swap_run([V(1), V(2), V(3)], delta=1200)                          # ordinary 20-min deadline
-    assert r["tier"] == "T2" and "foreign_swap_kit" not in r["labels"]
+    # policy.py: without the kit deadline the 1-USD pulls of this fixture are the gasless-relayer fee shape -> T3
+    assert r["rule_tier"] == "T2" and "foreign_swap_kit" not in r["labels"]
+    assert r["tier"] == "T3" and "service_shape_capped" in r["labels"]
     (r,), _ = _swap_run([V(1)], delta=1200)
     assert r["tier"] == "T3" and r["labels"] == ["foreign_recipient_swap"]
     (r,), _ = _swap_run([V(1)], multicall=True)                                 # SwapRouter02 multicall, kit deadline
@@ -241,7 +243,9 @@ def test_xsplit_98_2_in_two_txs_contract_puller():
         logs, meta = xsplit_chunk(V(i), [98_000_000, 2_000_000], [a(0xD1), a(0xD2)], base=10 * i)
         scan.process_chunk(ctx, 100, 100, logs, txmeta=meta)
     (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
-    assert r["tier"] == "T1" and r["victims"] == 3
+    # policy.py: split_xtx counts only on drainer-shaped contracts (a small dispatcher or drainer code); T1 needs drainer
+    # code with a pull
+    assert r["rule_tier"] == "T1" and r["tier"] == "T3" and r["victims"] == 3      # opaque code (no dispatcher)
 
 
 def test_xsplit_negatives_and_carry():
@@ -284,6 +288,9 @@ def _cluster_db(link_txs=2, b_ev="eoa_spender_pull", w2=None):
     A, B, W = a(0xA1), a(0xB1), a(0x77)
     add_evidence(c, "eth", A, "split_pull", tx_hash(1), 1, 1_800_000_000,
                  dict(victims=[V(1), V(2), V(3)], token=USDT, recipients=[]))
+    # A is drainer code (an owner-gated puller): since policy.py a split pull of opaque code alone is only T3
+    c.execute("INSERT INTO codes VALUES('eth',?,'0xa1',900,'ska1','[]')", (A,))
+    add_evidence(c, "eth", A, "bytecode", tx_hash(3), 1, 1_800_000_000, dict(owner_gated_puller=True, size=900))
     c.execute("INSERT INTO payouts VALUES('eth',?,?,'operator',0.1,1)", (A, W))
     if b_ev == "eoa_spender_pull":
         add_evidence(c, "eth", B, b_ev, tx_hash(2), 1, 1_800_000_000, dict(victim=V(9), recipient=W, token=USDT))

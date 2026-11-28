@@ -47,12 +47,21 @@ explorer, and both tabs and every case file are deep-linkable.
 
 | Tier | Meaning |
 |---|---|
-| **T1 confirmed** | a drain is proven on chain, or the subject carries a kit fingerprint such as the kit's hard-coded approval amount |
-| **T2 strong** | strong evidence, short of proof (for example a split pull with one or two victims, or a kit signature with activity) |
-| **T3 suspect** | fits a drainer, no confirmed drain yet; leads that custodial sweepers and payment processors can also produce |
+| **T1 Confirmed** | own proof: a drainer-kit fingerprint (kit function names, kit approval amounts, kit pulls, a known seed with activity), or drainer code (a tiny owner-only contract that pulls other wallets' tokens) seen pulling from a victim |
+| **T2 Likely** | drainer-shaped behaviour short of proof: fee-grid splits by a small contract, owner-collector pulls, operator wallets of several drainers, permission-hijack crews that share a collector, approval scams that pass the victim-harm test |
+| **T3 Suspicious** | a lead only: signals that are common on legitimate services, known service code, or service-shaped money flows |
+| **Address poisoning** | look-alike / zero-value transfer campaigns: listed apart (`poisoning` in data.json), never in the tiers or the totals |
 
-A tier is an assessment, not a verdict. The full rule list with thresholds is in the
-[detector reference](#detector-reference) below.
+The tier policy (`drainerwatch/policy.py`, code classifier `drainerwatch/codeclass.py`) comes from a precision audit
+of 189 live subjects (2026-11-28; live T1 precision was 63 %, T2 37 %). The contract code and the approval
+mechanism are the primary signal: known service code (forwarders, Safe, smart accounts, settlers, routers, position
+managers, splitters, vaults, bridges, verified proxies) caps at T3 unless kit evidence is present; deposit sweeps,
+gasless relayers and payout fan-outs cap at T3; detector labels with near-zero measured precision (plain split pulls,
+multi-victim pulls, payments to inferred operators, TRON EOA pulls and prefunds, cross-chain twins, ms deadlines, ...)
+are T3-only signals. The detector labels and their thresholds below are unchanged; the policy decides what they are
+worth and is applied to every stored subject on every run. A tier is an assessment, not a verdict. The full rule list
+with thresholds is in the [detector reference](#detector-reference) below; the tier written there is the rule tier
+before the policy.
 
 ## How it works
 

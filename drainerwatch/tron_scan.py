@@ -82,18 +82,19 @@ class TronCtx(Ctx):
             if not a.get("kit") and (a.get("tron_markers") or bytecode.tron_sweep_abi(ci.get("abi_names"))):
                 a["kit"] = "tron_sweeper"        # G10: sweeper-kit markers (score / family only, never a pull kit)
             info = dict(is_contract=1, size=a["size"], kit=a.get("kit"), puller=int(bool(a.get("owner_gated_puller"))),
-                        origin=ci.get("origin"), name=ci.get("name"), selectors=a["selectors"])
+                        origin=ci.get("origin"), name=ci.get("name"), selectors=a["selectors"],
+                        abi=sorted({n for n in ci.get("abi_names") or () if n}))
             if ci.get("origin"):
                 self.conn.execute("INSERT OR IGNORE INTO contract_deployer(chain,address,deployer,tx,via,factory,"
                                   "resolved_at,block) VALUES(?,?,?,?,?,?,?,?)",
                                   (CHAIN, addr, ci["origin"], None, "getcontract", None, now_ts(), None))
         else:
             self.code_hex[addr] = "0x"
-            info = dict(is_contract=0, size=0, kit=None, puller=0, origin=None, name=None, selectors=[])
+            info = dict(is_contract=0, size=0, kit=None, puller=0, origin=None, name=None, selectors=[], abi=[])
         self.conn.execute("INSERT OR REPLACE INTO tron_contracts(address,is_contract,size,kit,puller,origin,name,selectors,"
-                          "checked_at) VALUES(?,?,?,?,?,?,?,?,?)",
+                          "checked_at,abi) VALUES(?,?,?,?,?,?,?,?,?,?)",
                           (addr, info["is_contract"], info["size"], info["kit"], info["puller"], info["origin"],
-                           info["name"], json.dumps(info["selectors"]), now_ts()))
+                           info["name"], json.dumps(info["selectors"]), now_ts(), json.dumps(info["abi"])))
         self.cinfo_mem[addr] = info
         return info
 

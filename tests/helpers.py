@@ -5,6 +5,11 @@ from drainerwatch.prices import Prices
 from drainerwatch.scan import Ctx
 from drainerwatch.seeds import SeedSet
 
+# a tiny owner-gated parametric puller (dispatcher with one neutral selector, require(msg.sender == owner), then
+# CALL transferFrom with calldata arguments): drainer code for codeclass / policy (T1 with an observed pull)
+PULLER_CODE = ("0x" + "600035" "60e01c" "80" "63" "aabbccdd" "14" "610000" "57" + "600054" "73" + "ff" * 20 +
+               "16" "33" "14" "610000" "57" + "63" "23b872dd" "60e01b" "600052" "600435" "5a" "f1" "00")
+
 
 def a(n: int) -> str:
     return "0x" + f"{n:040x}"

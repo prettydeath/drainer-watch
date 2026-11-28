@@ -2,7 +2,7 @@
 from drainerwatch import backtest, incidents, rollup, scan
 from drainerwatch.rpc import split_receipts
 from drainerwatch.seeds import SeedSet
-from tests.helpers import FakeRpc, a, approval_log, make_ctx, transfer_log, tx_hash
+from tests.helpers import PULLER_CODE, FakeRpc, a, approval_log, make_ctx, transfer_log, tx_hash
 
 TOKEN = a(0xAAA)
 CODE = "0x" + "60806040" * 40
@@ -34,7 +34,7 @@ def test_process_chunk_with_txmeta_needs_no_tx_lookups():
         def txs_by_hash(self, hashes):
             raise AssertionError("tx lookup in receipts mode")
 
-    ctx = make_ctx(NoLookups(codes={DRAINER: CODE}))
+    ctx = make_ctx(NoLookups(codes={DRAINER: PULLER_CODE}))           # drainer code (opaque code: T3 since policy.py)
     ctx.prices.usd = lambda chain, token, value, dec: 1000.0           # priced (an unpriced 1-victim split is T3)
     _, meta = split_receipts([receipt(h, ATTACKER, DRAINER, logs)])
     scan.process_chunk(ctx, 100, 100, logs, txmeta=meta)

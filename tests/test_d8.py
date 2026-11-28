@@ -16,12 +16,12 @@ def rc(h, frm, to, logs, block=100):
             "status": "0x1", "logs": logs}
 
 
-def chunk(victims, spender=OP, to=None, recipient=COLLECT, block=100, token=TOKEN):
+def chunk(victims, spender=OP, to=None, recipient=COLLECT, block=100, token=TOKEN, value=5_000_000):
     to = to or token
     logs, rcs = [], []
     for i, v in enumerate(victims):
         h = tx_hash(1000 + i)
-        lg = [transfer_log(h, token, v, recipient, 5_000_000, block=block, li=i)]
+        lg = [transfer_log(h, token, v, recipient, value, block=block, li=i)]
         logs += lg
         rcs.append(rc(h, spender, to, lg, block))
     return logs, split_receipts(rcs)[1]
@@ -78,7 +78,15 @@ def test_d8_pipeline_tiers():
         ctx = make_ctx(FakeRpc(symbols={usdt: ("USDT", 6)}))
         scan.process_chunk(ctx, 100, 100, logs, txmeta=meta)
         (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
-        assert r["tier"] == "T2" and "eoa_spender_multi" in r["labels"] and r["victims"] == 3
+        # policy.py victim-harm test (precision audit: eoa_spender_multi 5 TP / 5 FP): whole-token amounts (5 USDT
+        # each) are the deposit-sweep shape -> T3; non-round full-balance pulls to one collector keep T2
+        assert r["rule_tier"] == "T2" and "eoa_spender_multi" in r["labels"] and r["victims"] == 3
+        assert r["tier"] == "T3" and "service_shape_capped" in r["labels"]
+        logs, meta = chunk([V(1), V(2), V(3)], token=usdt, value=5_123_456)
+        ctx = make_ctx(FakeRpc(symbols={usdt: ("USDT", 6)}))
+        scan.process_chunk(ctx, 100, 100, logs, txmeta=meta)
+        (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
+        assert r["tier"] == "T2" and "eoa_spender_multi" in r["labels"]
 
 
 def test_d8_off_without_txmeta_and_custodial_victims():

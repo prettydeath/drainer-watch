@@ -21,10 +21,12 @@ PLACEHOLDER = "/*__DATA__*/null"
 WEB_DIST = ROOT / "web" / "dist"
 TIER_ORDER = {"T1": 0, "T2": 1, "T3": 2}
 MAX_CONTRACTS, MAX_DRAINS, MAX_EVIDENCE, MAX_LINKS = 2000, 500, 20, 50
+MAX_POISONING = 300
 
 
 # service sweeps / custody contracts capped by fpguard: their payout wallets are service wallets, not operators
-_NOT_SERVICE = ("c.labels NOT LIKE '%\"service_sweep_capped\"%' AND c.labels NOT LIKE '%\"custody_contract_capped\"%'")
+_NOT_SERVICE = ("c.labels NOT LIKE '%\"service_sweep_capped\"%' AND c.labels NOT LIKE '%\"custody_contract_capped\"%' "
+                "AND COALESCE(c.category, '') != 'poisoning'")
 
 def _strip(s):
     return re.sub(r'"generated_at":\s*"[^"]*"', '"generated_at":""', s)
@@ -251,7 +253,16 @@ def build_payload(conn, now=None):
 
     crow = conn.execute("SELECT * FROM contracts").fetchall()
     crow.sort(key=lambda r: (TIER_ORDER.get(r["tier"], 9), -(parse(r["last_seen"]))))
+    keys = crow[0].keys() if crow else []
+    cat = (lambda r: r["category"]) if "category" in keys else (lambda r: None)
+    # address poisoning (policy.py): a separate list, never in the tier counts or the drain / USD totals
+    prow = [r for r in crow if cat(r) == "poisoning"]
+    crow = [r for r in crow if cat(r) != "poisoning"]
     tiers = Counter(r["tier"] for r in crow)
+    poisoning = [dict(chain=r["chain"], address=r["address"], labels=json.loads(r["labels"] or "[]"),
+                      victims=r["victims"], first_seen=r["first_seen"] or "", last_seen=r["last_seen"] or "",
+                      cluster=r["cluster"], code_class=r["code_class"] if "code_class" in keys else None,
+                      contract_name=r["contract_name"]) for r in prow[:MAX_POISONING]]
     crow = crow[:MAX_CONTRACTS]
 
     pay = defaultdict(list)
@@ -315,6 +326,7 @@ def build_payload(conn, now=None):
                               payouts=pay.get(k, []), deployer=deployer, vasp_links=vl, evidence=ev.get(k, []),
                               is_contract=None if r["is_contract"] is None else bool(r["is_contract"]),
                               cluster=r["cluster"] if "cluster" in r.keys() else None,
+                              code_class=r["code_class"] if "code_class" in r.keys() else None,
                               cross_chain=twins.get(k, [])))
 
     drains = [dict(chain=r["chain"], tx=r["tx"], ts=iso(r["ts"]) or "", victim=r["victim"], drainer=r["drainer"],
@@ -329,7 +341,7 @@ def build_payload(conn, now=None):
     u7 = conn.execute("SELECT COALESCE(SUM(d.usd),0) u " + strong, (d7,)).fetchone()["u"]
     n_all = conn.execute("SELECT COUNT(*) n FROM drains WHERE ts>=?", (d24,)).fetchone()["n"]
     totals = dict(tiers={k: tiers.get(k, 0) for k in ("T1", "T2", "T3")}, victims_24h=t["v"], usd_24h=_num(t["u"]),
-                  usd_7d=_num(u7), drains_24h=t["n"], drains_24h_all=n_all)
+                  usd_7d=_num(u7), drains_24h=t["n"], drains_24h_all=n_all, poisoning=len(prow))
 
     ops = []
     # one grouped pass (a per-wallet query over drains without a recipient index took 6 min at 30 k payout wallets)
@@ -422,7 +434,8 @@ def build_payload(conn, now=None):
 
     frz, frz_total = freeze.payload(conn)
     wl = wallets.payload(conn, contracts, frz, ops[:200])
-    return dict(generated_at=iso(now), chains=chains, totals=totals, contracts=contracts, drains=drains, operators=ops[:200],
+    return dict(generated_at=iso(now), chains=chains, totals=totals, contracts=contracts, poisoning=poisoning,
+                drains=drains, operators=ops[:200],
                 families=families, deployers=deployers, vasps=vasps, daily=days, clusters=clusters,
                 freezable=frz, freezable_total=frz_total, exposure_total_usd=exposure_total, wallets=wl)
 

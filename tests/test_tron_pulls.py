@@ -20,7 +20,10 @@ def test_eoa_signer_pulls_three_victims_t2():
     run(ctx, pull_tx(11, 1))
     run(ctx, pull_tx(12, 2))
     r = tiers(ctx)[SIGNER]
-    assert r["tier"] == "T2" and "tron_eoa_pull_multi" in r["labels"] and r["victims"] == 3
+    # the detector rule still says T2; since the precision audit (tron_eoa_pull_multi 0 TP / 8 FP, all deposit sweeps)
+    # policy.py keeps it as a T3 signal
+    assert r["rule_tier"] == "T2" and "tron_eoa_pull_multi" in r["labels"] and r["victims"] == 3
+    assert r["tier"] == "T3" and "weak_only_capped" in r["labels"]
     (_, d), *_ = ev(ctx, "tron_eoa_pull")
     assert d["recipient"] == BIG
 
@@ -33,7 +36,8 @@ def test_max_approval_alone_does_not_make_t1():
                   {20 + k: [info(h(200 + k))]}))
         run(ctx, pull_tx(30 + k, 10 + k, victim=v))
     r = tiers(ctx)[SIGNER]
-    assert r["tier"] == "T2" and "tron_max_approval" in r["labels"]
+    assert r["rule_tier"] == "T2" and "tron_max_approval" in r["labels"]
+    assert r["tier"] == "T3"                 # policy.py: tron_max_approval / tron_eoa_pull_multi are T3 signals (0 TP)
     t = detectors.assign_tier
     assert t({"tron_eoa_pull", "tron_eoa_pull_multi", "tron_max_approval", "fixed_fee"}, 3, True) == "T1"
     assert t({"tron_eoa_pull", "tron_eoa_pull_multi", "fixed_fee"}, 3, True) == "T2"

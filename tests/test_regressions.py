@@ -5,7 +5,7 @@ from drainerwatch.constants import STABLES
 from drainerwatch.db import connect
 from drainerwatch.rpc import parse_logs
 from drainerwatch.seeds import SeedSet
-from tests.helpers import FakeRpc, a, make_ctx, transfer_log, tx_hash, tx_info
+from tests.helpers import PULLER_CODE, FakeRpc, a, make_ctx, transfer_log, tx_hash, tx_info
 
 TOKEN = a(0xAAA)
 CODE = "0x" + "60806040" * 40
@@ -68,7 +68,9 @@ def test_d4_from_inferred_wallet_is_t3_at_most():
 
 def test_d4_from_t1_payout_eoa_is_t2_but_contract_wallet_is_not_strong():
     ctx, x = d4_setup("T1")
-    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["tier"] == "T2"
+    # rule tier T2; policy.py keeps pays_known_operator as a T3 signal (0 TP / 6 FP on the live site: distributors)
+    (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
+    assert r["rule_tier"] == "T2" and r["tier"] == "T3"
     ctx, x = d4_setup("T1", code_for_wallet=CODE)        # payout wallet has code -> inferred only
     assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["tier"] == "T3"
 
@@ -80,7 +82,8 @@ def test_d4_from_seed_is_t2():
     scan.refresh_known(ctx)
     for i in (1, 2):
         scan.process_chunk(ctx, 100 + i, 100 + i, [transfer_log(tx_hash(i), TOKEN, x, wallet, 5, block=100 + i)])
-    assert {r["address"]: r["tier"] for r in rollup.rollup(ctx.conn, seeds, {})}[x] == "T2"
+    r = {r["address"]: r for r in rollup.rollup(ctx.conn, seeds, {})}[x]
+    assert r["rule_tier"] == "T2" and r["tier"] == "T3"              # policy.py: pays_known_operator is a T3 signal
 
 
 def test_legit_labelled_subject_is_never_flagged_and_labelled_victim_or_target_is_allowed():
@@ -103,7 +106,7 @@ def test_amm_pool_by_factory_or_selectors_is_never_flagged():
     for i in (1, 2, 3):
         ctx.conn.execute("INSERT INTO evidence(chain,address,type,tx,block,ts,detail) VALUES('eth',?,'pays_known_operator',?,1,1,?)",
                          (pool, tx_hash(i), '{"strong": true}'))
-    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["tier"] == "T2"
+    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["rule_tier"] == "T2"
     v3 = "0x1f98431c8ad98523631ae4a59f267346ea31f984"
     ctx.conn.execute("INSERT INTO contract_deployer(chain,address,deployer,via,factory,resolved_at) VALUES('eth',?,?,?,?,1)",
                      (pool, a(9), "etherscan", v3))
@@ -122,7 +125,7 @@ def test_positive_three_way_split_and_usdt_70_30():
         logs += [transfer_log(h, TOKEN, V(i), a(0xA1), 800, li=3 * i), transfer_log(h, TOKEN, V(i), a(0xA2), 120, li=3 * i + 1),
                  transfer_log(h, TOKEN, V(i), a(0xA3), 80, li=3 * i + 2)]
         txs[h] = tx_info(ATTACKER, DRAINER)
-    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}))
+    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: PULLER_CODE}))   # drainer code (policy.py: T1 needs it)
     scan.process_chunk(ctx, 100, 100, logs)
     r = rollup.rollup(ctx.conn, SeedSet(), {})
     assert [(x["address"], x["tier"], x["victims"]) for x in r] == [(DRAINER, "T1", 3)]

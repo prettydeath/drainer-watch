@@ -214,22 +214,33 @@ Render reads caches only; `cli run` fills them.
   budget (TRON_GENERIC_MAX_LOOKUPS) so the kit rules are never starved.
 
 ## Tiers / score
-- T1 confirmed: seed with observed activity, OR D2 with ≥3 distinct victims, OR D2 + family match.
-- T2 strong: D2 with 1–2 victims, D4, family match to seed (D5) with any activity.
-- T3 suspect: D3 alone, D6 heuristic, D7 alone, red-flag selectors alone.
+- Rule tier (detectors.assign_tier + rollup caps, kept as `rule_tier` on roll-up rows): as listed per detector.
+- Final tier = policy.py (precision audit 2026-11-28), lower-only, over every stored subject on every roll-up:
+  - poisoning (`poison_*` / `spoof_split` evidence or the poisoner code `transferFrom(address[],address[],address[],uint256[])`
+    + `events()`) -> `category = "poisoning"`, tier T3, out of the tier counts and drain totals (data.json `poisoning`).
+  - T1 Confirmed only with a kit fingerprint (policy.STRONG) or codeclass `drainer_code` + an observed third-party pull.
+  - codeclass `legit_code` -> T3 unless kit evidence; service shapes (contract re-pulling a victim on another day; EOA
+    round payments swept whole, < 3 USD median fees, pulls fanned out to many recipients) -> T3 unless kit evidence.
+  - policy.WEAK labels (measured ~0 % precision) are T3-only; `split_xtx` / `share_grid` count only on drainer-shaped
+    contracts (`drainer_code` / `tiny`); otherwise the rule tier capped at T2 (Likely).
+  - rescues: TRON permission hijack T2 when a drain recipient is shared by >= 2 hijacking keys (crew), else T3;
+    `eoa_spender_multi` T2 only if the victim-harm test passes (one collector, priced, non-round pulls).
+- codeclass (stored metadata: size, selectors, sig_names, verified / TRON names, bytecode flags): drainer_code /
+  poisoner / legit_code / tiny / generic / eoa, stored in contracts.code_class.
 - score 0–100 = documented additive weights in constants; tier is the published field.
 - False-positive guards: ALLOWLIST, ignore victims that are contracts (except 7702-delegated EOAs),
   min transfer usd 1 where price known; verified-source cap and unpriced single-victim split cap (`unpriced_capped`).
 
 ## DB (sqlite)
 contracts(chain,address,tier,score,source,family,labels JSON,first_seen,last_seen,victims,drains,usd,
-code_hash,code_size,is_contract,verified NULL/0/1, PRIMARY KEY(chain,address))
+code_hash,code_size,is_contract,verified NULL/0/1,cluster,contract_name,category NULL|'poisoning',code_class,
+PRIMARY KEY(chain,address))
 evidence(id,chain,address,type,tx,block,ts,detail JSON, UNIQUE(chain,address,type,tx))
 drains(chain,tx,log_index,ts,victim,drainer,token,symbol,decimals,amount,usd,recipient, UNIQUE(chain,tx,log_index))
 payouts(chain,drainer,wallet,role,share,txs, PRIMARY KEY(chain,drainer,wallet))
 approvals(chain,owner,spender,token,tx,block,ts)  -- rolling 7 d, pruned
 tokens(chain,address,symbol,decimals) · codes(chain,address,code_hash,size,skeleton,selectors JSON)
-tron_contracts(address,is_contract,size,kit,puller,origin,name,selectors,checked_at) · tron_fund(funder,recipient,amount,tx,ts,block)
+tron_contracts(address,is_contract,size,kit,puller,origin,name,selectors,checked_at,abi JSON) · tron_fund(funder,recipient,amount,tx,ts,block)
 seeds(address,chain NULL,label,source,added) · meta(k,v)
 
 ## CLI
@@ -246,7 +257,9 @@ Alerts (alerts.py): Telegram if `TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` set, on 
   "chains": {"eth": {"cursor_block": 0, "head_block": 0, "lag_blocks": 0, "last_scan_at": "", "explorer": "https://etherscan.io",
                      "tx_path": "tx", "native": "ETH", "block_sec": 12, "gap_blocks": 0,
                      "gaps": [{"from": 0, "to": 0, "at": "2026-11-24T10:00:00Z"}]}},
-  "totals": {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0},
+  "totals": {"tiers": {"T1": 0, "T2": 0, "T3": 0}, "victims_24h": 0, "usd_24h": 0, "usd_7d": 0, "drains_24h": 0, "poisoning": 0},
+  "poisoning": [{"chain": "eth", "address": "0x…", "labels": [], "victims": 0, "first_seen": "", "last_seen": "", "cluster": null,
+                 "code_class": "poisoner", "contract_name": null}],
   "contracts": [{"chain": "eth", "address": "0x…", "tier": "T1", "score": 90, "source": "detector|scamsniffer|local",
                  "family": "f_ab12cd or null", "family_name": "VerifyAccount / self-named \"X\" (not the real Y) / A/B contract / Unnamed code family ab12cd",
                  "family_name_source": "kit|contract_name|token_name|functions|hash", "labels": ["split_pull", "seed"], "first_seen": "", "last_seen": "",

@@ -414,9 +414,10 @@ def test_cross_chain_twin_never_lifts_a_capped_subject():
 def test_one_victim_split_on_unverifiable_chain_is_capped():
     x, rows = _twins(["bsc"], victims=1, usd=473.0)
     assert rows[("bsc", x)]["tier"] == "T3" and "unverified_split_capped" in rows[("bsc", x)]["labels"]
+    # the rule tiers below are unchanged; policy.py makes split_pull a T3 signal (1 TP / 14 FP on the live site)
     x, rows = _twins(["bsc"], victims=2, usd=20.0)
-    assert rows[("bsc", x)]["tier"] == "T2"
+    assert rows[("bsc", x)]["rule_tier"] == "T2" and rows[("bsc", x)]["tier"] == "T3"
     x, rows = _twins(["eth"], victims=1, usd=473.0)     # ETH keeps the verified-source cap path instead
-    assert rows[("eth", x)]["tier"] == "T2"
+    assert rows[("eth", x)]["rule_tier"] == "T2" and rows[("eth", x)]["tier"] == "T3"
 
 

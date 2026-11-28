@@ -33,9 +33,15 @@ def _synthetic(path):
                                                                          recipients=[dict(wallet=a(7), share=0.8)]))
         _drain(c, "eth", h, 0, NOW - i * 600, a(0x5000 + i), t1)
         add_evidence(c, "eth", t1, "multi_victim_pull", tx(), 1, NOW - i * 600, dict(victims=[a(0x6000 + i)]))
+    # policy.py: split_pull alone is a T3 signal since the precision audit; T1 needs drainer code (an owner-gated
+    # puller dispatcher) with an observed pull
+    c.execute("INSERT INTO codes(chain,address,code_hash,size,skeleton,selectors) VALUES('eth',?,'0x1',900,'s','[]')", (t1,))
+    add_evidence(c, "eth", t1, "bytecode", tx(), 1, NOW, dict(owner_gated_puller=True, size=900))
     t2 = a(0x1002)                                         # T2: strong D4 (pays a seed / T1 operator wallet), 300 rows
     for i in range(300):
         add_evidence(c, "eth", t2, "pays_known_operator", tx(), 1, NOW - i * 60, dict(wallet=a(7), token=a(9), strong=True))
+    # pays_known_operator alone is a T3 signal since the precision audit (0 TP / 6 FP): T2 from a K9 owner collect
+    add_evidence(c, "eth", t2, "owner_collect", tx(), 1, NOW, dict(victim=a(0x7001)))
     t3 = a(0x1003)                                         # T3: weak D4 only (pays_inferred_operator), 400 rows
     for i in range(400):
         add_evidence(c, "eth", t3, "pays_known_operator", tx(), 1, NOW - i * 60, dict(wallet=a(6), token=a(9), strong=False))
@@ -81,7 +87,7 @@ def test_retention_keeps_t1_t2_rollup_identical(tmp_path):
     assert ("eth", s["old3"]) not in after and ("eth", s["old_u"]) not in after
     assert c.execute("SELECT COUNT(*) FROM payouts WHERE drainer=?", (s["old3"],)).fetchone()[0] == 0
     # T1 evidence untouched (protected by its own tier); weak D4 rows of the T3 bounded
-    assert c.execute("SELECT COUNT(*) FROM evidence WHERE address=?", (s["t1"],)).fetchone()[0] == 240
+    assert c.execute("SELECT COUNT(*) FROM evidence WHERE address=?", (s["t1"],)).fetchone()[0] == 241
     n3 = c.execute("SELECT COUNT(*) FROM evidence WHERE address=?", (s["t3"],)).fetchone()[0]
     assert n3 <= retention.PKO_FIRST + retention.PKO_LAST
     # approvals: router gone, the T1 spender (protected) kept, one row per (owner, spender)

@@ -3,7 +3,7 @@ import json
 
 from drainerwatch import enrich, rollup, scan
 from drainerwatch.seeds import SeedSet
-from tests.helpers import FakeRpc, a, make_ctx, transfer_log, tx_hash, tx_info
+from tests.helpers import PULLER_CODE, FakeRpc, a, make_ctx, transfer_log, tx_hash, tx_info
 
 TOKEN = a(0xAAA)
 OP, AFF, DRAINER, ATTACKER = a(2), a(3), a(4), a(5)
@@ -23,7 +23,9 @@ def drain_chunk(victims, base_tx=1, block=100):
 def test_split_pull_end_to_end_t1():
     victims = [a(0xABC000 + i) for i in range(3)]
     logs, txs = drain_chunk(victims)
-    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}, symbols={TOKEN: ("WXYZ", 18)}))
+    # policy.py: since the precision audit a split pull alone is a T3 signal (1 TP / 14 FP on the live site); T1 needs
+    # drainer code (here a tiny owner-gated puller) with an observed pull. Opaque code stays at T3 (next test).
+    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: PULLER_CODE}, symbols={TOKEN: ("WXYZ", 18)}))
     scan.process_chunk(ctx, 100, 100, logs)
     c = ctx.conn
     assert c.execute("SELECT COUNT(*) FROM drains").fetchone()[0] == 6
@@ -38,9 +40,17 @@ def test_split_pull_end_to_end_t1():
     assert c.execute("SELECT txs FROM payouts WHERE wallet=?", (AFF,)).fetchone()[0] == 3
 
 
+def test_split_pull_of_opaque_code_is_t3_signal_only():
+    logs, txs = drain_chunk([a(0xABC000 + i) for i in range(3)])
+    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}, symbols={TOKEN: ("WXYZ", 18)}))
+    scan.process_chunk(ctx, 100, 100, logs)
+    (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
+    assert (r["rule_tier"], r["tier"], r["code_class"]) == ("T1", "T3", "generic") and "weak_only_capped" in r["labels"]
+
+
 def test_single_victim_is_t2_and_allowlisted_is_nothing():
     logs, txs = drain_chunk([a(0xABC000)])
-    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}))
+    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: PULLER_CODE}))   # drainer code: a one-victim split stays T2
     ctx.prices.usd = lambda chain, token, value, dec: 1000.0           # priced token
     scan.process_chunk(ctx, 100, 100, logs)
     assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["tier"] == "T2"
@@ -77,7 +87,7 @@ def test_vasp_direct_and_deposit_sweep_links():
     exch, dep = a(0xE0), a(0xD0)
     labels = {("eth", exch): ("Binance", "exchange", "Binance 14")}
     logs, txs = drain_chunk([a(0xABC000 + i) for i in range(3)])
-    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}), labels=labels)
+    ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: PULLER_CODE}), labels=labels)   # T1 (drainer code + pulls)
     scan.process_chunk(ctx, 100, 100, logs)
     rollup.rollup(ctx.conn, SeedSet(), labels)
     # chunk 2: affiliate wallet pays a fresh address X and the drainer pays the exchange directly

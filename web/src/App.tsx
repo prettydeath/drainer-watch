@@ -5,6 +5,7 @@ import { Coverage, CoverageNotes } from '@/components/Coverage'
 import { CaseFiles } from '@/components/CaseFiles'
 import { DrainLedger, Exposure } from '@/components/Ledger'
 import { Flow } from '@/components/Flow'
+import { Poisoning } from '@/components/Poisoning'
 import { ThemeToggle, tv, useTheme } from '@/components/shared'
 import { WalletNav } from '@/components/nav'
 import { ago, fmtInt, fmtStamp, fmtUSD, plural } from '@/lib/format'
@@ -176,6 +177,8 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
         <div className="sect-h"><h2>Case files</h2><p>{plural(model.cases.length, 'open file')}: {t.tiers.T1 ?? 0} confirmed, {t.tiers.T2 ?? 0} likely and {t.tiers.T3 ?? 0} suspicious{model.cases.length < (t.tiers.T1 + t.tiers.T2 + t.tiers.T3) ? ` (the newest ${model.cases.length} are published)` : ''}.</p></div>
         <CaseFiles model={model} onOpen={openCase} query={query} setQuery={setQuery} />
       </section>
+
+      <Poisoning model={model} />
 
       <section className="sect" id="drains">
         <div className="two">

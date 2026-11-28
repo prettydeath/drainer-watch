@@ -3,7 +3,7 @@ import hashlib
 import json
 from collections import defaultdict
 
-from . import bytecode, fpguard, wrules
+from . import bytecode, fpguard, policy, wrules
 from .constants import (ALLOWLIST, CODEHASH_CLUSTER_MIN, INTEL_CSV, TRON_PULL_MULTI, CHAINS, AMM_FACTORIES, D4_MIN_TXS, D10_MIN_VICTIMS, D10_WINDOW, KIT_PUBLIC_CONTRACTS,
                         KIT_VANITY_RE, MALICIOUS_CATEGORIES, MIN_USD, ONESHOT_T1_WORKERS, POOL_SELECTORS, TRON_ALLOWLIST, TRON_FEE_MIN_HITS,
                         OPERATOR_WALLET_T2, SERIAL_DEPLOYER_T2, TRON_PERM_T2, TRON_PREFUND_T2, VANITY_MIN_APPROVERS)
@@ -169,6 +169,8 @@ def rollup(conn, seeds, labels, now=None):
                 p["kit_exact"] = d["kit_exact"]
             if d.get("kit_public"):
                 p["kit_public"] = d["kit_public"]
+            if d.get("safe_proxy"):
+                p["safe_proxy"] = True
         elif t in ("approval_fingerprint", "bait_payable"):
             p["victims"].add(d.get("victim"))
             if t == "bait_payable":
@@ -530,6 +532,8 @@ def rollup(conn, seeds, labels, now=None):
                          contract_name=vf["name"] if vf else None))
 
     fpguard.apply_caps(conn, rows)        # custodial sweeps / custody contracts: T3 before twins and clusters
+    pctx = policy.Context(conn, per, verified, {k: sorted(v) for k, v in sels.items()})
+    policy.apply(pctx, rows)              # precision-audit tier policy on own evidence (before twins / clusters / W12-13)
     cross_chain_rows(rows)
     operator_wallets(conn, rows, labels, allow, codes)
     serial_deployers(conn, rows, labels, allow, codes)
@@ -546,13 +550,16 @@ def rollup(conn, seeds, labels, now=None):
                 r["family"] = r["family"] or fid
     clusters(conn, rows, labels, allow)
     g_post(conn, rows, per, labels)
+    policy.apply(pctx, rows, final=True)  # again over tiers raised by twins / clusters / W12-13 (lower only)
     conn.execute("DELETE FROM contracts")
     conn.executemany(
         "INSERT INTO contracts(chain,address,tier,score,source,family,labels,first_seen,last_seen,victims,drains,usd,"
-        "code_hash,code_size,is_contract,verified,cluster,contract_name) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        "code_hash,code_size,is_contract,verified,cluster,contract_name,category,code_class) "
+        "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         [(r["chain"], r["address"], r["tier"], r["score"], r["source"], r["family"], json.dumps(r["labels"]),
           iso(r["first"]), iso(r["last"]), r["victims"], r["drains"], r["usd"], r["code_hash"], r["size"],
-          r["is_contract"], r["verified"], r.get("cluster"), r["contract_name"]) for r in rows])
+          r["is_contract"], r["verified"], r.get("cluster"), r["contract_name"], r.get("category"),
+          r.get("code_class")) for r in rows])
     conn.commit()
     return rows
 

@@ -104,7 +104,10 @@ def connect(path=None):
     conn.executescript(SCHEMA)
     for ddl in ("ALTER TABLE contract_deployer ADD COLUMN block INTEGER",   # migrations for older databases
                 "ALTER TABLE contracts ADD COLUMN cluster TEXT",
-                "ALTER TABLE contracts ADD COLUMN contract_name TEXT"):
+                "ALTER TABLE contracts ADD COLUMN contract_name TEXT",
+                "ALTER TABLE contracts ADD COLUMN category TEXT",          # 'poisoning' (policy.py) or NULL
+                "ALTER TABLE contracts ADD COLUMN code_class TEXT",        # codeclass.classify()
+                "ALTER TABLE tron_contracts ADD COLUMN abi TEXT"):         # ABI function names (getcontract)
         try:
             conn.execute(ddl)
         except sqlite3.OperationalError:

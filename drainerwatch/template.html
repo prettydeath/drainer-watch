@@ -478,12 +478,15 @@ function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
 
 /* ---------- vocabularies ---------- */
 const TIERS = {
-  T1:['Confirmed','Seed with activity, a split pull hitting 3+ victims, a kit approval amount, a bait contract with 3+ paying victims, or another kit-confirmed drain.'],
-  T2:['Likely','A split pull with 1-2 victims, payments to a known operator, a kit fingerprint with activity, or a twin of a T1 on another chain.'],
-  T3:['Suspicious','Code or behaviour that fits a drainer without a confirmed drain: red-flag selectors, multi-victim pulls alone, 7702 sweepers, single EOA pulls.']
+  T1:['Confirmed','Own proof: a drainer-kit fingerprint (kit function names, kit approval amounts, kit pulls, a known seed with activity) or drainer code (a tiny owner-only contract that pulls other wallets\' tokens) seen pulling from a victim.'],
+  T2:['Likely','Drainer-shaped behaviour without full proof: fee-grid splits by a small contract, owner-collector pulls, operator wallets of several drainers, permission-hijack crews sharing a collector, approval scams that pass the victim-harm test.'],
+  T3:['Suspicious','A lead only: signals that the precision audit found mostly on legitimate services (plain split pulls, multi-victim pulls, deposit sweeps, cross-chain twins), known service code, or service-shaped money flows.']
 };
 // labels (contracts[].labels) and evidence types (evidence[].type): human name + one-line explanation
 const LABELS = {
+  legit_code_capped:['Known service code, capped at Suspicious','The contract is a known service (forwarder, Safe, smart account, router, settler, splitter, vault, bridge or a verified proxy) and has no drainer-kit evidence.'],
+  service_shape_capped:['Service-shaped flows, capped at Suspicious','The money flows look like a service: the same wallets swept again on later days, round payment amounts swept whole, tiny fixed fees, or payouts to many unrelated wallets.'],
+  weak_only_capped:['Weak signals only, capped at Suspicious','Every signal on this address is one the precision audit found mostly on legitimate services or address poisoning; together they are a lead, not proof.'],
   seed:['Known drainer (seed)','Listed by ScamSniffer or the operator seed file, and seen active here.'],
   seed_activity:['Seed activity','A victim approved or sent tokens to a known drainer address.'],
   split_pull:['Split pull','One transaction pulled a victim\'s token and split it between two or more wallets, the drainer-as-a-service fee pattern.'],

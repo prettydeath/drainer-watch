@@ -132,7 +132,8 @@ def test_g3_phish_deploy_and_multicall_drain():
     logs = [transfer_log(tx_hash(41 + i), USDT, V(i), col, 50_000_000, li=i) for i in range(2)]
     ctx, rows = run_bp({100: [create] + calls}, logs=logs, codes={c: code, bb: dispatcher(["3ccfd60b"])},
                        meta_extra={tx_hash(40): {"created": c}}, storage={(c, 0): int(aa, 16), (aa, 0): int(bb, 16)})
-    assert {"phish_deploy", "phish_multicall"} <= set(rows[c]["labels"]) and rows[c]["tier"] == "T1"
+    assert {"phish_deploy", "phish_multicall"} <= set(rows[c]["labels"]) and rows[c]["rule_tier"] == "T1"
+    assert rows[c]["tier"] == "T2"        # policy.py: T1 needs a kit fingerprint or drainer code (a pull dispatcher)
     ctx, rows = run_bp({100: [create]}, codes={c: code, bb: dispatcher(["a9059cbb"])},
                        meta_extra={tx_hash(40): {"created": c}}, storage={(c, 0): int(aa, 16), (aa, 0): int(bb, 16)})
     assert c not in rows                                     # no withdraw() at the end of the storage chain
@@ -166,7 +167,8 @@ def test_g5_bulk_transfer_helper_to_one_recipient():
     _, rows = run(rcs[:1])
     assert rows[x]["tier"] == "T3" and rows[x]["labels"] == ["nft_bulk"]
     _, rows = run(rcs)
-    assert rows[x]["tier"] == "T2" and "nft_bulk_multi" in rows[x]["labels"]
+    # policy.py: nft_bulk(_multi) measured 0 TP / 2 FP (self-migrations): rule tier T2, final T3
+    assert rows[x]["rule_tier"] == "T2" and "nft_bulk_multi" in rows[x]["labels"] and rows[x]["tier"] == "T3"
     h = tx_hash(70)                                           # a single NFT moved: not a bulk sweep
     _, rows = run([rc(h, V(1), HELPER, [nft_log(h, NFT, V(1), x, 1)])])
     assert not rows
@@ -324,6 +326,9 @@ def test_cex_deposit_sweep_is_capped():
         add_evidence(ctx.conn, "eth", s, "split_pull", tx_hash(i), 100, 1_800_000_000, dict(victims=[V(i)], token=USDT))
         ctx.conn.execute("INSERT INTO drains(chain,tx,log_index,ts,victim,drainer,token,symbol,decimals,amount,usd,recipient)"
                          " VALUES('eth',?,0,1,?,?,?,'USDT',6,'10',10,?)", (tx_hash(i), V(i), s, USDT, cex))
+    # drainer code (owner-gated puller): since policy.py a split pull of opaque code alone is a T3 signal
+    ctx.conn.execute("INSERT INTO codes VALUES('eth',?,'0x5',900,'sk5','[]')", (s,))
+    add_evidence(ctx.conn, "eth", s, "bytecode", tx_hash(9), 100, 1_800_000_000, dict(owner_gated_puller=True, size=900))
     labels = {("eth", cex): ("Binance", "exchange", "Binance 14")}
     r = {x["address"]: x for x in rollup.rollup(ctx.conn, SeedSet(), labels)}[s]
     assert r["tier"] == "T1"

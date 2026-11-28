@@ -74,6 +74,8 @@ export interface Contract {
   vasp_links: VaspLink[]
   evidence: Evidence[]
   cluster?: string | null
+  /** codeclass.classify(): drainer_code | legit_code | tiny | generic | eoa (poisoner rows are in `poisoning`) */
+  code_class?: string | null
   cross_chain?: { chain: string; tier: Tier }[]
   /** approvals to this spender that are still open (backend >= allowance check) */
   open_allowances?: OpenAllowance[]
@@ -146,6 +148,8 @@ export interface Totals {
   usd_7d: number
   drains_24h: number
   drains_24h_all?: number
+  /** address-poisoning subjects (policy.py), kept out of the tiers and totals */
+  poisoning?: number
 }
 
 /** stablecoin balance on a drainer-linked address that the issuer can freeze (backend `freezable`) */
@@ -179,11 +183,25 @@ export interface WalletAgg {
   n_in: number
 }
 
+export interface PoisoningRow {
+  chain: string
+  address: string
+  labels: string[]
+  victims: number
+  first_seen: string
+  last_seen: string
+  cluster: string | null
+  code_class: string | null
+  contract_name: string | null
+}
+
 export interface DataJson {
   generated_at: string
   chains: Record<string, ChainInfo>
   totals: Totals
   contracts: Contract[]
+  /** address poisoning, shown apart from the drainers (absent before the precision-audit policy) */
+  poisoning?: PoisoningRow[]
   drains: Drain[]
   operators: { chain: string; wallet: string; drainers: number; affiliates: number; usd: number }[]
   families: { family: string; members: number; seed_members: number; chains: string[]; family_name?: string | null; family_name_source?: FamilyNameSource | null }[]

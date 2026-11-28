@@ -74,7 +74,8 @@ def test_d2_end_to_end_vault_batch_is_nothing():
     assert rollup.rollup(ctx.conn, SeedSet(), {}) == []
     h2 = tx_hash(2)
     ctx = run_chunk(redemption_logs(h2, 3, VAULT)[:3], {h2: tx_info(CALLER, VAULT)})        # same split, no burn
-    assert [r["tier"] for r in rollup.rollup(ctx.conn, SeedSet(), {})] == ["T2"]
+    # rule tier T2; policy.py then keeps a split pull of opaque code at T3 (split_pull: 1 TP / 14 FP live)
+    assert [(r["rule_tier"], r["tier"]) for r in rollup.rollup(ctx.conn, SeedSet(), {})] == [("T2", "T3")]
     ctx = run_chunk(redemption_logs(h2, 3, VAULT), {h2: tx_info(CALLER, VAULT)})            # with the burn
     assert rollup.rollup(ctx.conn, SeedSet(), {}) == []
 
@@ -158,14 +159,15 @@ def flagged_ctx(addr=VAULT, extra_evidence=None):
 def test_verified_contract_with_split_only_is_capped_at_t3():
     ctx = flagged_ctx()
     (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
-    assert r["tier"] == "T2" and r["verified"] is None and r["contract_name"] is None
+    # rule_tier: the detector rules and their caps before policy.py (which makes split_pull alone a T3 signal)
+    assert r["rule_tier"] == "T2" and r["verified"] is None and r["contract_name"] is None
     cache_verified(ctx.conn, VAULT)
     (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
     assert r["tier"] == "T3" and "verified_capped" in r["labels"] and r["contract_name"] == "CombineCalls"
     row = ctx.conn.execute("SELECT tier,verified,contract_name FROM contracts").fetchone()
     assert tuple(row) == ("T3", 1, "CombineCalls")
     cache_verified(ctx.conn, VAULT, verified=0, name=None)                  # unverified: unchanged
-    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["tier"] == "T2"
+    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["rule_tier"] == "T2"
 
 
 def test_verified_cap_with_other_evidence_and_proxy_rules():
@@ -178,9 +180,9 @@ def test_verified_cap_with_other_evidence_and_proxy_rules():
     (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
     assert r["tier"] == "T3" and r["contract_name"] == "TransparentUpgradeableProxy (proxy of Vault)"
     cache_verified(ctx.conn, VAULT, name="TransparentUpgradeableProxy", proxy=1, impl=impl, impl_verified=0)
-    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["tier"] == "T2"        # unverified implementation: no cap
+    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["rule_tier"] == "T2"   # unverified implementation: no cap
     cache_verified(ctx.conn, VAULT, name="Proxy", proxy=1, impl=impl, impl_verified=None)
-    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["tier"] == "T2"        # implementation unknown: no cap
+    assert rollup.rollup(ctx.conn, SeedSet(), {})[0]["rule_tier"] == "T2"   # implementation unknown: no cap
 
 
 class FakeEs:
@@ -239,7 +241,7 @@ def test_unpriced_single_victim_split_is_capped_at_t3():
     ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: CODE}))
     scan.process_chunk(ctx, 100, 100, logs)
     (r,) = rollup.rollup(ctx.conn, SeedSet(), {})
-    assert r["tier"] == "T2" and "unpriced_capped" not in r["labels"]
+    assert r["rule_tier"] == "T2" and "unpriced_capped" not in r["labels"]   # (final T3: opaque code, policy.py)
     logs, txs = drain_chunk([a(0xABC000)])                    # kit code (other evidence): not capped
     ctx = make_ctx(FakeRpc(txs=txs, codes={DRAINER: MS_NEW_CODE}))
     scan.process_chunk(ctx, 100, 100, logs)
