@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        db: [drainerwatch]
+        db: [drainerwatch-bsc]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,18 +39,11 @@ jobs:
           import sqlite3, sys
           c = sqlite3.connect(sys.argv[1])
           q = lambda s: c.execute(s).fetchall()
-          sp = q("SELECT chain,spender,COUNT(*) n,COUNT(DISTINCT owner) o FROM approvals GROUP BY 1,2 HAVING o>300 ORDER BY n DESC")
-          print("spenders >300 owners:", len(sp), "rows", sum(r[2] for r in sp), "of", q("SELECT COUNT(*) FROM approvals"))
-          for ch, a, n, o in sp[:40]:
-              t = q(f"SELECT tier,labels,victims FROM contracts WHERE chain='{ch}' AND address='{a}'")
-              e = q(f"SELECT type,COUNT(*) FROM evidence WHERE chain='{ch}' AND address='{a}' GROUP BY 1")
-              print("  ", ch, a, n, o, t, e)
-          for ch, a in [("bsc","0x1a863449667e082eb818557925344cad6e2eb3b1"),("base","0x2e4bb66c8edd23cf8cbe71ab0519e14833e43b43"),("bsc","0x29493fdee62cb2b3b2edf3cf1ac5a008e26749ad"),("base","0x5f63d194b5e57a9e3410e704a0cfa21e69fd13ac"),("bsc","0x278d858f05b94576c1e6f73285886876ff6ef8d2"),("base","0xe807a76385ec3d76d17ab955091c12329d0a1403"),("eth","0x00fe78205f5f0e63b8ad2b2ae5337f538a610e04")]:
-              print("subj", ch, a, q(f"SELECT tier,labels,victims,drains FROM contracts WHERE chain='{ch}' AND address='{a}'"))
-          print("T1/T2 evidence rows:", q("SELECT c.tier,COUNT(*) FROM evidence e JOIN contracts c ON c.chain=e.chain AND c.address=e.address WHERE c.tier IN ('T1','T2') GROUP BY 1"))
-          print("T1/T2 drains rows:", q("SELECT c.tier,COUNT(*) FROM drains e JOIN contracts c ON c.chain=e.chain AND c.address=e.drainer WHERE c.tier IN ('T1','T2') GROUP BY 1"))
-          print("evidence rows of no-tier subjects:", q("SELECT COUNT(*) FROM evidence e LEFT JOIN contracts c ON c.chain=e.chain AND c.address=e.address WHERE c.address IS NULL"))
-          print("pko per strong:", q("SELECT json_extract(detail,'$.strong'),COUNT(*),COUNT(DISTINCT chain||address) FROM evidence WHERE type='pays_known_operator' GROUP BY 1"))
-          print("pko rows if top50/subject/strong:", q("SELECT SUM(MIN(n,50)) FROM (SELECT COUNT(*) n FROM evidence WHERE type='pays_known_operator' GROUP BY chain,address,json_extract(detail,'$.strong'))"))
-          print("all rows if cap50 per subj/type:", q("SELECT SUM(MIN(n,50)) FROM (SELECT COUNT(*) n FROM evidence GROUP BY chain,address,type)"))
+          print("approvals", q("SELECT COUNT(*), COUNT(DISTINCT owner), COUNT(DISTINCT spender) FROM approvals"))
+          print("public", q("SELECT v FROM meta WHERE k='public_spenders:bsc'"))
+          h = q("SELECT CASE WHEN o>=300 THEN '300+' WHEN o>=100 THEN '100-299' WHEN o>=30 THEN '30-99' WHEN o>=10 THEN '10-29' ELSE '<10' END b, COUNT(*), SUM(o) FROM (SELECT spender, COUNT(DISTINCT owner) o FROM approvals GROUP BY spender) GROUP BY b")
+          print("spender owner-count histogram (bucket, spenders, owner-links):", h)
+          for sp, o in q("SELECT spender, COUNT(DISTINCT owner) o FROM approvals GROUP BY spender ORDER BY o DESC LIMIT 25"):
+              print("  ", sp, o, q(f"SELECT tier,labels FROM contracts WHERE address='{sp}'"), q(f"SELECT COUNT(*) FROM codes WHERE address='{sp}' AND size>0"))
+          print("contracts tiers", q("SELECT tier,COUNT(*) FROM contracts GROUP BY 1"))
           PY
