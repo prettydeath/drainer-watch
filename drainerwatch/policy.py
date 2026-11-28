@@ -45,6 +45,7 @@ WEAK = POISON_LABELS | {
     "counterfactual_forward", "counterfactual_multi",  # 0/2
     "family_match",                                 # 0/2
     "nft_bulk", "nft_bulk_multi",                   # 0/2
+    "eip7702_batch", "eip7702_sweeper", "eip7702_chain0",   # 0/1 live (a poisoning delegate), FP-only in backtests
     "full_balance_pull",                            # 8/25
     "codehash_cluster",                             # 19/26 (score / cluster only)
     "perm_hijack", "perm_hijack_drain", "perm_hijack_multi",   # 10/11: only through the crew rescue below
@@ -189,7 +190,7 @@ def policy_tier(r, cc, shapes, crew, harm):
         return "T1", None
     if cc == "legit_code":
         return "T3", "legit_code_capped"
-    if shapes:
+    if shapes and "wa_scam" not in lb:          # an independent scam / hack attribution is not a service
         return "T3", "service_shape_capped"
     if cc == "drainer_code" and pulled:
         return "T1", None
@@ -237,7 +238,7 @@ def apply(ctx, rows, final=False):
         if r["tier"] == "T3":
             continue
         shapes = shapes_by_addr.get((r["address"], r.get("code_hash")), set())
-        harm = "eoa_spender_multi" in lb and harm_ok(ctx.stat(k))
+        harm = "eoa_spender_multi" in lb and ("wa_scam" in lb or harm_ok(ctx.stat(k)))
         t, cap = policy_tier(r, cc, shapes, k in crew, harm)
         if RANK[t] > RANK[r["tier"]]:
             r["tier"] = t

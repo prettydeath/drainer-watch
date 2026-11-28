@@ -319,7 +319,10 @@ def test_w8a_batch_authorizations():
               "s": "0x1"} for i in range(7)]
     t = dict(tx(tx_hash(150), a(0x0B), a(0x0B)), type="0x4", authorizationList=auths)
     ctx, rows = run_blocks({100: [t]}, codes={d: CODE})
-    assert rows[d]["tier"] == "T2" and {"eip7702_batch", "eip7702_chain0"} <= set(rows[d]["labels"])
+    # policy.py: eip7702_batch / eip7702_sweeper: 0 TP live (a poisoning delegate) and FP candidates only in the incident
+    # backtests -> rule tier T2, final T3
+    assert rows[d]["rule_tier"] == "T2" and {"eip7702_batch", "eip7702_chain0"} <= set(rows[d]["labels"])
+    assert rows[d]["tier"] == "T3"
     (x,) = ev(ctx, "eip7702_batch")
     assert x["max_per_tx"] == 7 and x["chain0"] == 1
     t = dict(t, authorizationList=[dict(au, address=next(iter(LEGIT_7702_DELEGATES)), chainId="0x1") for au in auths])
