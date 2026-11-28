@@ -209,12 +209,12 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
               <div className="meta">Case {c.caseNo}, opened {fmtStamp(c.first_seen)}</div>
               <DialogPrimitive.Title asChild><h2>{c.title} on {chainLong(c.chain)}</h2></DialogPrimitive.Title>
               <div className="verdict">
-                <span className="big">{c.tier} {TIER_NAME[c.tier].toLowerCase()}</span>
+                <span className="big">{TIER_NAME[c.tier]}</span>
                 <span className="meta">score {c.score} of 100{c.source && c.source !== 'detector' ? ', listed by ' + c.source : ''}</span>
               </div>
               <p>
                 {c.approvalOnly ? <ApprovalOnly c={c} /> : c.victims ? <>{plural(c.victims, 'wallet')} lost {c.usd ? fmtUSD(c.usd) : 'tokens we could not price'} to this {what} between {fmtDay(c.first_seen)} and {fmtDay(c.last_seen)}. </> : <>No victim is counted for this {what} yet; first seen {fmtDay(c.first_seen)}, last seen {fmtDay(c.last_seen)}. </>}
-                {c.approvalOnly ? <span className="muted">{c.tier === 'T1' ? 'Confirmed kit spender' : TIER_NAME[c.tier] + ' kit spender'} (approval fingerprint), not yet a drain.</span> : TIERS[c.tier] ? <span className="muted">{TIER_NAME[c.tier]}: {TIERS[c.tier][1]}</span> : null}
+                {c.approvalOnly ? <span className="muted">{TIER_NAME[c.tier] + ' kit spender'} (approval fingerprint), not yet a drain.</span> : TIERS[c.tier] ? <span className="muted">{TIER_NAME[c.tier]}: {TIERS[c.tier][1]}</span> : null}
               </p>
               {c.family ? <p className="meta">Family {c.famLabel}{c.famSource && c.famSource !== 'hash' ? ' (' + famSourceNote(c.famSource) + ')' : ''}{/^f_/.test(c.family) ? <>, code hash <span className="mono">{c.family}</span></> : null}.</p> : null}
               {c.contract_name || c.verified != null ? (
@@ -238,7 +238,7 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
               {cl ? (
                 <ul className="links">
                   <li><span className="mono small">{cl.cluster}</span><span className="muted small">{plural(cl.members.length, 'drainer')} share {plural(cl.shared_wallets.length, 'payout wallet')}</span></li>
-                  {mates.map(m => <li key={m.key}><button className="linkbtn" onClick={() => onOpen(m)}>{m.tier} {m.title}</button><Addr value={m.address} chain={m.chain} /></li>)}
+                  {mates.map(m => <li key={m.key}><button className="linkbtn" onClick={() => onOpen(m)}>{TIER_NAME[m.tier]}: {m.title}</button><Addr value={m.address} chain={m.chain} /></li>)}
                 </ul>
               ) : <p className="muted">Not part of a known operator cluster.</p>}
             </section>
@@ -266,7 +266,7 @@ export default function CaseSpread({ c, model, onClose, onOpen }: { c: Case; mod
               <Deployer c={c} />
               <h4>Same {what} on other chains</h4>
               {twins.length ? (
-                <ul className="links">{twins.map(t => <li key={t.key}><button className="linkbtn" onClick={() => onOpen(t)}>{chainLong(t.chain)}, {t.tier} {TIER_NAME[t.tier].toLowerCase()}</button><span className="muted small">{fmtUSD(t.usd)} taken there</span></li>)}</ul>
+                <ul className="links">{twins.map(t => <li key={t.key}><button className="linkbtn" onClick={() => onOpen(t)}>{chainLong(t.chain)}, {TIER_NAME[t.tier].toLowerCase()}</button><span className="muted small">{fmtUSD(t.usd)} taken there</span></li>)}</ul>
               ) : (c.cross_chain || []).length ? (
                 <p className="muted">Flagged on {(c.cross_chain || []).map(x => chainShort(x.chain) + ' (' + x.tier + ')').join(', ')}; not in the published list.</p>
               ) : <p className="muted">Not seen on another chain.</p>}

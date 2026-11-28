@@ -155,14 +155,14 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
         <div className="card flowcard">
           <div className="flow-head">
             <p className="swipe">Swipe sideways to follow the money to the exchanges.</p>
-            <label className="toggle"><input type="checkbox" checked={withSuspects} onChange={e => setWithSuspects(e.target.checked)} /> Include suspects (T3)</label>
+            <label className="toggle"><input type="checkbox" checked={withSuspects} onChange={e => setWithSuspects(e.target.checked)} /> Include suspicious</label>
           </div>
           {flowTotal > 0 ? <Boundary what="money flow"><Flow cases={flowCases} onOpen={openCase} /></Boundary> : (
             <p className="empty">{withSuspects ? 'No priced drain is attributed to any tracked subject yet.' : 'No priced drain by a confirmed or strong drainer yet.'}{!withSuspects && model.cases.some(c => c.tier === 'T3' && c.usd > 0) ? <> <button className="linkbtn" onClick={() => setWithSuspects(true)}>Show the suspects' flow</button>.</> : null}</p>
           )}
           <div className="note-row">
             <span>Select a drainer to open its file. Amounts into exchanges are capped at what each wallet received from drains; where no share was observed, value is split by payout transactions.</span>
-            <span className="legend">{TIER_ORDER.map(x => <span key={x}><i style={{ background: tv(x) }} />{x} {TIER_NAME[x].toLowerCase()}</span>)}<span><i style={{ background: 'var(--flow)' }} />after the drainer</span></span>
+            <span className="legend">{TIER_ORDER.map(x => <span key={x}><i style={{ background: tv(x) }} />{TIER_NAME[x].toLowerCase()}</span>)}<span><i style={{ background: 'var(--flow)' }} />after the drainer</span></span>
           </div>
         </div>
       </section>
@@ -173,7 +173,7 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
       </section>
 
       <section className="sect" id="files">
-        <div className="sect-h"><h2>Case files</h2><p>{plural(model.cases.length, 'open file')}: {t.tiers.T1 ?? 0} confirmed, {t.tiers.T2 ?? 0} strong and {t.tiers.T3 ?? 0} suspect{model.cases.length < (t.tiers.T1 + t.tiers.T2 + t.tiers.T3) ? ` (the newest ${model.cases.length} are published)` : ''}.</p></div>
+        <div className="sect-h"><h2>Case files</h2><p>{plural(model.cases.length, 'open file')}: {t.tiers.T1 ?? 0} confirmed, {t.tiers.T2 ?? 0} likely and {t.tiers.T3 ?? 0} suspicious{model.cases.length < (t.tiers.T1 + t.tiers.T2 + t.tiers.T3) ? ` (the newest ${model.cases.length} are published)` : ''}.</p></div>
         <CaseFiles model={model} onOpen={openCase} query={query} setQuery={setQuery} />
       </section>
 
@@ -193,7 +193,7 @@ function Desk({ model, theme, toggle }: { model: Model; theme: string; toggle: (
       <section className="sect" id="method">
         <div className="sect-h"><h2>Method and limitations</h2><p>How sure we are, and what we cannot see.</p></div>
         <div className="notes">
-          <div className="card ruled margin">{TIER_ORDER.map(x => <p key={x} className="tierline" style={{ '--tc': tv(x), marginBottom: 6 } as React.CSSProperties}><i /><span><b>{x} {TIER_NAME[x].toLowerCase()}.</b> {TIERS[x]?.[1]}</span></p>)}</div>
+          <div className="card ruled margin">{TIER_ORDER.map(x => <p key={x} className="tierline" style={{ '--tc': tv(x), marginBottom: 6 } as React.CSSProperties}><i /><span><b>{TIER_NAME[x]}.</b> {TIERS[x]?.[1]}</span></p>)}</div>
           <div className="card ruled margin"><ul>
             <li>We read blocks on Ethereum, BNB Chain and Base over public RPC, and TRON from TronGrid.</li>
             <li>Families come from code fingerprints; payout roles are inferred from share size.</li>

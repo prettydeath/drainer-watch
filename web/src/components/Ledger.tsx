@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { fmtDay, fmtTime, fmtUSD } from '@/lib/format'
 import type { Case, Model } from '@/lib/model'
-import { chainShort } from '@/lib/vocab'
+import { TIER_NAME, chainShort } from '@/lib/vocab'
+import type { Tier } from '@/lib/types'
 import { Addr, Tx, tv } from './shared'
 import { WalletLink } from './nav'
 
@@ -35,7 +36,7 @@ export function DrainLedger({ model, onOpen }: { model: Model; onOpen: (c: Case)
                 <tr key={d.tx + d.victim + d.drainer} className="row" data-drain-row={d.key} style={{ '--tc': tv(d.tier) } as React.CSSProperties} onClick={() => c && onOpen(c)}
                   tabIndex={0} onKeyDown={e => { if (e.key === 'Enter' && c) onOpen(c) }} aria-label={'Open case for drain at ' + fmtDay(d.ts) + ' ' + fmtTime(d.ts)}>
                   <td className="muted">{fmtDay(d.ts)}, {fmtTime(d.ts)}</td>
-                  <td><span className="tg">{d.tier}</span></td>
+                  <td><span className="tg">{d.tier ? TIER_NAME[d.tier as Tier] : ""}</span></td>
                   <td><Addr value={d.drainer} chain={d.chain} /> <span className="muted small">{chainShort(d.chain)}</span></td>
                   <td className="hide-sm"><Addr value={d.victim} chain={d.chain} /></td>
                   <td className="hide-sm">{d.recipient && d.recipient !== d.drainer ? <><Addr value={d.recipient} chain={d.chain} /> <WalletLink chain={d.chain} address={d.recipient} /></> : <span className="muted small">drainer</span>}</td>

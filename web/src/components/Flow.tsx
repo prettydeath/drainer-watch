@@ -3,6 +3,7 @@ import { animate, createMotionPath, createScope } from 'animejs'
 import { buildFlow, layoutFlow } from '@/lib/flow'
 import { fmtUSD } from '@/lib/format'
 import type { Case } from '@/lib/model'
+import { TIER_NAME } from '@/lib/vocab'
 import { reduceMotion, tv } from './shared'
 
 const HEIGHT = 440
@@ -76,7 +77,7 @@ export function Flow({ cases, onOpen }: { cases: Case[]; onOpen: (c: Case) => vo
                 {n.label}
                 <tspan className="v" dx="6" style={{ fontFamily: 'var(--font-serif)' }}>{fmtUSD(n.v, true)}</tspan>
               </text>
-              {c ? <title>{c.tier + ' ' + c.title + ', ' + c.address}</title> : null}
+              {c ? <title>{TIER_NAME[c.tier] + ': ' + c.title + ', ' + c.address}</title> : null}
             </g>
           )
         })}

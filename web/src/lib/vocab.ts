@@ -14,12 +14,12 @@ const V = vocab as unknown as {
   NATIVE: Record<string, string>
 }
 
-export const TIERS = V.TIERS
-export const TIER_NAME: Record<Tier, string> = { T1: 'Confirmed', T2: 'Strong', T3: 'Suspect' }
+// plain names shown to readers; T1/T2/T3 stay internal codes in data.json
+export const TIER_NAME: Record<Tier, string> = { T1: 'Confirmed', T2: 'Likely', T3: 'Suspicious' }
 export const TIER_BLURB: Record<Tier, string> = {
-  T1: 'a drain is proven on chain',
-  T2: 'strong evidence, short of proof',
-  T3: 'fits a drainer, no confirmed drain yet',
+  T1: 'proven drainer: kit code or a theft confirmed on chain',
+  T2: 'very likely a drainer, short of full proof',
+  T3: 'looks like a drainer, not confirmed; may be a legitimate service',
 }
 export const TIER_ORDER: Tier[] = ['T1', 'T2', 'T3']
 export const TIER_RANK: Record<string, number> = { T1: 1, T2: 2, T3: 3 }
@@ -29,8 +29,17 @@ const human = (k: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export const labelInfo = (l: string): Pair =>
-  V.LABELS[l] || [human(l), 'Detector label without a published description yet; see the method notes in the repository.']
+/** replace internal tier codes in prose with the plain names */
+export const plainTiers = (s: string) =>
+  s.replace(/\bT1\b/g, 'Confirmed').replace(/\bT2\b/g, 'Likely').replace(/\bT3\b/g, 'Suspicious')
+
+export const TIERS: Record<string, Pair> = Object.fromEntries(
+  Object.entries(V.TIERS).map(([k, [, d]]) => [k, [TIER_NAME[k as Tier] ?? k, plainTiers(d)] as Pair]))
+
+export const labelInfo = (l: string): Pair => {
+  const p = V.LABELS[l] || [human(l), 'Detector label without a published description yet; see the method notes in the repository.']
+  return [plainTiers(p[0]), plainTiers(p[1])]
+}
 
 export const famName = (f: string | null | undefined) =>
   !f ? 'Unattributed' : V.FAMILIES[f] ? V.FAMILIES[f][0] : /^f_/.test(f) ? 'Code family ' + f.slice(2) : human(f)

@@ -4,7 +4,7 @@ import { PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, RadialBa
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart'
 import { DAY, H, ago, fmtUSD, plural } from '@/lib/format'
 import type { Case, Family, Model } from '@/lib/model'
-import { chainShort, famSourceNote } from '@/lib/vocab'
+import { TIER_NAME, chainShort, famSourceNote } from '@/lib/vocab'
 import { Addr, reduceMotion, tv } from './shared'
 
 const MAX_BLIPS_PER_FAMILY = 120
@@ -73,7 +73,7 @@ function Scope({ fams, now, onOpen }: { fams: Family[]; now: number; onOpen: (c:
             onClick={() => onOpen(b.c)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(b.c) } }}>
             <circle className="halo" cx={b.x} cy={b.y} r={b.size} data-r={b.size} data-deg={b.deg} stroke={tv(b.c.tier)} />
             <circle className="core" cx={b.x} cy={b.y} r={b.size} fill={tv(b.c.tier)} />
-            <title>{b.c.tier + ' ' + b.c.title + ', ' + b.c.address + ', last drain ' + ago(b.c.last_seen)}</title>
+            <title>{TIER_NAME[b.c.tier] + ': ' + b.c.title + ', ' + b.c.address + ', last drain ' + ago(b.c.last_seen)}</title>
           </g>
         ))}
       </svg>
@@ -132,7 +132,7 @@ function FamilyCard({ f, maxD7, onOpen }: { f: Family; maxD7: number; onOpen: (c
         {top.map(c => (
           <div key={c.key} className="member" style={{ '--tc': tv(c.tier) } as React.CSSProperties} onClick={() => onOpen(c)} role="button" tabIndex={0}
             aria-label={'Open case ' + c.caseNo} onKeyDown={e => { if (e.key === 'Enter') onOpen(c) }}>
-            <span className="t">{c.tier}</span>
+            <span className="t">{TIER_NAME[c.tier]}</span>
             <span><Addr value={c.address} chain={c.chain} /> <span className="muted">{chainShort(c.chain)}</span></span>
             <span className="muted">{ago(c.last_seen)}</span>
           </div>

@@ -9,7 +9,7 @@ import { Addr, tv, useMedia } from './shared'
 function FileCard({ c, onOpen }: { c: Case; onOpen: (c: Case) => void }) {
   return (
     <button className="file" data-case-row={c.key} onClick={() => onOpen(c)} style={{ '--tc': tv(c.tier) } as React.CSSProperties} aria-label={'Open case ' + c.caseNo + ', ' + c.tier + ' ' + c.title + ', ' + c.address}>
-      <span className="tab"><i /><b>{c.tier}</b> {TIER_NAME[c.tier].toLowerCase()}</span>
+      <span className="tab"><i /><b>{TIER_NAME[c.tier]}</b></span>
       <div className="card ruled">
         <span className="stamp" title={'Score ' + c.score + ' of 100'}>{c.score}</span>
         <h3 title={c.family ? 'Code family hash ' + c.family : undefined}>{c.title}</h3>
@@ -83,7 +83,7 @@ export function CaseFiles({ model, onOpen, query, setQuery }: { model: Model; on
                 <li key={i}>
                   <Addr value={h.value} chain={c.chain} h={10} t={6} link />
                   <span className="muted small">{h.role} of</span>
-                  <button className="linkbtn" onClick={() => onOpen(c)} style={{ '--tc': tv(c.tier) } as React.CSSProperties}><b className="tg">{c.tier}</b> {c.title} {c.caseNo}</button>
+                  <button className="linkbtn" onClick={() => onOpen(c)} style={{ '--tc': tv(c.tier) } as React.CSSProperties}><b className="tg">{TIER_NAME[c.tier]}</b> {c.title} {c.caseNo}</button>
                 </li>
               )
             })}

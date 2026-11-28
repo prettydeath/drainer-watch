@@ -325,10 +325,10 @@ footer p{margin:4px 0}
           <label class="sr" for="fTier">Tiers</label>
           <select id="fTier">
             <option value="">all tiers</option>
-            <option value="T1">T1 confirmed</option>
-            <option value="T1T2">T1 and T2</option>
-            <option value="T2">T2 strong</option>
-            <option value="T3">T3 suspect</option>
+            <option value="T1">Confirmed</option>
+            <option value="T1T2">Confirmed and likely</option>
+            <option value="T2">Likely</option>
+            <option value="T3">Suspicious</option>
           </select>
           <span class="w">on</span>
           <label class="sr" for="fChain">Chain</label>
@@ -479,8 +479,8 @@ function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
 /* ---------- vocabularies ---------- */
 const TIERS = {
   T1:['Confirmed','Seed with activity, a split pull hitting 3+ victims, a kit approval amount, a bait contract with 3+ paying victims, or another kit-confirmed drain.'],
-  T2:['Strong','A split pull with 1-2 victims, payments to a known operator, a kit fingerprint with activity, or a twin of a T1 on another chain.'],
-  T3:['Suspect','Code or behaviour that fits a drainer without a confirmed drain: red-flag selectors, multi-victim pulls alone, 7702 sweepers, single EOA pulls.']
+  T2:['Likely','A split pull with 1-2 victims, payments to a known operator, a kit fingerprint with activity, or a twin of a T1 on another chain.'],
+  T3:['Suspicious','Code or behaviour that fits a drainer without a confirmed drain: red-flag selectors, multi-victim pulls alone, 7702 sweepers, single EOA pulls.']
 };
 // labels (contracts[].labels) and evidence types (evidence[].type): human name + one-line explanation
 const LABELS = {
@@ -756,7 +756,7 @@ function link(chain, v, kind, full){
 }
 const addrL = (c, v, f) => link(c, v, 'address', f);
 const txL = (c, v, f) => link(c, v, 'tx', f);
-const tierBadge = t => el('span', {class:'tb ' + (TIER_RANK[t] ? t : ''), text: t || '?', title: TIERS[t] ? TIERS[t][0] : 'Untracked'});
+const tierBadge = t => el('span', {class:'tb ' + (TIER_RANK[t] ? t : ''), text: (TIERS[t] ? TIERS[t][0] : t) || '?', title: TIERS[t] ? TIERS[t][0] : 'Untracked'});
 function fullAddr(chain, v){ return el('span', {class:'full'}, addrL(chain, v, true), copyBtn(str(v))); }
 
 /* ---------- theme ---------- */
@@ -1023,7 +1023,7 @@ function renderLedger(){
     const tr = el('tr', {class: TIER_RANK[c.tier] ? c.tier : ''});
     const open = () => openCase(c.chain, c.address);
     tr.addEventListener('click', ev => { if(ev.target.closest('a')) return; open(); });
-    tr.appendChild(el('td', null, el('span', {class:'tierc', text:c.tier || '?'}), el('span', {class:'why', text: (TIERS[c.tier] || ['Untiered'])[0]})));
+    tr.appendChild(el('td', null, el('span', {class:'tierc', text:(TIERS[c.tier] || [c.tier || '?'])[0]}), el('span', {class:'why', text: (TIERS[c.tier] || ['Untiered'])[0]})));
     const ab = el('button', {class:'addrbtn', type:'button', title:c.address, 'aria-label':'Open case file for ' + c.address + ' on ' + chainName(c.chain), text: mid(c.address)});
     ab.addEventListener('click', ev => { ev.stopPropagation(); open(); });
     tr.appendChild(el('td', null, el('span', {class:'chain', text: chainName(c.chain) + ' '}), ab, el('span', {class:'why', text: whyShort(c)})));

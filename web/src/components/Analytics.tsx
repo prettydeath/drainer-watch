@@ -59,7 +59,7 @@ function AtRiskNow({ model, onOpen }: { model: Model; onOpen: (c: Case) => void 
                 {rows.slice(0, n).map((r, i) => (
                   <tr key={r.c.key + r.victim + r.token} className="row" data-risk-row={r.victim} style={css({ '--tc': tv(r.c.tier) })}>
                     <td className="who" data-l="Victim wallet" data-rank={i + 1} data-tier={(r.symbol || 'token') + ' on ' + chainLong(r.c.chain)}><Addr value={r.victim} chain={r.c.chain} link /> <span className="muted small">{chainShort(r.c.chain)}</span></td>
-                    <td data-l="Spender"><span className="tg">{r.c.tier}</span> <button className="linkbtn mono small" onClick={() => onOpen(r.c)}>{mid(r.c.address, 6, 4)}</button></td>
+                    <td data-l="Spender"><span className="tg">{TIER_NAME[r.c.tier]}</span> <button className="linkbtn mono small" onClick={() => onOpen(r.c)}>{mid(r.c.address, 6, 4)}</button></td>
                     <td data-l="Token"><b>{r.symbol || <Addr value={r.token} chain={r.c.chain} />}</b></td>
                     <td className="r" data-l="Allowance">{r.allowance}</td>
                     <td className="r num" data-l="Balance">{r.balance == null ? <span className="muted">unknown</span> : fmtAllowance(r.balance)}</td>
@@ -140,7 +140,7 @@ function FreezableNow({ model, onOpen }: { model: Model; onOpen: (c: Case) => vo
                             <span className="kit">{roleInfo(f.role)[0].toLowerCase()}</span>
                           </td>
                           <td data-l="Linked drainer" className="wrapc">
-                            {tier ? <span className="tg">{tier}</span> : null} {c ? <button className="linkbtn mono small" onClick={e => { e.stopPropagation(); onOpen(c) }}>{mid(f.drainer, 6, 4)}</button> : <Addr value={f.drainer} chain={f.chain} />}
+                            {tier ? <span className="tg">{TIER_NAME[tier as Tier] ?? tier}</span> : null} {c ? <button className="linkbtn mono small" onClick={e => { e.stopPropagation(); onOpen(c) }}>{mid(f.drainer, 6, 4)}</button> : <Addr value={f.drainer} chain={f.chain} />}
                             {ev.length ? <span className="sub ev" title={ev.join(', ')}>{ev.slice(0, 2).join(', ')}{ev.length > 2 ? ' +' + (ev.length - 2) : ''}</span> : null}
                           </td>
                           <td data-l="Token"><span className="iss" style={css({ '--ic': ISSUER_COLOR(issuerOf(f)) })}><i />{f.symbol || 'token'}</span><span className="sub">{issuerOf(f)}</span></td>
@@ -205,7 +205,7 @@ function SummaryStrip({ model, rows, f, recs }: { model: Model; rows: DrainerRow
         <b className="num">{fmtInt(s.drainers)}</b> {kind} {s.drainers === 1 ? 'drainer was' : 'drainers were'} active{where} {w.phrase}; since their campaigns began they have taken{' '}
         <b className="num">{fmtUSD(s.usd)}</b> from <b className="num">{fmtInt(s.victims)}</b> wallets
         {s.drainers > 3 && s.usd > 0 ? <>, and the top 3 account for <b className="num">{Math.round(s.top3Share * 100)}%</b> of it</> : null}.
-        {top && top.usd > 0 ? <> The largest, <span className="mono">{mid(top.c.address)}</span> on {chainLong(top.c.chain)} ({top.c.tier}), took {fmtUSD(top.usd)} between {fmtDay(top.start)} and {fmtDay(top.last)}.</> : null}
+        {top && top.usd > 0 ? <> The largest, <span className="mono">{mid(top.c.address)}</span> on {chainLong(top.c.chain)} ({TIER_NAME[top.c.tier].toLowerCase()}), took {fmtUSD(top.usd)} between {fmtDay(top.start)} and {fmtDay(top.last)}.</> : null}
         {shared ? <> Payout wallet <span className="mono">{mid(shared.wallet)}</span> is fed by {plural(shared.drainers.length, 'drainer')}, a sign of one operator behind them.</> : null}
       </p>
       {s.unpriced || model.drains.length >= 500 ? (
@@ -284,7 +284,7 @@ function RankTable({ model, rows, onOpen }: { model: Model; rows: DrainerRow[]; 
                   aria-label={'Open case ' + c.caseNo + ', rank ' + r.rank}>
                   <td className="r rk" data-l="Rank">{r.rank}</td>
                   <td className="who" data-l="Drainer" data-rank={r.rank} data-tier={c.tier + ' ' + TIER_NAME[c.tier].toLowerCase() + ', ' + chainLong(c.chain)}>
-                    <span className="tg">{c.tier}</span> <Addr value={c.address} chain={c.chain} h={8} t={6} link /> <span className="muted small">{chainShort(c.chain)}</span>
+                    <span className="tg">{TIER_NAME[c.tier]}</span> <Addr value={c.address} chain={c.chain} h={8} t={6} link /> <span className="muted small">{chainShort(c.chain)}</span>
                     <span className="kit" title={c.family ? 'Code family hash ' + c.family : undefined}>{kitLine(c)}</span>
                   </td>
                   <td className="r" data-l="Taken"><b className="num">{r.usd ? fmtUSD(r.usd) : <span className="muted">$0</span>}</b>{r.unpriced ? <span className="sub">{r.unpriced} unpriced</span> : null}{c.approvalOnly ? <span className="sub">approval only, nothing taken yet</span> : null}{Math.min(model.freezeByCase.get(c.key)?.usd || 0, r.usd) > 0 ? <span className="frz-b" title={'Stablecoins on its linked wallets that the issuer can still freeze, up to what it is known to have taken (balance ' + fmtUSD(model.freezeByCase.get(c.key)!.usd) + ')'}>freezable {fmtUSD(Math.min(model.freezeByCase.get(c.key)!.usd, r.usd), true)}</span> : null}</td>
@@ -398,7 +398,7 @@ function Gantt({ rows, now, onOpen }: { rows: DrainerRow[]; now: number; onOpen:
                 onMouseLeave={() => setHover(null)}>
                 <rect className="hit" x={0} y={y - RH / 2} width={W} height={RH} />
                 <line className="rl" x1={L} x2={W - R} y1={y + RH / 2} y2={y + RH / 2} />
-                <text className="lab" x={L - 8} y={y} dy={4} textAnchor="end"><tspan className="tgt">{r.c.tier}</tspan> <tspan className="mono">{mid(r.c.address, 6, 4)}</tspan></text>
+                <text className="lab" x={L - 8} y={y} dy={4} textAnchor="end"><tspan className="tgt">{TIER_NAME[r.c.tier]}</tspan> <tspan className="mono">{mid(r.c.address, 6, 4)}</tspan></text>
                 <rect className="bar" x={x0} y={y - 5} width={x1 - x0} height={10} rx={2} />
                 {ds.map(d => <circle key={d.tx + d.victim} className="dot" cx={xs(d.t)} cy={y} r={d.usd ? 2.6 + Math.min(3.4, Math.log10(1 + d.usd) * 0.8) : 2.2}><title>{fmtStamp(d.t)}: {d.usd == null ? 'unpriced ' + (d.symbol || '') : fmtUSD(d.usd)}</title></circle>)}
               </g>
@@ -407,7 +407,7 @@ function Gantt({ rows, now, onOpen }: { rows: DrainerRow[]; now: number; onOpen:
         </svg>
         {hover ? (
           <div className="chart-tip gantt-tip" style={{ left: hover.x + 12, top: hover.y + 14 }} role="status">
-            <div className="chart-tip-label">{hover.r.c.tier} {hover.r.c.title}, {chainLong(hover.r.c.chain)}</div>
+            <div className="chart-tip-label">{TIER_NAME[hover.r.c.tier]}: {hover.r.c.title}, {chainLong(hover.r.c.chain)}</div>
             <div className="chart-tip-row"><span className="chart-tip-name">Start</span><span className="chart-tip-val">{fmtStamp(hover.r.start)}</span></div>
             <div className="chart-tip-row"><span className="chart-tip-name">Last</span><span className="chart-tip-val">{fmtStamp(hover.r.last)}</span></div>
             <div className="chart-tip-row"><span className="chart-tip-name">Taken</span><span className="chart-tip-val">{fmtUSD(hover.r.usd)}</span></div>
@@ -533,7 +533,7 @@ export default function Analytics({ model, onOpen }: { model: Model; onOpen: (c:
         <div className="card card-pad ruled ranked">
           <div className="filters an-filters" role="group" aria-label="Filter drainers">
             <span className="fl">Tier</span>
-            {TIER_ORDER.map(t => <button key={t} className="chipf" aria-pressed={f.tiers.includes(t)} onClick={() => toggleTier(t)} style={css({ '--tc': tv(t) })}>{t} {TIER_NAME[t].toLowerCase()}</button>)}
+            {TIER_ORDER.map(t => <button key={t} className="chipf" aria-pressed={f.tiers.includes(t)} onClick={() => toggleTier(t)} style={css({ '--tc': tv(t) })}>{TIER_NAME[t].toLowerCase()}</button>)}
             <span className="fl">Chain</span>
             {['all', ...chains].map(ch => <button key={ch} className="chipf" aria-pressed={f.chain === ch} onClick={() => setF(x => ({ ...x, chain: ch }))}>{ch === 'all' ? 'All' : chainShort(ch)}</button>)}
             <span className="fl">Active in</span>
@@ -556,7 +556,7 @@ export default function Analytics({ model, onOpen }: { model: Model; onOpen: (c:
             <h3>Top drainers by value taken</h3>
             <p className="cap">Top {TOP_BARS} by USD; bar colour is the tier. Select a bar to open the file.</p>
             <TopDrainers rows={rows} onOpen={onOpen} />
-            <div className="legend small">{TIER_ORDER.filter(t => f.tiers.includes(t)).map(t => <span key={t}><i style={{ background: tv(t) }} />{t} {TIER_NAME[t].toLowerCase()}</span>)}</div>
+            <div className="legend small">{TIER_ORDER.filter(t => f.tiers.includes(t)).map(t => <span key={t}><i style={{ background: tv(t) }} />{TIER_NAME[t].toLowerCase()}</span>)}</div>
           </div>
           <div className="card card-pad chartcard">
             <h3>Value taken over time, by chain</h3>
