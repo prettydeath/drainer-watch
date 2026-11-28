@@ -50,6 +50,7 @@ class Ctx:
         self.pev, self.pdr = [], []       # pending evidence / drains
         self.owner_spenders: dict = defaultdict(set)
         self.known_spenders: set = set()
+        self.public_spenders: set = set()
         self.payout_wallets: set = set()
         self.strong_wallets: set = set()
         self.seed_index = None
@@ -226,6 +227,10 @@ class Ctx:
 def load_state(ctx):
     now = now_ts()
     ctx.conn.execute("DELETE FROM approvals WHERE ts < ?", (now - APPROVAL_KEEP_SEC,))
+    try:   # public routers / aggregators (retention.public_spenders): their approvals are not stored
+        ctx.public_spenders = set(json.loads(meta_get(ctx.conn, f"public_spenders:{ctx.chain}", "{}") or "{}"))
+    except (ValueError, TypeError):
+        ctx.public_spenders = set()
     for r in ctx.conn.execute("SELECT owner,spender FROM approvals WHERE chain=?", (ctx.chain,)):
         ctx.owner_spenders[r["owner"]].add(r["spender"])
     refresh_known(ctx)
@@ -286,6 +291,8 @@ def store_approvals(ctx, approvals, ts):
         if a["kind"] != "approval" or a["value"] == 0 or ctx.is_allowed(a["spender"]) or a["spender"] == ZERO:
             continue
         sp = a["spender"]
+        if sp in ctx.public_spenders:
+            continue
         if sp in ctx.known_spenders or ctx.seeds.has(ctx.chain, sp) or len(owners[sp]) >= 3:
             ctx.conn.execute("INSERT OR IGNORE INTO approvals(chain,owner,spender,token,tx,block,ts) VALUES(?,?,?,?,?,?,?)",
                              (ctx.chain, a["owner"], sp, a["token"], a["tx"], a["block"], ts))

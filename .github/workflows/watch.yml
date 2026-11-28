@@ -57,6 +57,14 @@ jobs:
             echo "::error::release unreachable"; exit 1
           fi
 
+      - name: Fetch the T1/T2 protect list of the last merge (data branch; missing = lossless retention only)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/$GH_REPO/contents/data/protect.json?ref=data" -H "Accept: application/vnd.github.raw" \
+            > data/protect.json 2>/dev/null || rm -f data/protect.json
+          ls -la data/protect.json 2>/dev/null || echo "no protect list"
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -109,11 +117,17 @@ jobs:
         run: |
           . scripts/release_state.sh
           mkdir -p data _rel _shards
-          # a transient API error fails the job: a rebuilt database must never replace the real one
-          rc=0; rel_get drainerwatch.sqlite.gz _rel/drainerwatch.sqlite.gz || rc=$?
-          if [ $rc -eq 0 ]; then
-            gunzip -c _rel/drainerwatch.sqlite.gz > data/drainerwatch.sqlite && echo "db from release"
-          elif [ $rc -ne 2 ]; then
+          # parallel downloads; a transient API error fails the job: a rebuilt database must never replace the real one
+          get() { local rc=0; rel_get "$1" "_rel/$1" || rc=$?; echo "$rc" > "_rel/$1.rc"; }
+          for n in drainerwatch.sqlite.gz drainerwatch-eth.sqlite.gz drainerwatch-base.sqlite.gz drainerwatch-bsc.sqlite.gz \
+                   drainerwatch-tron.sqlite.gz; do get "$n" & done
+          wait
+          rc=$(cat _rel/drainerwatch.sqlite.gz.rc)
+          pids=""
+          if [ "$rc" -eq 0 ]; then
+            gunzip -c _rel/drainerwatch.sqlite.gz > data/drainerwatch.sqlite & pids="$pids $!"
+            echo "db from release"
+          elif [ "$rc" -ne 2 ]; then
             echo "::error::release unreachable"; exit 1
           elif [ -f _data/data/drainerwatch.sqlite ]; then
             cp _data/data/drainerwatch.sqlite data/ && echo "db from data branch (migration)"
@@ -121,11 +135,13 @@ jobs:
             echo "no previous db"
           fi
           for c in eth base bsc tron; do
-            rc=0; rel_get "drainerwatch-$c.sqlite.gz" "_rel/drainerwatch-$c.sqlite.gz" || rc=$?
-            if [ $rc -eq 0 ]; then gunzip -c "_rel/drainerwatch-$c.sqlite.gz" > "_shards/drainerwatch-$c.sqlite"
-            elif [ $rc -eq 2 ]; then echo "no shard for $c"
+            rc=$(cat "_rel/drainerwatch-$c.sqlite.gz.rc")
+            if [ "$rc" -eq 0 ]; then gunzip -c "_rel/drainerwatch-$c.sqlite.gz" > "_shards/drainerwatch-$c.sqlite" & pids="$pids $!"
+            elif [ "$rc" -eq 2 ]; then echo "no shard for $c"
             else echo "::error::release unreachable"; exit 1; fi
           done
+          for p in $pids; do wait "$p" || { echo "::error::gunzip failed"; exit 1; }; done
+          rm -f _rel/*.gz
           cp data/drainerwatch.sqlite _db_before.sqlite 2>/dev/null || true
 
       - uses: actions/setup-python@v5

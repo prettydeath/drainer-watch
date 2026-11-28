@@ -141,6 +141,11 @@ def finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=True):
         tick("rollup 3")
     except Exception as e:  # noqa: BLE001 - best effort
         log.warning("exposure checks failed: %s", redact(e))
+    try:                                                 # T1/T2 of the merged roll-up: the scan jobs never prune them
+        from . import retention
+        retention.write_protect(conn)
+    except Exception as e:  # noqa: BLE001 - best effort
+        log.warning("protect list failed: %s", redact(e))
     try:
         alerts.notify(conn)
         tick("alerts")
@@ -169,6 +174,10 @@ def cmd_scan(a):
     conn = connect(Path(a.db) if a.db else shards.shard_path(DATA_DIR, chain))
     if shards.init_shard(conn, chain):
         log.info("%s: shard initialised from a full database copy", chain)
+    from . import retention                 # bounded retention, before the scan (fewer approvals = fewer D3 lookups)
+    t1 = time.monotonic()
+    retention.run(conn, chain, seeds=seedmod.refresh(conn), protect=retention.load_protect())
+    log.info("%s: retention took %.1f s", chain, time.monotonic() - t1)
     t0 = time.monotonic()
     stats, rpcs, sd, labels, prices = scan_chains(conn, [chain], a.max_blocks, a.budget_sec, source=a.source, t0=t0,
                                                   share=1.0)

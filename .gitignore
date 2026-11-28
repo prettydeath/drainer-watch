@@ -12,6 +12,7 @@ __pycache__/
 /data/*.sqlite-*
 /data/contracts.csv
 /data/drains.csv
+/data/protect.json
 /site/
 
 # private investigation material (kit research notes, case incidents) - never publish
