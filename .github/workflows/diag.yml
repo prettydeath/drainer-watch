@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        db: [drainerwatch, drainerwatch-eth, drainerwatch-base, drainerwatch-bsc, drainerwatch-tron]
+        db: [drainerwatch]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,14 +39,18 @@ jobs:
           import sqlite3, sys
           c = sqlite3.connect(sys.argv[1])
           q = lambda s: c.execute(s).fetchall()
-          print("approvals top spenders:", q("SELECT chain,spender,COUNT(*) n FROM approvals GROUP BY 1,2 ORDER BY n DESC LIMIT 10"))
-          print("g_funds top recipients:", q("SELECT chain,recipient,COUNT(*) n FROM g_funds GROUP BY 1,2 ORDER BY n DESC LIMIT 10") if q("SELECT 1 FROM sqlite_master WHERE name='g_funds'") else None)
-          print("codes by size=0:", q("SELECT chain, size=0, COUNT(*), SUM(length(skeleton)), SUM(length(selectors)) FROM codes GROUP BY 1,2"))
-          print("evidence per subject top:", q("SELECT chain,address,type,COUNT(*) n FROM evidence GROUP BY 1,2,3 ORDER BY n DESC LIMIT 15"))
-          print("evidence age days:", q("SELECT type, (strftime('%s','now')-ts)/86400 d, COUNT(*) FROM evidence WHERE type IN ('pays_known_operator','multi_victim_pull','poison_tiny') GROUP BY 1,2 ORDER BY 1,2"))
-          print("contracts by tier:", q("SELECT chain,tier,COUNT(*) FROM contracts GROUP BY 1,2"))
-          print("drains per drainer top:", q("SELECT chain,drainer,COUNT(*) n FROM drains GROUP BY 1,2 ORDER BY n DESC LIMIT 10"))
-          print("payouts:", q("SELECT chain,role,COUNT(*) FROM payouts GROUP BY 1,2"))
-          print("meta keys:", q("SELECT k, length(v) FROM meta ORDER BY 2 DESC LIMIT 15"))
-          print("freelist/page:", q("PRAGMA freelist_count"), q("PRAGMA page_count"), q("PRAGMA page_size"))
+          sp = q("SELECT chain,spender,COUNT(*) n,COUNT(DISTINCT owner) o FROM approvals GROUP BY 1,2 HAVING o>300 ORDER BY n DESC")
+          print("spenders >300 owners:", len(sp), "rows", sum(r[2] for r in sp), "of", q("SELECT COUNT(*) FROM approvals"))
+          for ch, a, n, o in sp[:40]:
+              t = q(f"SELECT tier,labels,victims FROM contracts WHERE chain='{ch}' AND address='{a}'")
+              e = q(f"SELECT type,COUNT(*) FROM evidence WHERE chain='{ch}' AND address='{a}' GROUP BY 1")
+              print("  ", ch, a, n, o, t, e)
+          for ch, a in [("bsc","0x1a863449667e082eb818557925344cad6e2eb3b1"),("base","0x2e4bb66c8edd23cf8cbe71ab0519e14833e43b43"),("bsc","0x29493fdee62cb2b3b2edf3cf1ac5a008e26749ad"),("base","0x5f63d194b5e57a9e3410e704a0cfa21e69fd13ac"),("bsc","0x278d858f05b94576c1e6f73285886876ff6ef8d2"),("base","0xe807a76385ec3d76d17ab955091c12329d0a1403"),("eth","0x00fe78205f5f0e63b8ad2b2ae5337f538a610e04")]:
+              print("subj", ch, a, q(f"SELECT tier,labels,victims,drains FROM contracts WHERE chain='{ch}' AND address='{a}'"))
+          print("T1/T2 evidence rows:", q("SELECT c.tier,COUNT(*) FROM evidence e JOIN contracts c ON c.chain=e.chain AND c.address=e.address WHERE c.tier IN ('T1','T2') GROUP BY 1"))
+          print("T1/T2 drains rows:", q("SELECT c.tier,COUNT(*) FROM drains e JOIN contracts c ON c.chain=e.chain AND c.address=e.drainer WHERE c.tier IN ('T1','T2') GROUP BY 1"))
+          print("evidence rows of no-tier subjects:", q("SELECT COUNT(*) FROM evidence e LEFT JOIN contracts c ON c.chain=e.chain AND c.address=e.address WHERE c.address IS NULL"))
+          print("pko per strong:", q("SELECT json_extract(detail,'$.strong'),COUNT(*),COUNT(DISTINCT chain||address) FROM evidence WHERE type='pays_known_operator' GROUP BY 1"))
+          print("pko rows if top50/subject/strong:", q("SELECT SUM(MIN(n,50)) FROM (SELECT COUNT(*) n FROM evidence WHERE type='pays_known_operator' GROUP BY chain,address,json_extract(detail,'$.strong'))"))
+          print("all rows if cap50 per subj/type:", q("SELECT SUM(MIN(n,50)) FROM (SELECT COUNT(*) n FROM evidence GROUP BY chain,address,type)"))
           PY
