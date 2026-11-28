@@ -181,3 +181,10 @@ def test_flows_outside_the_sweep_window_and_over_cap_pruned(tmp_path):
     assert retention.prune_flows(c, "eth", NOW) == 11
     assert c.execute("SELECT COUNT(*) FROM flows WHERE subject=?", (a(1),)).fetchone()[0] == retention.FLOWS_MAX_PER_SUBJECT
     assert [r[0] for r in c.execute("SELECT x FROM flows WHERE subject=?", (a(2),))] == [a(0x9001)]
+
+
+def test_cli_imports_and_parses():
+    import pytest
+    from drainerwatch import cli
+    with pytest.raises(SystemExit):
+        cli.main(["--help"])

@@ -87,18 +87,7 @@ def _ticker(t0):
 def finish(conn, chains, sd, labels, prices, rpcs, budget_sec, t0, render=True):
     """Everything after the scan: roll-up, enrichment, freezable balances, exposure, alerts, render."""
     tick = _ticker(t0)
-    if env("DRAINERWATCH_PROFILE"):            # diagnostics: where the roll-up spends its time
-        import cProfile
-        import io
-        import pstats
-        pr = cProfile.Profile()
-        rows = pr.runcall(rollup.rollup, conn, sd, labels)
-        buf = io.StringIO()
-        pstats.Stats(pr, stream=buf).sort_stats("cumulative").print_stats(25)
-        log.info("rollup profile:
-%s", buf.getvalue())
-    else:
-        rows = rollup.rollup(conn, sd, labels)
+    rows = rollup.rollup(conn, sd, labels)
     tick("rollup")
     try:
         es = enrich.Etherscan()
